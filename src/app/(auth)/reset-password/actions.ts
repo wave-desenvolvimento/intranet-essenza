@@ -18,7 +18,10 @@ export async function updatePassword(formData: FormData) {
   if (password !== confirmPassword) return { error: "As senhas não conferem." };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({
+    password,
+    data: { password_set: true },
+  });
 
   if (error) {
     return { error: "Erro ao atualizar senha. O link pode ter expirado." };
