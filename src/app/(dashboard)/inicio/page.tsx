@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import { DashboardContent } from "./dashboard-content";
 import { getFavorites } from "../favorites-actions";
 import { getEffectivePermissions } from "@/lib/dev-mode-server"; // kept for dev mode switcher
@@ -9,17 +8,6 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return null;
-
-  // Check onboarding
-  const { data: onboardingCheck } = await supabase
-    .from("profiles")
-    .select("onboarding_completed")
-    .eq("id", user.id)
-    .single();
-
-  if (onboardingCheck && !onboardingCheck.onboarding_completed) {
-    redirect("/onboarding");
-  }
 
   // Fetch profile with full franchise data
   const { data: profile } = await supabase

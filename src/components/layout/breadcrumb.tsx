@@ -16,7 +16,6 @@ const ROUTE_LABELS: Record<string, string> = {
   "gestao-de-pedidos": "Gestão de Pedidos",
   produtos: "Produtos",
   relatorios: "Relatórios",
-  onboarding: "Onboarding",
   pagina: "",
   banners: "Banners",
   "categorias-materiais": "Categorias de Materiais",

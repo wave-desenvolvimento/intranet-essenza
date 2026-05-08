@@ -32,7 +32,26 @@
       "mcp__chrome-devtools__fill_form",
       "mcp__chrome-devtools__take_snapshot",
       "mcp__chrome-devtools__click",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel link:*)",
+      "Bash(vercel unlink:*)",
+      "Bash(vercel team:*)",
+      "Bash(vercel env:*)",
+      "Bash(for env:*)",
+      "Bash(do echo:*)",
+      "Bash(done)",
+      "Bash(supabase projects:*)",
+      "Bash(supabase link:*)",
+      "Bash(grep:*)",
+      "Bash(vercel:*)",
+      "Bash(npx --yes @anthropic-ai/claude-code@latest)",
+      "Bash(npx --yes sharp-cli -i /tmp/og-image.svg -o /Users/wesleymoraesserafim/Projetos/intranet-essenza/public/assets/og-image.png resize 1200 630)",
+      "Bash(identify /Users/wesleymoraesserafim/Projetos/intranet-essenza/public/assets/og-image.png)",
+      "Bash(sips -g all /Users/wesleymoraesserafim/Projetos/intranet-essenza/public/assets/og-image.png)",
+      "Bash(npx react-email:*)",
+      "Bash(curl:*)"
     ]
   }
 }
