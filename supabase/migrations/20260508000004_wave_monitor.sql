@@ -14,6 +14,8 @@ create extension if not exists pg_net with schema extensions;
 create table public.monitors (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  group_name text not null default 'Geral',
+  description text,
   url text not null,
   method text not null default 'GET',
   headers jsonb default '{}',

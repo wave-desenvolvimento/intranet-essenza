@@ -8,15 +8,17 @@ export const metadata = {
   description: "Status dos serviços do Essenza Hub em tempo real.",
 };
 
-interface HealthCheck {
+export interface HealthCheck {
   monitor_id: string;
   is_up: boolean;
   created_at: string;
 }
 
-interface Monitor {
+export interface Monitor {
   id: string;
   name: string;
+  group_name: string;
+  description: string | null;
   current_status: string;
   last_checked_at: string | null;
   sort_order: number;
@@ -31,7 +33,7 @@ export default async function StatusPage() {
   const [{ data: monitors }, { data: checks }] = await Promise.all([
     supabase
       .from("monitors")
-      .select("id, name, current_status, last_checked_at, sort_order")
+      .select("id, name, group_name, description, current_status, last_checked_at, sort_order")
       .eq("is_active", true)
       .order("sort_order"),
     supabase

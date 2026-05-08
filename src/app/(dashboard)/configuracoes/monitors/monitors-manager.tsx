@@ -11,6 +11,8 @@ import { useConfirm } from "@/hooks/use-confirm";
 interface Monitor {
   id: string;
   name: string;
+  group_name: string;
+  description: string | null;
   url: string;
   method: string;
   headers: Record<string, string>;
@@ -114,6 +116,27 @@ export function MonitorsManager({ monitors }: Props) {
             </div>
 
             <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-ink-700">Grupo *</label>
+              <input
+                name="groupName"
+                required
+                defaultValue={editing?.group_name || ""}
+                placeholder="Ex: Supabase, Vercel, Resend"
+                className="h-10 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
+              />
+            </div>
+
+            <div className="sm:col-span-2 flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-ink-700">Descrição</label>
+              <input
+                name="description"
+                defaultValue={editing?.description || ""}
+                placeholder="Ex: PostgreSQL — armazenamento principal de dados"
+                className="h-10 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-ink-700">URL *</label>
               <input
                 name="url"
@@ -211,11 +234,12 @@ export function MonitorsManager({ monitors }: Props) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-ink-900">{monitor.name}</span>
+                <span className="text-[10px] bg-ink-50 text-ink-500 px-1.5 py-0.5 rounded">{monitor.group_name}</span>
                 {!monitor.is_active && (
                   <span className="text-[10px] bg-ink-100 text-ink-500 px-1.5 py-0.5 rounded">Inativo</span>
                 )}
               </div>
-              <p className="text-xs text-ink-400 truncate">{monitor.url}</p>
+              <p className="text-xs text-ink-400 truncate">{monitor.description || monitor.url}</p>
             </div>
             <div className="flex items-center gap-3 text-xs text-ink-400">
               <span>{monitor.method}</span>

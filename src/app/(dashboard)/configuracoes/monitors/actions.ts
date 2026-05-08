@@ -18,6 +18,8 @@ export async function createMonitor(formData: FormData) {
   const supabase = await createClient();
 
   const name = formData.get("name") as string;
+  const groupName = (formData.get("groupName") as string) || "Geral";
+  const description = (formData.get("description") as string) || null;
   const url = formData.get("url") as string;
   const method = (formData.get("method") as string) || "GET";
   const headersRaw = formData.get("headers") as string;
@@ -33,6 +35,8 @@ export async function createMonitor(formData: FormData) {
 
   const { error } = await supabase.from("monitors").insert({
     name,
+    group_name: groupName,
+    description,
     url,
     method,
     headers,
@@ -51,6 +55,8 @@ export async function updateMonitor(formData: FormData) {
 
   const id = formData.get("id") as string;
   const name = formData.get("name") as string;
+  const groupName = (formData.get("groupName") as string) || "Geral";
+  const description = (formData.get("description") as string) || null;
   const url = formData.get("url") as string;
   const method = (formData.get("method") as string) || "GET";
   const headersRaw = formData.get("headers") as string;
@@ -67,6 +73,8 @@ export async function updateMonitor(formData: FormData) {
 
   const { error } = await supabase.from("monitors").update({
     name,
+    group_name: groupName,
+    description,
     url,
     method,
     headers,

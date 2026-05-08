@@ -3,20 +3,7 @@
 import { cn } from "@/lib/utils";
 import { CheckCircle2, AlertTriangle, XCircle, ExternalLink } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
-
-interface Monitor {
-  id: string;
-  name: string;
-  current_status: string;
-  last_checked_at: string | null;
-  sort_order: number;
-}
-
-interface HealthCheck {
-  monitor_id: string;
-  is_up: boolean;
-  created_at: string;
-}
+import type { Monitor, HealthCheck } from "./page";
 
 interface Props {
   monitors: Monitor[];
@@ -38,7 +25,6 @@ function getDayBuckets(monitorId: string, checks: HealthCheck[]): { date: string
     const date = new Date();
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split("T")[0];
-
     const dayChecks = monitorChecks.filter((c) => c.created_at.startsWith(dateStr));
 
     if (dayChecks.length === 0) {
@@ -51,33 +37,39 @@ function getDayBuckets(monitorId: string, checks: HealthCheck[]): { date: string
       else buckets.push({ date: dateStr, status: "partial" });
     }
   }
-
   return buckets;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "up") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-        <CheckCircle2 size={16} />
-        Operational
-      </span>
-    );
-  }
-  if (status === "down") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-500">
-        <XCircle size={16} />
-        Down
-      </span>
-    );
-  }
+function getGroupStatus(monitors: Monitor[]): "up" | "down" | "partial" | "unknown" {
+  if (monitors.every((m) => m.current_status === "up")) return "up";
+  if (monitors.every((m) => m.current_status === "down")) return "down";
+  if (monitors.some((m) => m.current_status === "down")) return "partial";
+  return "unknown";
+}
+
+function StatusDot({ status }: { status: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-400">
-      <AlertTriangle size={16} />
-      Unknown
-    </span>
+    <div
+      className={cn(
+        "h-2.5 w-2.5 rounded-full shrink-0",
+        status === "up" && "bg-emerald-500",
+        status === "down" && "bg-red-500",
+        status === "partial" && "bg-amber-400",
+        (status === "unknown" || status === "empty") && "bg-ink-300",
+      )}
+    />
   );
+}
+
+function StatusLabel({ status }: { status: string }) {
+  const labels: Record<string, { text: string; color: string }> = {
+    up: { text: "Operational", color: "text-emerald-600" },
+    down: { text: "Down", color: "text-red-500" },
+    partial: { text: "Degraded", color: "text-amber-600" },
+    unknown: { text: "Checking...", color: "text-ink-400" },
+  };
+  const label = labels[status] || labels.unknown;
+  return <span className={cn("text-sm font-medium", label.color)}>{label.text}</span>;
 }
 
 function UptimeBar({ buckets }: { buckets: ReturnType<typeof getDayBuckets> }) {
@@ -86,9 +78,9 @@ function UptimeBar({ buckets }: { buckets: ReturnType<typeof getDayBuckets> }) {
       {buckets.map((bucket, i) => (
         <div
           key={i}
-          title={`${bucket.date}: ${bucket.status}`}
+          title={`${bucket.date}: ${bucket.status === "up" ? "Operational" : bucket.status === "down" ? "Down" : bucket.status === "partial" ? "Degraded" : "No data"}`}
           className={cn(
-            "flex-1 h-8 rounded-[2px] transition-colors",
+            "flex-1 h-8 rounded-[2px] transition-colors hover:opacity-80",
             bucket.status === "up" && "bg-emerald-500",
             bucket.status === "down" && "bg-red-500",
             bucket.status === "partial" && "bg-amber-400",
@@ -103,47 +95,57 @@ function UptimeBar({ buckets }: { buckets: ReturnType<typeof getDayBuckets> }) {
 function OverallStatus({ monitors }: { monitors: Monitor[] }) {
   const allUp = monitors.every((m) => m.current_status === "up");
   const anyDown = monitors.some((m) => m.current_status === "down");
+  const allUnknown = monitors.every((m) => m.current_status === "unknown");
 
-  if (allUp) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-8">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
-          <CheckCircle2 size={28} className="text-emerald-500" />
-        </div>
-        <h1 className="text-2xl font-semibold text-ink-900">All systems operational</h1>
-        <p className="text-sm text-ink-500">
-          Last updated on {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at {new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short" })}
-        </p>
-      </div>
-    );
-  }
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
+  const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZoneName: "short" });
 
-  if (anyDown) {
+  if (allUnknown) {
     return (
-      <div className="flex flex-col items-center gap-3 py-8">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
-          <XCircle size={28} className="text-red-500" />
+      <div className="flex flex-col items-center gap-3 py-10">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-ink-50">
+          <AlertTriangle size={28} className="text-ink-400" />
         </div>
-        <h1 className="text-2xl font-semibold text-ink-900">Some systems are experiencing issues</h1>
-        <p className="text-sm text-ink-500">
-          Last updated on {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at {new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short" })}
-        </p>
+        <h1 className="text-2xl font-semibold text-ink-900">Verificando serviços...</h1>
+        <p className="text-sm text-ink-500">O monitoramento ainda não coletou dados</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center gap-3 py-8">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-ink-50">
-        <AlertTriangle size={28} className="text-ink-400" />
+    <div className="flex flex-col items-center gap-3 py-10">
+      <div className={cn(
+        "flex h-14 w-14 items-center justify-center rounded-full",
+        allUp && "bg-emerald-50",
+        anyDown && !allUp && "bg-red-50",
+        !allUp && !anyDown && "bg-amber-50",
+      )}>
+        {allUp && <CheckCircle2 size={28} className="text-emerald-500" />}
+        {anyDown && <XCircle size={28} className="text-red-500" />}
+        {!allUp && !anyDown && <AlertTriangle size={28} className="text-amber-500" />}
       </div>
-      <h1 className="text-2xl font-semibold text-ink-900">Checking systems...</h1>
-      <p className="text-sm text-ink-500">Monitoring has not started yet</p>
+      <h1 className="text-2xl font-semibold text-ink-900">
+        {allUp ? "Todos os sistemas operacionais" : anyDown ? "Alguns sistemas com problemas" : "Sistemas parcialmente degradados"}
+      </h1>
+      <p className="text-sm text-ink-500">
+        Atualizado em {dateStr} às {timeStr}
+      </p>
     </div>
   );
 }
 
 export function StatusDashboard({ monitors, checks }: Props) {
+  // Group monitors by group_name
+  const groups = monitors.reduce<Record<string, Monitor[]>>((acc, mon) => {
+    const group = mon.group_name || "Geral";
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(mon);
+    return acc;
+  }, {});
+
+  const groupOrder = Object.keys(groups);
+
   return (
     <div className="min-h-screen bg-[#faf9f7]">
       {/* Header */}
@@ -155,7 +157,7 @@ export function StatusDashboard({ monitors, checks }: Props) {
               href="mailto:suporte@emporioessenza.com.br"
               className="text-sm text-ink-500 hover:text-ink-700 transition-colors"
             >
-              Report an issue
+              Reportar problema
             </a>
           </div>
         </div>
@@ -168,63 +170,71 @@ export function StatusDashboard({ monitors, checks }: Props) {
           <OverallStatus monitors={monitors} />
         </div>
 
-        {/* Monitors */}
-        <div className="rounded-xl border border-ink-100 bg-white divide-y divide-ink-50">
-          <div className="flex items-center justify-between px-6 py-4">
-            <h2 className="text-sm font-medium text-ink-700">Current status by service</h2>
-            <span className="inline-flex items-center gap-1.5 text-sm text-ink-500">
-              {monitors.every((m) => m.current_status === "up") ? (
-                <>
-                  <CheckCircle2 size={14} className="text-emerald-500" />
-                  Operational
-                </>
-              ) : (
-                <>
-                  <AlertTriangle size={14} className="text-amber-500" />
-                  Degraded
-                </>
-              )}
-            </span>
-          </div>
-
-          {monitors.map((monitor) => {
-            const uptime = getUptimePercent(monitor.id, checks);
-            const buckets = getDayBuckets(monitor.id, checks);
+        {/* Groups */}
+        <div className="space-y-6">
+          {groupOrder.map((groupName) => {
+            const groupMonitors = groups[groupName];
+            const groupStatus = getGroupStatus(groupMonitors);
 
             return (
-              <div key={monitor.id} className="px-6 py-5">
-                <div className="flex items-center justify-between">
+              <div key={groupName} className="rounded-xl border border-ink-100 bg-white overflow-hidden">
+                {/* Group header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-ink-50 bg-ink-25">
                   <div className="flex items-center gap-2.5">
-                    <div
-                      className={cn(
-                        "h-2.5 w-2.5 rounded-full",
-                        monitor.current_status === "up" && "bg-emerald-500",
-                        monitor.current_status === "down" && "bg-red-500",
-                        monitor.current_status === "unknown" && "bg-ink-300",
-                      )}
-                    />
-                    <span className="text-sm font-medium text-ink-900">{monitor.name}</span>
+                    <StatusDot status={groupStatus} />
+                    <h2 className="text-sm font-semibold text-ink-900">{groupName}</h2>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span
-                      className={cn(
-                        "text-sm font-medium",
-                        uptime >= 99.5 && "text-emerald-600",
-                        uptime >= 95 && uptime < 99.5 && "text-amber-600",
-                        uptime < 95 && "text-red-500",
-                      )}
-                    >
-                      {uptime}% uptime
-                    </span>
-                    <StatusBadge status={monitor.current_status} />
-                  </div>
+                  <StatusLabel status={groupStatus} />
                 </div>
 
-                <UptimeBar buckets={buckets} />
+                {/* Monitors in group */}
+                <div className="divide-y divide-ink-50">
+                  {groupMonitors.map((monitor) => {
+                    const uptime = getUptimePercent(monitor.id, checks);
+                    const buckets = getDayBuckets(monitor.id, checks);
+                    const hasHistory = checks.some((c) => c.monitor_id === monitor.id);
 
-                <div className="flex justify-between mt-1.5">
-                  <span className="text-[11px] text-ink-400">90 days ago</span>
-                  <span className="text-[11px] text-ink-400">Today</span>
+                    return (
+                      <div key={monitor.id} className="px-6 py-5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <StatusDot status={monitor.current_status} />
+                            <div>
+                              <span className="text-sm font-medium text-ink-900">{monitor.name}</span>
+                              {monitor.description && (
+                                <p className="text-xs text-ink-400 mt-0.5">{monitor.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            {hasHistory && (
+                              <span
+                                className={cn(
+                                  "text-sm font-medium",
+                                  uptime >= 99.5 && "text-emerald-600",
+                                  uptime >= 95 && uptime < 99.5 && "text-amber-600",
+                                  uptime < 95 && "text-red-500",
+                                )}
+                              >
+                                {uptime}% uptime
+                              </span>
+                            )}
+                            <StatusLabel status={monitor.current_status} />
+                          </div>
+                        </div>
+
+                        {hasHistory && (
+                          <>
+                            <UptimeBar buckets={buckets} />
+                            <div className="flex justify-between mt-1.5">
+                              <span className="text-[11px] text-ink-400">90 dias atrás</span>
+                              <span className="text-[11px] text-ink-400">Hoje</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -232,9 +242,9 @@ export function StatusDashboard({ monitors, checks }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center">
+        <div className="mt-10 text-center">
           <a
-            href="/login"
+            href="/"
             className="inline-flex items-center gap-1 text-xs text-ink-400 hover:text-ink-600 transition-colors"
           >
             Powered by Essenza Hub <ExternalLink size={10} />
