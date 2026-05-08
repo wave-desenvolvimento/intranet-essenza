@@ -38,7 +38,7 @@ export function UserMenu({ user }: UserMenuProps) {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 rounded-lg px-1 sm:px-2 py-1 hover:bg-ink-50 transition-colors"
       >
-        <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full bg-brand-olive text-white text-xs sm:text-sm font-medium">
+        <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full bg-brand-olive text-white text-xs sm:text-sm font-medium leading-none">
           {initial}
         </div>
         <div className="hidden sm:block text-left min-w-0">
