@@ -156,9 +156,14 @@ export function Sidebar({ cmsPages = [] }: SidebarProps) {
 
       {/* Navigation */}
       <nav className={cn("flex-1 overflow-y-auto pt-3", collapsed ? "px-1" : "px-2")}>
-        {NAV_SECTIONS.map((section) => {
-          // Hide everything while loading — prevents flash of unauthorized items
-          if (permissionsLoading) return null;
+        {permissionsLoading && (
+          <div className={cn("flex flex-col gap-1", collapsed ? "px-1" : "px-2")}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className={cn("rounded-[9px] bg-ink-50 animate-pulse", collapsed ? "h-10 w-full" : "h-[34px] w-full")} />
+            ))}
+          </div>
+        )}
+        {!permissionsLoading && NAV_SECTIONS.map((section) => {
 
           const visibleItems = section.items.filter((item) => {
             if (!canModule(item.module)) return false;
@@ -231,7 +236,6 @@ export function Sidebar({ cmsPages = [] }: SidebarProps) {
           </div>
           );
         })}
-
         {/* CMS Pages — grouped, filtered by permissions */}
         {!permissionsLoading && cmsPages
           .filter((p) => p.is_group)
