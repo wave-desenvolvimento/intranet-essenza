@@ -1,0 +1,223 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.625rem;
+
+  /* shadcn semantic — remapped to Essenza palette */
+  --background: #faf9f7;
+  --foreground: #18160f;
+  --card: #ffffff;
+  --card-foreground: #18160f;
+  --popover: #ffffff;
+  --popover-foreground: #18160f;
+  --primary: #878a62;
+  --primary-foreground: #ffffff;
+  --secondary: #f0e8d6;
+  --secondary-foreground: #5a5735;
+  --muted: #f3f1ee;
+  --muted-foreground: #7a746c;
+  --accent: #f0e8d6;
+  --accent-foreground: #5a5735;
+  --destructive: #c0392b;
+  --destructive-foreground: #ffffff;
+  --border: #ebe8e3;
+  --input: #ebe8e3;
+  --ring: #878a62;
+
+  /* Charts */
+  --chart-1: #878a62;
+  --chart-2: #5a5735;
+  --chart-3: #3f5c2e;
+  --chart-4: #7a5c2b;
+  --chart-5: #2f4754;
+
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #18160f;
+  --sidebar-primary: #878a62;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0e8d6;
+  --sidebar-accent-foreground: #5a5735;
+  --sidebar-border: #ebe8e3;
+  --sidebar-ring: #878a62;
+}
+
+@theme inline {
+  /* shadcn semantic colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Brand colors */
+  --color-brand-olive: #878a62;
+  --color-brand-olive-dark: #5a5735;
+  --color-brand-olive-soft: #f0e8d6;
+  --color-brand-cream: #faf9f7;
+  --color-brand-black: #18160f;
+
+  /* Ink scale (grays esverdeados) */
+  --color-ink-900: #18160f;
+  --color-ink-700: #3a412a;
+  --color-ink-600: #64605a;
+  --color-ink-500: #7a746c;
+  --color-ink-400: #9e978e;
+  --color-ink-300: #c9c5bc;
+  --color-ink-200: #d9d5ce;
+  --color-ink-100: #ebe8e3;
+  --color-ink-50: #f3f1ee;
+
+  /* Accent */
+  --color-accent-dark: #554544;
+
+  /* Status */
+  --color-success: #3f5c2e;
+  --color-success-soft: #eef3e9;
+  --color-warning: #7a5c2b;
+  --color-warning-soft: #f5ead6;
+  --color-danger: #c0392b;
+  --color-danger-soft: #fbeae8;
+  --color-info: #2f4754;
+  --color-info-soft: #e7ecee;
+
+  /* Border radius */
+  --radius-xs: 5px;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: 10px;
+  --radius-3xl: 12px;
+  --radius-4xl: 14px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-dropdown: 0 8px 28px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --shadow-bottom-nav: 0 -4px 20px rgba(0, 0, 0, 0.06);
+
+  /* Font */
+  --font-sans: var(--font-comfortaa), sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* PWA safe areas */
+  .safe-area-top { padding-top: env(safe-area-inset-top); }
+  .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+  /* Prevent horizontal scroll on mobile */
+  html, body { overflow-x: hidden; }
+
+  /* Better touch targets — only for standalone interactive elements, not inline icons */
+  @media (max-width: 768px) {
+    input, select, textarea { font-size: 16px; } /* prevents zoom on iOS */
+  }
+
+  /* Hide scrollbar on mobile nav */
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+}
+
+/* Driver.js custom theme — Essenza branded */
+.driver-popover.essenza-tour-popover {
+  background: #ffffff;
+  border: 1px solid #e8e5df;
+  border-radius: 14px;
+  box-shadow: 0 20px 40px -8px rgba(24, 22, 15, 0.15);
+  padding: 20px 24px;
+  max-width: 340px;
+}
+.driver-popover.essenza-tour-popover .driver-popover-title {
+  font-family: var(--font-comfortaa), sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #18160f;
+  margin-bottom: 6px;
+}
+.driver-popover.essenza-tour-popover .driver-popover-description {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #6b6b5e;
+}
+.driver-popover.essenza-tour-popover .driver-popover-progress-text {
+  font-size: 10px;
+  color: #9b9b8e;
+}
+.driver-popover.essenza-tour-popover .driver-popover-navigation-btns {
+  gap: 8px;
+}
+.driver-popover.essenza-tour-popover .driver-popover-next-btn {
+  background: #878a62;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  text-shadow: none;
+}
+.driver-popover.essenza-tour-popover .driver-popover-next-btn:hover {
+  background: #5a5735;
+}
+.driver-popover.essenza-tour-popover .driver-popover-prev-btn {
+  background: transparent;
+  color: #6b6b5e;
+  border: 1px solid #e8e5df;
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  text-shadow: none;
+}
+.driver-popover.essenza-tour-popover .driver-popover-prev-btn:hover {
+  background: #f5f4ef;
+}
+.driver-popover.essenza-tour-popover .driver-popover-close-btn {
+  color: #9b9b8e;
+}
+.driver-popover.essenza-tour-popover .driver-popover-close-btn:hover {
+  color: #18160f;
+}
+.driver-popover.essenza-tour-popover .driver-popover-arrow {
+  border-color: #ffffff;
+}
