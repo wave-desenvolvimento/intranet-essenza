@@ -183,7 +183,7 @@ export function GlobalSearch() {
         {!isMobile && (
           <kbd className="inline-flex items-center gap-0.5 rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-ink-400 border border-ink-100">
             {isMac ? <Command size={10} /> : "Ctrl"}
-            <span>K</span>
+            <span className="leading-0">K</span>
           </kbd>
         )}
       </button>
