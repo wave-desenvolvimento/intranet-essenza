@@ -3,8 +3,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { getResend, FROM_EMAIL } from "@/lib/email";
-import { InviteUserEmail } from "@/emails/invite-user";
 import { notifyUsers } from "@/app/(dashboard)/notifications-actions";
 import { requirePermission, getUserRoleLevel } from "@/lib/permissions";
 
@@ -86,23 +84,6 @@ export async function inviteUser(formData: FormData) {
     await supabase.from("user_roles").insert(
       roleIds.map((roleId) => ({ user_id: userId, role_id: roleId }))
     );
-  }
-
-  // Send branded invite email via Resend (non-blocking)
-  const resendClient = getResend();
-  if (resendClient) {
-    const franchiseName = franchiseId
-      ? ((await supabase.from("franchises").select("name").eq("id", franchiseId).single()).data?.name || "Essenza")
-      : "Essenza";
-
-    const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/login`;
-
-    resendClient.emails.send({
-      from: FROM_EMAIL,
-      to: email,
-      subject: `Você foi convidado para o Hub Essenza`,
-      react: InviteUserEmail({ userName: fullName, franchiseName, inviteUrl }),
-    }).catch(() => { /* silently fail — Supabase invite is the primary */ });
   }
 
   // Create welcome notification for the new user
