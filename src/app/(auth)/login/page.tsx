@@ -46,7 +46,7 @@ export default function LoginPage() {
 
           <div className="flex flex-col items-center gap-4 max-w-md">
             <h1 className="text-center text-3xl font-bold leading-snug text-ink-900">
-              Tudo que sua marca precisa,
+              Tudo que você precisa,
               <br />
               em um <span className="text-brand-olive">só lugar.</span>
             </h1>
