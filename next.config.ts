@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { hostname: "127.0.0.1" },
       { hostname: "localhost" },
+      { hostname: "vahjdglapjrjkgncbkze.supabase.co" },
     ],
   },
   async headers() {
