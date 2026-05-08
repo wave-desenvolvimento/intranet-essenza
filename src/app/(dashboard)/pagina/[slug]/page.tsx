@@ -30,35 +30,26 @@ export default async function DynamicPage({
 
   if (!page || page.is_group) notFound();
 
-  // Fetch linked collections with their fields and items
+  // Fetch linked collections with fields and items in a single query
   const { data: pageCollections } = await supabase
     .from("cms_page_collections")
-    .select("role, collection_id, collection:cms_collections(id, name, slug)")
+    .select("role, collection:cms_collections(id, name, slug, fields:cms_fields(*), items:cms_items(*))")
     .eq("page_id", page.id)
-    .order("sort_order");
+    .order("sort_order")
+    .order("sort_order", { referencedTable: "cms_collections.cms_fields" })
+    .order("sort_order", { referencedTable: "cms_collections.cms_items" });
 
-  const collections = await Promise.all(
-    (pageCollections || []).map(async (pc) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const col = pc.collection as any;
-      const collection = Array.isArray(col) ? col[0] : col;
-      if (!collection) return null;
-
-      const [{ data: fields }, { data: items }] = await Promise.all([
-        supabase.from("cms_fields").select("*").eq("collection_id", collection.id).order("sort_order"),
-        supabase.from("cms_items").select("*").eq("collection_id", collection.id).eq("status", "published").order("sort_order"),
-      ]);
-
-      return {
-        ...collection,
-        role: pc.role,
-        fields: fields || [],
-        items: items || [],
-      };
-    })
-  );
-
-  const validCollections = collections.filter(Boolean);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const validCollections = (pageCollections || []).map((pc: any) => {
+    const col = Array.isArray(pc.collection) ? pc.collection[0] : pc.collection;
+    if (!col) return null;
+    return {
+      ...col,
+      role: pc.role,
+      fields: col.fields || [],
+      items: (col.items || []).filter((i: { status: string }) => i.status === "published"),
+    };
+  }).filter(Boolean);
 
   return (
     <PageRenderer

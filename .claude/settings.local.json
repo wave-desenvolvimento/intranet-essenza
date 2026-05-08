@@ -51,7 +51,8 @@
       "Bash(identify /Users/wesleymoraesserafim/Projetos/intranet-essenza/public/assets/og-image.png)",
       "Bash(sips -g all /Users/wesleymoraesserafim/Projetos/intranet-essenza/public/assets/og-image.png)",
       "Bash(npx react-email:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(grep -n \"view_type\\\\|viewType\\\\|gallery\\\\|table\\\\|files\\\\|course\" /Users/wesleymoraesserafim/Projetos/intranet-essenza/src/app/\\\\\\(dashboard\\\\\\)/pagina/[slug]/page-renderer.tsx)"
     ]
   }
 }

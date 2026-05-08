@@ -10,20 +10,12 @@ export async function getUsers() {
   const supabase = await createClient();
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("*, franchise:franchises(id, name, slug)")
+    .select("*, franchise:franchises(id, name, slug), user_roles(user_id, role_id, role:roles(id, name))")
     .order("created_at", { ascending: false });
 
-  if (!profiles || profiles.length === 0) return [];
-
-  const userIds = profiles.map((p) => p.id);
-  const { data: userRoles } = await supabase
-    .from("user_roles")
-    .select("user_id, role_id, role:roles(id, name)")
-    .in("user_id", userIds);
-
-  return profiles.map((p) => ({
+  return (profiles || []).map((p) => ({
     ...p,
-    user_roles: (userRoles || []).filter((ur) => ur.user_id === p.id),
+    user_roles: p.user_roles || [],
   }));
 }
 

@@ -414,46 +414,42 @@ export async function importProducts(rows: { name: string; sku: string; category
     }
   }
 
-  let imported = 0;
-  let skipped = 0;
+  const validRows = rows.filter((r) => r.name);
+  const skipped = rows.length - validRows.length;
 
-  for (const row of rows) {
-    if (!row.name) { skipped++; continue; }
+  if (validRows.length === 0) return { success: true, imported: 0, skipped };
 
-    const categoryId = row.category ? catMap.get(row.category.toLowerCase()) || null : null;
+  const productsToInsert = validRows.map((row) => ({
+    name: row.name,
+    sku: row.sku || null,
+    category: row.category || null,
+    category_id: row.category ? catMap.get(row.category.toLowerCase()) || null : null,
+    unit: row.unit || "un",
+    min_qty: row.minQty || 1,
+    stock_status: row.stockStatus || "in_stock",
+    image_url: null,
+    pre_order_date: null,
+  }));
 
-    const { data: product, error } = await supabase
-      .from("products")
-      .insert({
-        name: row.name,
-        sku: row.sku || null,
-        category: row.category || null,
-        category_id: categoryId,
-        unit: row.unit || "un",
-        min_qty: row.minQty || 1,
-        stock_status: row.stockStatus || "in_stock",
-        image_url: null,
-        pre_order_date: null,
-      })
-      .select("id")
-      .single();
+  const { data: insertedProducts, error } = await supabase
+    .from("products")
+    .insert(productsToInsert)
+    .select("id");
 
-    if (error) {
-      skipped++;
-      continue;
-    }
+  if (error || !insertedProducts) return { error: "Erro ao importar produtos." };
 
-    const prices = [];
-    if (row.priceFranquia > 0) prices.push({ product_id: product.id, segment: "franquia", price: row.priceFranquia });
-    if (row.pricePdv > 0) prices.push({ product_id: product.id, segment: "multimarca_pdv", price: row.pricePdv });
-    if (prices.length > 0) await supabase.from("product_prices").insert(prices);
+  const allPrices: { product_id: string; segment: string; price: number }[] = [];
+  insertedProducts.forEach((product, i) => {
+    const row = validRows[i];
+    if (row.priceFranquia > 0) allPrices.push({ product_id: product.id, segment: "franquia", price: row.priceFranquia });
+    if (row.pricePdv > 0) allPrices.push({ product_id: product.id, segment: "multimarca_pdv", price: row.pricePdv });
+  });
 
-    imported++;
-  }
+  if (allPrices.length > 0) await supabase.from("product_prices").insert(allPrices);
 
   revalidatePath("/produtos");
   revalidatePath("/novo-pedido");
-  return { success: true, imported, skipped };
+  return { success: true, imported: insertedProducts.length, skipped };
 }
 
 export async function deleteProductCategory(id: string) {

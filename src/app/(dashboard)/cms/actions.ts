@@ -28,22 +28,16 @@ export async function getCollectionsFull() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("cms_collections")
-    .select("*")
-    .order("sort_order");
+    .select("*, fields:cms_fields(*), items:cms_items(*)")
+    .order("sort_order")
+    .order("sort_order", { referencedTable: "cms_fields" })
+    .order("sort_order", { referencedTable: "cms_items" });
 
-  if (!data) return [];
-
-  const result = await Promise.all(
-    data.map(async (c) => {
-      const [{ data: fields }, { data: items }] = await Promise.all([
-        supabase.from("cms_fields").select("*").eq("collection_id", c.id).order("sort_order"),
-        supabase.from("cms_items").select("*").eq("collection_id", c.id).order("sort_order"),
-      ]);
-      return { ...c, fields: fields || [], items: items || [] };
-    })
-  );
-
-  return result;
+  return (data || []).map((c) => ({
+    ...c,
+    fields: c.fields || [],
+    items: c.items || [],
+  }));
 }
 
 export async function getCollection(slug: string) {
