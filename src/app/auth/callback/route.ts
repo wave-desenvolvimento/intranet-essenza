@@ -44,6 +44,7 @@ export async function GET(request: Request) {
 function shouldSetPassword(user: { user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } | null, type: string | null): boolean {
   if (!user) return false;
   if (type === "invite") return true;
-  if (!user.user_metadata?.password_set && user.app_metadata?.providers?.length === 1) return true;
+  const providers = user.app_metadata?.providers;
+  if (!user.user_metadata?.password_set && Array.isArray(providers) && providers.length === 1) return true;
   return false;
 }
