@@ -318,7 +318,16 @@ export function Sidebar({ cmsPages = [] }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className={cn("mt-auto border-t border-ink-100 px-4 py-3", collapsed && "px-2 py-2")}>
+      <div className={cn("mt-auto border-t border-ink-100 px-4 py-3 space-y-1", collapsed && "px-2 py-2")}>
+        <a
+          href="https://essenza.betteruptime.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn("flex items-center justify-center gap-1.5 text-[10px] text-ink-300 hover:text-ink-500 transition-colors", collapsed && "text-[8px]")}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+          {!collapsed && "Status dos serviços"}
+        </a>
         <a
           href="https://www.wavecommerce.com.br/?utm_source=rodape&utm_medium=sistema-essenza"
           target="_blank"
