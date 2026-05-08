@@ -55,8 +55,9 @@ export async function inviteUser(formData: FormData) {
   });
 
   if (createError) {
+    console.error("inviteUserByEmail error:", createError.message, createError.status);
     if (createError.message.includes("already")) return { error: "Este e-mail já está cadastrado." };
-    return { error: "Erro ao criar usuário." };
+    return { error: `Erro ao criar usuário: ${createError.message}` };
   }
 
   const userId = userData.user.id;
