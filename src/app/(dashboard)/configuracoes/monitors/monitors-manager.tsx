@@ -99,113 +99,83 @@ export function MonitorsManager({ monitors }: Props) {
 
           <form
             action={editing ? handleUpdate : handleCreate}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+            className="space-y-5"
           >
             {editing && <input type="hidden" name="id" value={editing.id} />}
             {editing && <input type="hidden" name="isActive" value={String(editing.is_active)} />}
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink-700">Nome *</label>
-              <input
-                name="name"
-                required
-                defaultValue={editing?.name || ""}
-                placeholder="Ex: Banco de Dados"
-                className="h-10 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
-              />
+            {/* Básico */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider">Informações básicas</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-ink-600">Nome do serviço *</label>
+                  <input name="name" required defaultValue={editing?.name || ""} placeholder="Ex: Banco de Dados"
+                    className="h-9 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-ink-600">Grupo *</label>
+                  <input name="groupName" required defaultValue={editing?.group_name || ""} placeholder="Ex: Supabase, Vercel"
+                    className="h-9 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-ink-600">Descrição</label>
+                <input name="description" defaultValue={editing?.description || ""} placeholder="Breve descrição do que este serviço faz"
+                  className="h-9 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
+              </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink-700">Grupo *</label>
-              <input
-                name="groupName"
-                required
-                defaultValue={editing?.group_name || ""}
-                placeholder="Ex: Supabase, Vercel, Resend"
-                className="h-10 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
-              />
+            {/* Endpoint */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider">Endpoint</p>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-ink-600">URL *</label>
+                <input name="url" required type="url" defaultValue={editing?.url || ""} placeholder="https://..."
+                  className="h-9 rounded-lg border border-ink-200 px-3 text-sm font-mono focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-ink-600">Método</label>
+                  <select name="method" defaultValue={editing?.method || "GET"}
+                    className="h-9 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-ink-600">Status esperado</label>
+                  <input name="expectedStatus" type="number" defaultValue={editing?.expected_status || 200}
+                    className="h-9 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-ink-600">Intervalo</label>
+                  <div className="relative">
+                    <input name="intervalMinutes" type="number" min={1} defaultValue={editing?.interval_minutes || 5}
+                      className="h-9 w-full rounded-lg border border-ink-200 px-3 pr-10 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">min</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-ink-600">Headers <span className="text-ink-400 font-normal">(opcional, JSON)</span></label>
+                <textarea name="headers" rows={2}
+                  defaultValue={editing?.headers && Object.keys(editing.headers).length > 0 ? JSON.stringify(editing.headers, null, 2) : ""}
+                  placeholder='{"apikey": "sua_chave_aqui"}'
+                  className="rounded-lg border border-ink-200 px-3 py-2 text-sm font-mono resize-none focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
+              </div>
             </div>
 
-            <div className="sm:col-span-2 flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink-700">Descrição</label>
-              <input
-                name="description"
-                defaultValue={editing?.description || ""}
-                placeholder="Ex: PostgreSQL — armazenamento principal de dados"
-                className="h-10 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink-700">URL *</label>
-              <input
-                name="url"
-                required
-                type="url"
-                defaultValue={editing?.url || ""}
-                placeholder="https://..."
-                className="h-10 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink-700">Método</label>
-              <select
-                name="method"
-                defaultValue={editing?.method || "GET"}
-                className="h-10 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none"
-              >
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink-700">Status esperado</label>
-              <input
-                name="expectedStatus"
-                type="number"
-                defaultValue={editing?.expected_status || 200}
-                className="h-10 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink-700">Intervalo (min)</label>
-              <input
-                name="intervalMinutes"
-                type="number"
-                min={1}
-                defaultValue={editing?.interval_minutes || 5}
-                className="h-10 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink-700">Headers (JSON)</label>
-              <input
-                name="headers"
-                defaultValue={editing?.headers ? JSON.stringify(editing.headers) : "{}"}
-                placeholder='{"apikey": "..."}'
-                className="h-10 rounded-lg border border-ink-200 px-3 text-sm font-mono focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
-              />
-            </div>
-
-            <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => { setCreating(false); setEditing(null); }}
-                className="rounded-lg border border-ink-200 px-4 py-2 text-sm text-ink-600 hover:bg-ink-50 transition-colors"
-              >
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink-100">
+              <button type="button" onClick={() => { setCreating(false); setEditing(null); }}
+                className="rounded-lg border border-ink-200 px-4 py-2 text-sm text-ink-600 hover:bg-ink-50 transition-colors">
                 Cancelar
               </button>
-              <button
-                type="submit"
-                disabled={isPending}
-                className="flex items-center gap-1.5 rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-60 transition-colors"
-              >
+              <button type="submit" disabled={isPending}
+                className="flex items-center gap-1.5 rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-60 transition-colors">
                 <Check size={14} />
-                {isPending ? "Salvando..." : "Salvar"}
+                {isPending ? "Salvando..." : editing ? "Atualizar" : "Criar monitor"}
               </button>
             </div>
           </form>

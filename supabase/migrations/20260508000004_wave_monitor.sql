@@ -57,6 +57,21 @@ create policy "Admins manage monitors" on public.monitors for all using (public.
 create policy "Anyone can read health_checks" on public.health_checks for select using (true);
 create policy "System inserts health_checks" on public.health_checks for insert with check (true);
 
+-- Status reports: relatórios de problemas enviados pela status page
+create table public.status_reports (
+  id uuid primary key default gen_random_uuid(),
+  name text,
+  email text,
+  message text not null,
+  service text,
+  resolved boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.status_reports enable row level security;
+create policy "Admins read status_reports" on public.status_reports for select using (public.is_system_admin(auth.uid()));
+create policy "Anyone can insert status_reports" on public.status_reports for insert with check (true);
+
 -- =============================================
 -- Função que executa os health checks via pg_net
 -- =============================================

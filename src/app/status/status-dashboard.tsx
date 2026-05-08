@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, AlertTriangle, XCircle, ExternalLink } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, ExternalLink, X, Send, Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import type { Monitor, HealthCheck } from "./page";
 
@@ -135,7 +136,120 @@ function OverallStatus({ monitors }: { monitors: Monitor[] }) {
   );
 }
 
+function ReportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [isPending, startTransition] = useTransition();
+  const [sent, setSent] = useState(false);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
+
+    startTransition(async () => {
+      await fetch("/api/status-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.get("name"),
+          email: data.get("email"),
+          message: data.get("message"),
+          service: data.get("service"),
+        }),
+      });
+      setSent(true);
+    });
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-semibold text-ink-900">Reportar problema</h2>
+          <button onClick={onClose} className="text-ink-400 hover:text-ink-600 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {sent ? (
+          <div className="text-center py-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 mx-auto mb-3">
+              <CheckCircle2 size={24} className="text-emerald-500" />
+            </div>
+            <p className="text-sm font-medium text-ink-900 mb-1">Relatório enviado</p>
+            <p className="text-xs text-ink-500">Nossa equipe vai analisar o problema. Obrigado!</p>
+            <button onClick={onClose} className="mt-4 rounded-lg bg-ink-100 px-4 py-2 text-sm text-ink-700 hover:bg-ink-200 transition-colors">
+              Fechar
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-ink-600">Nome</label>
+                <input
+                  name="name"
+                  placeholder="Seu nome"
+                  className="h-9 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-ink-600">Email</label>
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  className="h-9 rounded-lg border border-ink-200 px-3 text-sm focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-ink-600">Serviço afetado</label>
+              <select
+                name="service"
+                className="h-9 rounded-lg border border-ink-200 px-3 text-sm text-ink-700 focus:border-brand-olive focus:outline-none"
+              >
+                <option value="">Não sei / Geral</option>
+                <option value="aplicacao">Aplicação</option>
+                <option value="banco-de-dados">Banco de Dados</option>
+                <option value="autenticacao">Autenticação</option>
+                <option value="storage">Armazenamento</option>
+                <option value="email">Email</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-ink-600">Descreva o problema *</label>
+              <textarea
+                name="message"
+                required
+                rows={3}
+                placeholder="O que está acontecendo?"
+                className="rounded-lg border border-ink-200 px-3 py-2 text-sm resize-none focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isPending}
+              className="flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-olive text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-60 transition-colors"
+            >
+              {isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {isPending ? "Enviando..." : "Enviar relatório"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function StatusDashboard({ monitors, checks }: Props) {
+  const [reportOpen, setReportOpen] = useState(false);
+
   // Group monitors by group_name
   const groups = monitors.reduce<Record<string, Monitor[]>>((acc, mon) => {
     const group = mon.group_name || "Geral";
@@ -152,16 +266,16 @@ export function StatusDashboard({ monitors, checks }: Props) {
       <header className="border-b border-ink-100 bg-white">
         <div className="mx-auto max-w-3xl flex items-center justify-between px-6 py-4">
           <BrandLogo width={120} height={56} />
-          <div className="flex items-center gap-4">
-            <a
-              href="mailto:suporte@emporioessenza.com.br"
-              className="text-sm text-ink-500 hover:text-ink-700 transition-colors"
-            >
-              Reportar problema
-            </a>
-          </div>
+          <button
+            onClick={() => setReportOpen(true)}
+            className="text-sm text-ink-500 hover:text-ink-700 transition-colors"
+          >
+            Reportar problema
+          </button>
         </div>
       </header>
+
+      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
 
       {/* Content */}
       <main className="mx-auto max-w-3xl px-6 py-8">
@@ -244,10 +358,12 @@ export function StatusDashboard({ monitors, checks }: Props) {
         {/* Footer */}
         <div className="mt-10 text-center">
           <a
-            href="/"
+            href="https://www.wavecommerce.com.br/?utm_source=status-page&utm_medium=essenza&utm_campaign=powered-by"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs text-ink-400 hover:text-ink-600 transition-colors"
           >
-            Powered by Essenza Hub <ExternalLink size={10} />
+            Powered by WaveCommerce <ExternalLink size={10} />
           </a>
         </div>
       </main>
