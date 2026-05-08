@@ -12,6 +12,7 @@ const comfortaa = Comfortaa({
 import type { Viewport } from "next";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: "Essenza Hub — Gestão de Marca para Franqueados",
   description:
     "Plataforma centralizada da rede Empório Essenza Serra Gaúcha. Campanhas, materiais, treinamentos e assets organizados para fortalecer a marca em cada franquia.",

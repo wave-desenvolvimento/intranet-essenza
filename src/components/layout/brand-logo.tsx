@@ -52,6 +52,7 @@ export function BrandLogo({
         width={w}
         height={h}
         className="h-auto w-auto max-h-full max-w-full object-contain"
+        style={{ width: "auto", height: "auto" }}
         onError={() => setErrored(true)}
       />
     </div>
