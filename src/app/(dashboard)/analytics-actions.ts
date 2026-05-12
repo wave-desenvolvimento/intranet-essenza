@@ -32,7 +32,7 @@ export async function trackEvent(
 }
 
 export async function getAnalyticsDashboard() {
-  const p = await requirePermission("analytics", "view"); if (p.error) return p;
+  const p = await requirePermission("relatorios", "view"); if (p.error) return p;
   const supabase = await createClient();
 
   // Top items by views (last 30 days)
@@ -121,7 +121,7 @@ export async function getAnalyticsDashboard() {
 }
 
 export async function getOrdersAnalytics() {
-  const p = await requirePermission("analytics", "view"); if (p.error) return p;
+  const p = await requirePermission("relatorios", "view"); if (p.error) return p;
   const supabase = await createClient();
 
   const now = new Date();

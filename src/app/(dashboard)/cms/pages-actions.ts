@@ -97,6 +97,23 @@ export async function deletePage(id: string) {
   return { success: true };
 }
 
+export async function reorderPages(items: { id: string; sort_order: number; parent_id: string | null }[]) {
+  const p = await requirePermission("cms", "edit"); if (p.error) return p;
+  const supabase = await createClient();
+
+  // Batch update sort_order and parent_id
+  for (const item of items) {
+    await supabase.from("cms_pages").update({
+      sort_order: item.sort_order,
+      parent_id: item.parent_id,
+    }).eq("id", item.id);
+  }
+
+  revalidatePath("/cms");
+  revalidatePath("/inicio");
+  return { success: true };
+}
+
 export async function duplicatePage(id: string) {
   const p = await requirePermission("cms", "create"); if (p.error) return p;
   const supabase = await createClient();

@@ -10,7 +10,7 @@ export interface DevPermission {
 
 const ALL_MODULES = [
   "dashboard", "usuarios", "franquias", "cms", "configuracoes",
-  "templates", "pedidos", "analytics",
+  "templates", "pedidos", "produtos", "relatorios",
   "universo-da-marca", "material-corporativo", "campanhas",
   "redes-sociais", "biblioteca", "videos", "treinamento", "cigam",
 ];
@@ -39,7 +39,7 @@ export const DEV_PRESETS: Record<string, DevPermission[]> = {
     ...allPerms(["campanhas", "material-corporativo"], ["view", "create", "edit", "download"]),
     ...allPerms(["cms"], ["view", "create", "edit"]),
     ...allPerms(["pedidos"], ["view", "manage"]),
-    ...allPerms(["analytics"], ["view"]),
+    ...allPerms(["relatorios"], ["view"]),
   ],
 };
 

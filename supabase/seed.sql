@@ -66,15 +66,16 @@ insert into public.permissions (module, action, description) values
   ('configuracoes', 'view', 'Ver configurações'),
   ('configuracoes', 'edit', 'Editar configurações'),
   -- Pedidos
-  ('orders', 'view', 'Ver pedidos'),
-  ('orders', 'create', 'Criar pedido'),
-  ('orders', 'approve', 'Aprovar e gerenciar pedidos'),
-  ('orders', 'export', 'Exportar pedidos'),
-  ('orders', 'delete', 'Cancelar pedidos'),
+  ('pedidos', 'view', 'Ver pedidos'),
+  ('pedidos', 'create', 'Criar pedido'),
+  ('pedidos', 'view_all', 'Ver todos os pedidos'),
+  ('pedidos', 'approve', 'Aprovar e gerenciar pedidos'),
+  ('pedidos', 'export', 'Exportar pedidos'),
+  ('pedidos', 'delete', 'Cancelar pedidos'),
   -- Produtos
-  ('products', 'view', 'Ver produtos'),
-  ('products', 'edit', 'Editar produtos'),
-  ('products', 'delete', 'Remover produtos'),
+  ('produtos', 'view', 'Ver produtos'),
+  ('produtos', 'edit', 'Editar produtos'),
+  ('produtos', 'delete', 'Remover produtos'),
   -- Franquias
   ('franquias', 'view', 'Ver franquias'),
   ('franquias', 'create', 'Criar franquia'),
@@ -356,7 +357,10 @@ insert into public.cms_fields (collection_id, name, slug, field_type, required, 
 -- SEED: Pages (navegação na sidebar)
 -- =============================================
 
--- Agrupadores
+-- System pages são criadas pela migration 20260512000002_system_pages.sql
+-- Aqui só o conteúdo CMS (dinâmico)
+
+-- Agrupadores CMS
 insert into public.cms_pages (title, slug, icon, sort_order, is_group) values
   ('Conteúdo', 'conteudo', 'layers', 100, true),
   ('Mídia', 'midia', 'image', 200, true),

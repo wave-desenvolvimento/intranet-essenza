@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import {
   Plus, Search, Pencil, Trash2, X, Building2, MapPin, Users,
-  UserCheck, UserX, ArrowRight, Upload,
+  UserCheck, UserX, ArrowRight, Upload, Download, FileSpreadsheet,
 } from "lucide-react";
 import { createFranchise, updateFranchise, deleteFranchise } from "./actions";
+import { importFranchisesFromXlsx } from "./import-action";
 import { cn } from "@/lib/utils";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -58,6 +59,8 @@ export function FranchisesManager({ franchises }: Props) {
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
   const { confirm: confirmAction, dialogProps } = useConfirm();
+  const [importResult, setImportResult] = useState<{ franchisesCreated: number; usersInvited: number; errors: string[] } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sheet state
   const [showSheet, setShowSheet] = useState(false);
@@ -145,6 +148,19 @@ export function FranchisesManager({ franchises }: Props) {
     startTransition(async () => { const r = await deleteFranchise(id); if (r?.error) setError(r.error); });
   }
 
+  function handleImport(file: File) {
+    const fd = new FormData();
+    fd.set("file", file);
+    startTransition(async () => {
+      const r = await importFranchisesFromXlsx(fd);
+      if ("error" in r) {
+        setError(r.error);
+      } else {
+        setImportResult(r);
+      }
+    });
+  }
+
   async function handleLogoUpload(file: File) {
     setUploadingLogo(true);
     const r = await uploadToStorage(file, { bucket: "assets", folder: "logos" });
@@ -160,9 +176,30 @@ export function FranchisesManager({ franchises }: Props) {
           <h1 className="text-lg font-semibold text-ink-900">Franquias</h1>
           <p className="text-sm text-ink-500">{franchises.length} franquias · {totalActive} ativas · {totalUsers} usuários</p>
         </div>
-        <div className="flex items-center gap-2 self-start">
-          <Link href="/usuarios" className="flex items-center gap-2 rounded-lg border border-ink-100 px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors">
-            <Users size={16} /> Ver Todos os Usuários
+        <div className="flex items-center gap-2 self-start flex-wrap">
+          <a
+            href="/api/templates/franquias"
+            download
+            className="flex items-center gap-2 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+          >
+            <Download size={14} /> Modelo XLS
+          </a>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isPending}
+            className="flex items-center gap-2 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors disabled:opacity-50"
+          >
+            <FileSpreadsheet size={14} /> {isPending ? "Importando..." : "Importar XLS"}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="sr-only"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); e.target.value = ""; }}
+          />
+          <Link href="/usuarios" className="flex items-center gap-2 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors">
+            <Users size={14} /> Usuários
           </Link>
           <button onClick={openCreate} className="flex items-center gap-2 rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors">
             <Plus size={16} /> Nova Franquia
@@ -181,6 +218,27 @@ export function FranchisesManager({ franchises }: Props) {
       </div>
 
       {error && !showSheet && <p className="mb-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
+
+      {importResult && (
+        <div className="mb-4 rounded-xl border border-ink-100 bg-white p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-ink-900">Resultado da importação</h3>
+            <button onClick={() => setImportResult(null)} className="text-ink-400 hover:text-ink-700"><X size={14} /></button>
+          </div>
+          <div className="flex gap-4 text-sm mb-2">
+            <span className="text-success">{importResult.franchisesCreated} franquia{importResult.franchisesCreated !== 1 ? "s" : ""} criada{importResult.franchisesCreated !== 1 ? "s" : ""}</span>
+            <span className="text-info">{importResult.usersInvited} convite{importResult.usersInvited !== 1 ? "s" : ""} enviado{importResult.usersInvited !== 1 ? "s" : ""}</span>
+          </div>
+          {importResult.errors.length > 0 && (
+            <div className="mt-2 rounded-lg bg-danger-soft px-3 py-2">
+              <p className="text-xs font-medium text-danger mb-1">{importResult.errors.length} erro{importResult.errors.length > 1 ? "s" : ""}:</p>
+              <ul className="text-xs text-danger space-y-0.5">
+                {importResult.errors.map((err, i) => <li key={i}>• {err}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-ink-100 bg-white">

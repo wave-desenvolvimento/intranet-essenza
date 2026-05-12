@@ -30,7 +30,7 @@ export async function getActiveProducts() {
 }
 
 export async function createProduct(formData: FormData) {
-  const p = await requirePermission("products", "edit"); if (p.error) return p;
+  const p = await requirePermission("produtos", "edit"); if (p.error) return p;
   const supabase = await createClient();
   const name = formData.get("name") as string;
   const sku = formData.get("sku") as string;
@@ -68,7 +68,7 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function updateProduct(formData: FormData) {
-  const p = await requirePermission("products", "edit"); if (p.error) return p;
+  const p = await requirePermission("produtos", "edit"); if (p.error) return p;
   const supabase = await createClient();
   const id = formData.get("id") as string;
   const name = formData.get("name") as string;
@@ -105,7 +105,7 @@ export async function updateProduct(formData: FormData) {
 }
 
 export async function deleteProduct(id: string) {
-  const p = await requirePermission("products", "delete"); if (p.error) return p;
+  const p = await requirePermission("produtos", "delete"); if (p.error) return p;
   const supabase = await createClient();
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) return { error: "Erro ao remover. Pode estar vinculado a pedidos." };
@@ -232,7 +232,7 @@ export async function createOrder(formData: FormData) {
   }
 
   // Notify admins with orders permission
-  notifyByPermission("orders", "approve", {
+  notifyByPermission("pedidos", "approve", {
     title: `Novo pedido — ${franchise?.name || "Franquia"}`,
     body: `${validatedItems.length} itens · R$ ${total.toFixed(2)}`,
     href: "/gestao-de-pedidos",
@@ -249,7 +249,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export async function updateOrderStatus(orderId: string, status: string) {
-  const p = await requirePermission("orders", "approve"); if (p.error) return p;
+  const p = await requirePermission("pedidos", "approve"); if (p.error) return p;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -278,7 +278,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
 }
 
 export async function updateOrderItem(itemId: string, quantity: number) {
-  const p = await requirePermission("orders", "approve"); if (p.error) return p;
+  const p = await requirePermission("pedidos", "approve"); if (p.error) return p;
   const supabase = await createClient();
 
   const { data: item } = await supabase.from("order_items").select("order_id, unit_price").eq("id", itemId).single();
@@ -300,7 +300,7 @@ export async function updateOrderItem(itemId: string, quantity: number) {
 }
 
 export async function updateOrderNotes(orderId: string, adminNotes: string) {
-  const p = await requirePermission("orders", "approve"); if (p.error) return p;
+  const p = await requirePermission("pedidos", "approve"); if (p.error) return p;
   const supabase = await createClient();
   const { error } = await supabase.from("orders").update({ admin_notes: adminNotes }).eq("id", orderId);
   if (error) return { error: error.message };
@@ -378,7 +378,7 @@ export async function getProductCategories() {
 }
 
 export async function createProductCategory(name: string) {
-  const p = await requirePermission("products", "edit"); if (p.error) return p;
+  const p = await requirePermission("produtos", "edit"); if (p.error) return p;
   const supabase = await createClient();
   const slug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
   const { count } = await supabase.from("product_categories").select("*", { count: "exact", head: true });
@@ -389,7 +389,7 @@ export async function createProductCategory(name: string) {
 }
 
 export async function importProducts(rows: { name: string; sku: string; category: string; unit: string; minQty: number; priceFranquia: number; pricePdv: number; stockStatus: string }[]) {
-  const p = await requirePermission("products", "edit"); if (p.error) return p;
+  const p = await requirePermission("produtos", "edit"); if (p.error) return p;
   const supabase = await createClient();
 
   if (rows.length === 0) return { error: "Nenhum produto para importar." };
@@ -453,7 +453,7 @@ export async function importProducts(rows: { name: string; sku: string; category
 }
 
 export async function deleteProductCategory(id: string) {
-  const p = await requirePermission("products", "edit"); if (p.error) return p;
+  const p = await requirePermission("produtos", "edit"); if (p.error) return p;
   const supabase = await createClient();
   await supabase.from("products").update({ category_id: null }).eq("category_id", id);
   const { error } = await supabase.from("product_categories").delete().eq("id", id);

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   BarChart3, Eye, Download, Users, Building2, TrendingUp, FileText,
   ShoppingCart, DollarSign, Package, ArrowUpRight, ArrowDownRight,
+  FileSpreadsheet, Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import * as XLSX from "xlsx";
 
 interface TopItem {
   itemId: string;
@@ -66,8 +68,22 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   cancelado: { label: "Cancelado", color: "text-danger", bg: "bg-danger-soft" },
 };
 
+const EXPORT_SECTIONS = [
+  { key: "resumo", label: "Resumo geral" },
+  { key: "mais-visualizados", label: "Conteúdo — Mais visualizados" },
+  { key: "mais-baixados", label: "Conteúdo — Mais baixados" },
+  { key: "pedidos-status", label: "Pedidos — Por status" },
+  { key: "pedidos-produtos", label: "Pedidos — Top produtos" },
+  { key: "pedidos-franquias", label: "Pedidos — Por franquia" },
+  { key: "engajamento", label: "Franquias — Engajamento" },
+] as const;
+
+type ExportKey = (typeof EXPORT_SECTIONS)[number]["key"];
+
 export function AnalyticsContent({ data, ordersData }: Props) {
   const [tab, setTab] = useState<"overview" | "franchises" | "orders">("overview");
+  const [showExport, setShowExport] = useState(false);
+  const [selectedSections, setSelectedSections] = useState<Set<ExportKey>>(new Set(EXPORT_SECTIONS.map((s) => s.key)));
 
   const maxViewed = data.topViewed[0]?.count || 1;
   const maxDownloaded = data.topDownloaded[0]?.count || 1;
@@ -79,12 +95,159 @@ export function AnalyticsContent({ data, ordersData }: Props) {
     ? ((ordersData.totalOrders - ordersData.prevOrders) / ordersData.prevOrders) * 100
     : 0;
 
+  function toggleSection(key: ExportKey) {
+    setSelectedSections((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (selectedSections.size === EXPORT_SECTIONS.length) {
+      setSelectedSections(new Set());
+    } else {
+      setSelectedSections(new Set(EXPORT_SECTIONS.map((s) => s.key)));
+    }
+  }
+
+  const handleExport = useCallback(() => {
+    const wb = XLSX.utils.book_new();
+    const sel = selectedSections;
+    const date = new Date().toLocaleDateString("pt-BR");
+
+    if (sel.has("resumo")) {
+      const rows = [
+        ["Métrica", "Valor", "Variação"],
+        ["Visualizações", data.totals.views, ""],
+        ["Downloads", data.totals.downloads, ""],
+        ["Usuários ativos", data.totals.activeUsers, ""],
+        ["Faturamento (R$)", ordersData.totalRevenue, revenueChange ? `${revenueChange > 0 ? "+" : ""}${revenueChange.toFixed(1)}%` : ""],
+        ["Pedidos", ordersData.totalOrders, ordersChange ? `${ordersChange > 0 ? "+" : ""}${ordersChange.toFixed(1)}%` : ""],
+        ["Ticket Médio (R$)", ordersData.avgTicket, ""],
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{ wch: 20 }, { wch: 15 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Resumo");
+    }
+
+    if (sel.has("mais-visualizados") && data.topViewed.length > 0) {
+      const rows = [["#", "Título", "Coleção", "Visualizações"], ...data.topViewed.map((item, i) => [i + 1, item.title, item.collection, item.count])];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{ wch: 4 }, { wch: 35 }, { wch: 25 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Mais Visualizados");
+    }
+
+    if (sel.has("mais-baixados") && data.topDownloaded.length > 0) {
+      const rows = [["#", "Título", "Coleção", "Downloads"], ...data.topDownloaded.map((item, i) => [i + 1, item.title, item.collection, item.count])];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{ wch: 4 }, { wch: 35 }, { wch: 25 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Mais Baixados");
+    }
+
+    if (sel.has("pedidos-status")) {
+      const statusRows: (string | number)[][] = [["Status", "Pedidos", "Faturamento (R$)"]];
+      for (const [status, val] of Object.entries(ordersData.byStatus)) {
+        const label = STATUS_LABELS[status]?.label || status;
+        statusRows.push([label, val.count, val.revenue]);
+      }
+      statusRows.push(["Total", ordersData.totalOrders, ordersData.totalRevenue]);
+      const ws = XLSX.utils.aoa_to_sheet(statusRows);
+      ws["!cols"] = [{ wch: 18 }, { wch: 12 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Pedidos por Status");
+    }
+
+    if (sel.has("pedidos-produtos") && ordersData.topProducts.length > 0) {
+      const rows = [["#", "Produto", "Quantidade", "Faturamento (R$)"], ...ordersData.topProducts.map((p, i) => [i + 1, p.name, p.quantity, p.revenue])];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{ wch: 4 }, { wch: 35 }, { wch: 12 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Top Produtos");
+    }
+
+    if (sel.has("pedidos-franquias") && ordersData.byFranchise.length > 0) {
+      const rows: (string | number)[][] = [["Franquia", "Segmento", "Pedidos", "Faturamento (R$)"]];
+      for (const f of ordersData.byFranchise) {
+        rows.push([f.name, f.segment === "multimarca_pdv" ? "Multimarca" : "Franquia", f.orders, f.revenue]);
+      }
+      rows.push(["Total", "", ordersData.totalOrders, ordersData.totalRevenue]);
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{ wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Pedidos por Franquia");
+    }
+
+    if (sel.has("engajamento") && data.byFranchise.length > 0) {
+      const rows = [["Franquia", "Visualizações", "Downloads", "Total"], ...data.byFranchise.map((f) => [f.name, f.views, f.downloads, f.views + f.downloads])];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{ wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 10 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Engajamento Franquias");
+    }
+
+    if (wb.SheetNames.length === 0) return;
+
+    XLSX.writeFile(wb, `relatorio-essenza-${date.replace(/\//g, "-")}.xlsx`);
+    setShowExport(false);
+  }, [selectedSections, data, ordersData, revenueChange, ordersChange]);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div>
-        <h1 className="text-lg font-semibold text-ink-900">Relatórios</h1>
-        <p className="text-sm text-ink-500">Métricas de uso e vendas dos últimos 30 dias</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-ink-900">Relatórios</h1>
+          <p className="text-sm text-ink-500">Métricas de uso e vendas dos últimos 30 dias</p>
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => setShowExport(!showExport)}
+            className="flex items-center gap-2 rounded-lg border border-ink-100 px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+          >
+            <FileSpreadsheet size={15} /> Exportar XLS
+          </button>
+
+          {showExport && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowExport(false)} />
+              <div className="absolute right-0 top-full mt-2 z-50 w-80 rounded-xl border border-ink-100 bg-white shadow-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-ink-900">Selecione as seções</p>
+                  <button onClick={toggleAll} className="text-[11px] font-medium text-brand-olive hover:text-brand-olive-dark">
+                    {selectedSections.size === EXPORT_SECTIONS.length ? "Desmarcar tudo" : "Selecionar tudo"}
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1.5 mb-4">
+                  {EXPORT_SECTIONS.map((s) => {
+                    const checked = selectedSections.has(s.key);
+                    return (
+                      <button
+                        key={s.key}
+                        onClick={() => toggleSection(s.key)}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors text-left",
+                          checked ? "bg-brand-olive-soft text-brand-olive-dark" : "text-ink-600 hover:bg-ink-50"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                          checked ? "bg-brand-olive border-brand-olive" : "border-ink-200"
+                        )}>
+                          {checked && <Check size={10} className="text-white" />}
+                        </div>
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={handleExport}
+                  disabled={selectedSections.size === 0}
+                  className="w-full rounded-lg bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-50 transition-colors"
+                >
+                  Baixar relatório ({selectedSections.size} {selectedSections.size === 1 ? "seção" : "seções"})
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Stats cards */}

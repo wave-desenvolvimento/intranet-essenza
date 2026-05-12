@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Monitor, Package, ShoppingBag, Gift, Tag, Star, Heart, Sparkles,
+  Monitor, Package, ShoppingBag, ShoppingCart, Gift, Tag, Star, Heart, Sparkles,
   Megaphone, Image, FileText, Folder, Layers, Video, Music,
   Camera, Palette, Brush, Scissors, Printer, Mail, Send,
   Globe, Share2,
@@ -13,6 +13,7 @@ import {
   Smartphone, Laptop, Tv, Wifi, Download, Upload,
   Eye, Coffee, Wine, Leaf, Flower2, Sun, Moon,
   GraduationCap, BookOpen, Lightbulb, Puzzle, Settings, Wrench, X,
+  LayoutDashboard, ShieldCheck, MonitorCog, Stamp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -122,6 +123,13 @@ export const ICONS: { name: string; icon: React.ElementType; category: string }[
   { name: "graduation", icon: GraduationCap, category: "Essenza" },
   { name: "book", icon: BookOpen, category: "Essenza" },
   { name: "puzzle", icon: Puzzle, category: "Essenza" },
+  // Sistema
+  { name: "layout-dashboard", icon: LayoutDashboard, category: "Sistema" },
+  { name: "shopping-cart", icon: ShoppingCart, category: "Sistema" },
+  { name: "shield-check", icon: ShieldCheck, category: "Sistema" },
+  { name: "monitor-cog", icon: MonitorCog, category: "Sistema" },
+  { name: "stamp", icon: Stamp, category: "Sistema" },
+  { name: "wrench", icon: Wrench, category: "Sistema" },
 ];
 
 // Lookup pra renderizar ícone por nome

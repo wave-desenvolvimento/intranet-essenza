@@ -80,8 +80,8 @@ export default async function DashboardPage() {
   }
 
   // Orders stats (for admins) or own orders (for franchise users)
-  const canViewOrders = permissionKeys.includes("orders.view") || permissionKeys.includes("orders.approve");
-  const canApproveOrders = permissionKeys.includes("orders.approve");
+  const canViewOrders = permissionKeys.includes("pedidos.view") || permissionKeys.includes("pedidos.approve");
+  const canApproveOrders = permissionKeys.includes("pedidos.approve");
 
   let orderStats = { pendingCount: 0, monthRevenue: 0, recentOrders: [] as { id: string; status: string; total: number; created_at: string; franchise_name: string }[] };
 

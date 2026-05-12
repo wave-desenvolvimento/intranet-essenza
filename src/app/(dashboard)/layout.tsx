@@ -41,7 +41,7 @@ export default async function DashboardLayout({
   // Fetch pages for sidebar navigation
   const { data: cmsPages } = await supabase
     .from("cms_pages")
-    .select("id, title, slug, icon, parent_id, is_group")
+    .select("id, title, slug, icon, parent_id, is_group, page_type, href, module, required_action")
     .order("sort_order");
 
   return (

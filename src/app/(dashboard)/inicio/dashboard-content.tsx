@@ -122,7 +122,7 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
   const canCreateMaterial = can(permissions, "material-corporativo.create");
 
   // Stats cards config
-  const showOrders = canAny(permissions, "orders");
+  const showOrders = canAny(permissions, "pedidos");
 
   const statCards = [
     ...(orderStats && orderStats.pendingCount > 0 ? [{

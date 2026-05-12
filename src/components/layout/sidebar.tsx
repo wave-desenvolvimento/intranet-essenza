@@ -2,91 +2,12 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import {
-  LayoutDashboard,
-  MonitorCog,
-  Building2,
-  ShieldCheck,
-  ChevronRight,
-  Palette,
-  FileText,
-  Megaphone,
-  Share2,
-  Image,
-  Video,
-  GraduationCap,
-  BookOpen,
-  Layers,
-  Database,
-  Folder,
-  BarChart3,
-  Stamp,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ShoppingCart,
-  Package,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronRight, PanelLeftClose, PanelLeftOpen, Folder } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
 import { getIconComponent } from "@/components/ui/icon-picker";
 import { useState, useEffect } from "react";
-
-
-interface NavItem {
-  name: string;
-  href: string;
-  icon: LucideIcon;
-  module: string;
-  action?: string; // if set, requires this specific permission (module.action)
-}
-
-const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
-  {
-    label: "",
-    items: [
-      { name: "Início", href: "/inicio", icon: LayoutDashboard, module: "dashboard" },
-    ],
-  },
-  {
-    label: "Comercial",
-    items: [
-      { name: "Novo Pedido", href: "/novo-pedido", icon: ShoppingCart, module: "pedidos" },
-      { name: "Gestão Pedidos", href: "/gestao-de-pedidos", icon: Package, module: "pedidos", action: "view_all" },
-      { name: "Produtos", href: "/produtos", icon: Package, module: "pedidos", action: "manage" },
-    ],
-  },
-  {
-    label: "Administração",
-    items: [
-      { name: "Franquias", href: "/franquias", icon: Building2, module: "franquias" },
-      { name: "Relatórios", href: "/relatorios", icon: BarChart3, module: "analytics" },
-      { name: "CMS", href: "/cms", icon: MonitorCog, module: "cms" },
-      { name: "Permissões", href: "/configuracoes", icon: ShieldCheck, module: "configuracoes" },
-    ],
-  },
-];
-
-const COLLECTION_ICON_MAP: Record<string, LucideIcon> = {
-  layers: Layers, image: Image, megaphone: Megaphone, file: FileText,
-  database: Database, folder: Folder,
-};
-
-const SLUG_ICON_MAP: Record<string, LucideIcon> = {
-  "universo-da-marca": Palette,
-  "material-corporativo": FileText,
-  campanhas: Megaphone,
-  "redes-sociais": Share2,
-  biblioteca: Image,
-  videos: Video,
-  treinamento: GraduationCap,
-  cigam: BookOpen,
-};
-
-function getCollectionIcon(slug: string, icon: string): LucideIcon {
-  return (getIconComponent(icon) as LucideIcon) || SLUG_ICON_MAP[slug] || COLLECTION_ICON_MAP[icon] || Folder;
-}
 
 interface CmsPage {
   id: string;
@@ -95,10 +16,23 @@ interface CmsPage {
   icon: string;
   parent_id: string | null;
   is_group: boolean;
+  page_type?: string;
+  href?: string | null;
+  module?: string | null;
+  required_action?: string | null;
 }
 
 interface SidebarProps {
   cmsPages?: CmsPage[];
+}
+
+function resolveHref(page: CmsPage): string {
+  if (page.page_type === "system" && page.href) return page.href;
+  return `/pagina/${page.slug}`;
+}
+
+function resolveIcon(page: CmsPage) {
+  return getIconComponent(page.icon) || Folder;
 }
 
 export function Sidebar({ cmsPages = [] }: SidebarProps) {
@@ -107,7 +41,6 @@ export function Sidebar({ cmsPages = [] }: SidebarProps) {
   const { can, canModule, loading: permissionsLoading } = usePermissions();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Persist collapsed state
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved === "true") setCollapsed(true);
@@ -119,10 +52,138 @@ export function Sidebar({ cmsPages = [] }: SidebarProps) {
     localStorage.setItem("sidebar-collapsed", String(next));
   }
 
-  function toggleExpand(name: string) {
-    if (collapsed) return; // no expand when collapsed
+  function toggleExpand(key: string) {
+    if (collapsed) return;
     setExpandedItems((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+      prev.includes(key) ? prev.filter((n) => n !== key) : [...prev, key]
+    );
+  }
+
+  // Permission check for a page
+  function canViewPage(page: CmsPage): boolean {
+    if (page.page_type === "system") {
+      if (!page.module) return true;
+      if (!canModule(page.module)) return false;
+      if (page.required_action && !can(`${page.module}.${page.required_action}`)) return false;
+      return true;
+    }
+    // CMS pages: check by slug (module = slug in permissions)
+    return canModule(page.slug);
+  }
+
+  // Build sections: root pages (no parent, not groups) + groups with children
+  const groups = cmsPages.filter((p) => p.is_group);
+  const rootPages = cmsPages.filter((p) => !p.parent_id && !p.is_group);
+
+  function isActive(page: CmsPage, siblings: CmsPage[]): boolean {
+    const href = resolveHref(page);
+    const hasSiblingSubRoute = siblings.some((s) => s !== page && resolveHref(s).startsWith(href + "/"));
+    return hasSiblingSubRoute ? pathname === href : (pathname === href || pathname.startsWith(href + "/"));
+  }
+
+  function renderCollapsedItem(page: CmsPage, active: boolean) {
+    const Icon = resolveIcon(page);
+    const href = resolveHref(page);
+    return (
+      <Link
+        key={page.id}
+        href={href}
+        className={cn(
+          "flex items-center justify-center rounded-lg h-10 w-full transition-colors group relative",
+          active ? "bg-brand-olive-soft text-brand-olive" : "text-ink-400 hover:bg-ink-50 hover:text-ink-700"
+        )}
+        title={page.title}
+      >
+        <Icon size={18} />
+        <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-ink-900 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+          {page.title}
+        </span>
+      </Link>
+    );
+  }
+
+  function renderExpandedItem(page: CmsPage, active: boolean) {
+    const Icon = resolveIcon(page);
+    const href = resolveHref(page);
+
+    // Check for sub-children (non-group children of this page)
+    const subChildren = cmsPages.filter((p) => p.parent_id === page.id && !p.is_group);
+    const visibleSubChildren = subChildren.filter(canViewPage);
+    const hasSubChildren = visibleSubChildren.length > 0;
+    const anySubActive = visibleSubChildren.some((sc) => {
+      const scHref = resolveHref(sc);
+      return pathname === scHref || pathname.startsWith(scHref + "/");
+    });
+    const subExpanded = expandedItems.includes(`page-${page.id}`) || anySubActive;
+
+    const tourId = page.page_type === "system"
+      ? `nav-${(page.href || page.slug).replace(/\//g, "-").replace(/^-/, "")}`
+      : `nav-p-${page.slug}`;
+
+    return (
+      <div key={page.id} data-tour={tourId}>
+        <div
+          className={cn(
+            "flex items-center rounded-[9px] transition-colors",
+            active ? "bg-ink-100 text-brand-olive font-medium" : "text-ink-500 hover:bg-ink-50"
+          )}
+        >
+          <Link
+            href={href}
+            onClick={() => { if (hasSubChildren && !subExpanded) toggleExpand(`page-${page.id}`); }}
+            className="flex flex-1 items-center gap-2.5 px-3 h-[34px] text-sm"
+          >
+            <Icon size={17} className={active ? "text-brand-olive" : "text-ink-500"} />
+            <span className="flex-1">{page.title}</span>
+          </Link>
+          {hasSubChildren && (
+            <button onClick={() => toggleExpand(`page-${page.id}`)} className="flex h-[34px] w-8 items-center justify-center">
+              <ChevronRight size={13} className={cn("transition-transform", active ? "text-brand-olive" : "text-ink-400", subExpanded && "rotate-90")} />
+            </button>
+          )}
+        </div>
+        {hasSubChildren && subExpanded && (
+          <div className="flex flex-col gap-px ml-6">
+            {visibleSubChildren.map((sc) => {
+              const scHref = resolveHref(sc);
+              const scActive = pathname === scHref || pathname.startsWith(scHref + "/");
+              return (
+                <Link key={sc.id} href={scHref} className={cn("flex items-center gap-2.5 rounded-[9px] px-3 h-[32px] text-sm transition-colors", scActive ? "bg-ink-100 text-brand-olive font-medium" : "text-ink-500 hover:bg-ink-50")}>
+                  <span className={cn("h-[5px] w-[5px] rounded-full shrink-0", scActive ? "bg-brand-olive" : "bg-ink-300")} />
+                  <span>{sc.title}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderSection(group: CmsPage | null, children: CmsPage[]) {
+    const visible = children.filter(canViewPage);
+    if (visible.length === 0) return null;
+
+    const key = group ? group.id : "root";
+    const label = group?.title || "";
+
+    return (
+      <div key={key} className="mb-1.5" data-tour={group ? `section-${group.slug}` : "home-section"}>
+        {!collapsed && label && (
+          <span className="px-3 pt-4 pb-1 block text-xs font-medium text-ink-500">
+            {label}
+          </span>
+        )}
+        {collapsed && label && <div className="h-px bg-ink-100 mx-2 my-2" />}
+        <div className="flex flex-col gap-px">
+          {visible.map((page) => {
+            const active = isActive(page, visible);
+            return collapsed
+              ? renderCollapsedItem(page, active)
+              : renderExpandedItem(page, active);
+          })}
+        </div>
+      </div>
     );
   }
 
@@ -163,158 +224,18 @@ export function Sidebar({ cmsPages = [] }: SidebarProps) {
             ))}
           </div>
         )}
-        {!permissionsLoading && NAV_SECTIONS.map((section) => {
+        {!permissionsLoading && (
+          <>
+            {/* Root pages (no group) */}
+            {rootPages.length > 0 && renderSection(null, rootPages)}
 
-          const visibleItems = section.items.filter((item) => {
-            if (!canModule(item.module)) return false;
-            if (item.action && !can(`${item.module}.${item.action}`)) return false;
-            return true;
-          });
-          if (visibleItems.length === 0) return null;
-
-          return (
-          <div key={section.label || "home"} className="mb-1.5">
-            {!collapsed && section.label && (
-              <span className="px-3 pt-4 pb-1 block text-xs font-medium text-ink-500">
-                {section.label}
-              </span>
-            )}
-            {collapsed && section.label && <div className="h-px bg-ink-100 mx-2 my-2" />}
-            <div className="flex flex-col gap-px">
-              {visibleItems.map((item) => {
-                // Exact match for items that have sibling sub-routes (e.g. /pedidos vs /pedidos/gestao)
-                const hasSubRoutes = section.items.some((other) => other !== item && other.href.startsWith(item.href + "/"));
-                const isActive = hasSubRoutes ? pathname === item.href : (pathname === item.href || pathname.startsWith(item.href + "/"));
-
-                if (collapsed) {
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center justify-center rounded-lg h-10 w-full transition-colors group relative",
-                        isActive ? "bg-brand-olive-soft text-brand-olive" : "text-ink-400 hover:bg-ink-50 hover:text-ink-700"
-                      )}
-                      title={item.name}
-                    >
-                      <item.icon size={18} />
-                      {/* Tooltip */}
-                      <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-ink-900 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                        {item.name}
-                      </span>
-                    </Link>
-                  );
-                }
-
-                const hasChildren = false;
-                const isExpanded = expandedItems.includes(item.name);
-
-                const tourId = `nav-${item.href.replace(/\//g, "-").replace(/^-/, "")}`;
-
-                return (
-                  <div key={item.name} data-tour={tourId}>
-                    <div
-                      className={cn(
-                        "flex items-center rounded-[9px] transition-colors",
-                        isActive
-                          ? "bg-ink-100 text-brand-olive font-medium"
-                          : "text-ink-500 hover:bg-ink-50"
-                      )}
-                    >
-                      <Link
-                        href={item.href}
-                        className="flex flex-1 items-center gap-2.5 px-3 h-[34px] text-sm"
-                      >
-                        <item.icon size={17} className={isActive ? "text-brand-olive" : "text-ink-500"} />
-                        <span className="flex-1">{item.name}</span>
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          );
-        })}
-        {/* CMS Pages — grouped, filtered by permissions */}
-        {!permissionsLoading && cmsPages
-          .filter((p) => p.is_group)
-          .map((group) => {
-            const children = cmsPages.filter((p) => p.parent_id === group.id && canModule(p.slug));
-            if (children.length === 0) return null;
-
-            return (
-              <div key={group.slug} className="mb-1.5" data-tour="content-section">
-                {!collapsed && (
-                  <span className="px-3 pt-4 pb-1 block text-xs font-medium text-ink-500">
-                    {group.title}
-                  </span>
-                )}
-                {collapsed && <div className="h-px bg-ink-100 mx-2 my-2" />}
-                <div className="flex flex-col gap-px">
-                  {children.map((child) => {
-                    const childActive = pathname === `/pagina/${child.slug}` || pathname.startsWith(`/pagina/${child.slug}/`);
-                    const Icon = getCollectionIcon(child.slug, child.icon);
-                    const subChildren = cmsPages.filter((p) => p.parent_id === child.id && !p.is_group);
-                    const hasSubChildren = subChildren.length > 0;
-                    const anySubActive = subChildren.some((sc) => pathname === `/pagina/${sc.slug}`);
-                    const subExpanded = expandedItems.includes(`page-${child.slug}`) || anySubActive;
-
-                    if (collapsed) {
-                      return (
-                        <Link
-                          key={child.slug}
-                          href={`/pagina/${child.slug}`}
-                          className={cn(
-                            "flex items-center justify-center rounded-lg h-10 w-full transition-colors group relative",
-                            childActive ? "bg-brand-olive-soft text-brand-olive" : "text-ink-400 hover:bg-ink-50 hover:text-ink-700"
-                          )}
-                          title={child.title}
-                        >
-                          <Icon size={18} />
-                          <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-ink-900 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                            {child.title}
-                          </span>
-                        </Link>
-                      );
-                    }
-
-                    return (
-                      <div key={child.slug}>
-                        <div className={cn(
-                          "flex items-center rounded-[9px] transition-colors",
-                          childActive ? "bg-ink-100 text-brand-olive font-medium" : "text-ink-500 hover:bg-ink-50"
-                        )}>
-                          <Link href={`/pagina/${child.slug}`} onClick={() => { if (hasSubChildren && !subExpanded) toggleExpand(`page-${child.slug}`); }} className="flex flex-1 items-center gap-2.5 px-3 h-[34px] text-sm">
-                            <Icon size={17} className={childActive ? "text-brand-olive" : "text-ink-500"} />
-                            <span>{child.title}</span>
-                          </Link>
-                          {hasSubChildren && (
-                            <button onClick={() => toggleExpand(`page-${child.slug}`)} className="flex h-[34px] w-8 items-center justify-center">
-                              <ChevronRight size={13} className={cn("transition-transform", childActive ? "text-brand-olive" : "text-ink-400", subExpanded && "rotate-90")} />
-                            </button>
-                          )}
-                        </div>
-                        {hasSubChildren && subExpanded && (
-                          <div className="flex flex-col gap-px ml-6">
-                            {subChildren.map((sc) => {
-                              const scActive = pathname === `/pagina/${sc.slug}`;
-                              return (
-                                <Link key={sc.slug} href={`/pagina/${sc.slug}`} className={cn("flex items-center gap-2.5 rounded-[9px] px-3 h-[32px] text-sm transition-colors", scActive ? "bg-ink-100 text-brand-olive font-medium" : "text-ink-500 hover:bg-ink-50")}>
-                                  <span className={cn("h-[5px] w-[5px] rounded-full shrink-0", scActive ? "bg-brand-olive" : "bg-ink-300")} />
-                                  <span>{sc.title}</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+            {/* Grouped sections */}
+            {groups.map((group) => {
+              const children = cmsPages.filter((p) => p.parent_id === group.id && !p.is_group);
+              return renderSection(group, children);
+            })}
+          </>
+        )}
       </nav>
 
       {/* Footer */}
@@ -340,4 +261,3 @@ export function Sidebar({ cmsPages = [] }: SidebarProps) {
     </aside>
   );
 }
-
