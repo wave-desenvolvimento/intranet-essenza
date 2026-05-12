@@ -10,7 +10,7 @@ export interface DevPermission {
 
 const ALL_MODULES = [
   "dashboard", "usuarios", "franquias", "cms", "configuracoes",
-  "templates", "pedidos", "produtos", "relatorios",
+  "templates", "pedidos", "produtos", "relatorios", "comunicados", "historico",
   "universo-da-marca", "material-corporativo", "campanhas",
   "redes-sociais", "biblioteca", "videos", "treinamento", "cigam",
 ];

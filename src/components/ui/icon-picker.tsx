@@ -13,7 +13,7 @@ import {
   Smartphone, Laptop, Tv, Wifi, Download, Upload,
   Eye, Coffee, Wine, Leaf, Flower2, Sun, Moon,
   GraduationCap, BookOpen, Lightbulb, Puzzle, Settings, Wrench, X,
-  LayoutDashboard, ShieldCheck, MonitorCog, Stamp,
+  LayoutDashboard, ShieldCheck, MonitorCog, Stamp, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -130,6 +130,7 @@ export const ICONS: { name: string; icon: React.ElementType; category: string }[
   { name: "monitor-cog", icon: MonitorCog, category: "Sistema" },
   { name: "stamp", icon: Stamp, category: "Sistema" },
   { name: "wrench", icon: Wrench, category: "Sistema" },
+  { name: "history", icon: History, category: "Sistema" },
 ];
 
 // Lookup pra renderizar ícone por nome

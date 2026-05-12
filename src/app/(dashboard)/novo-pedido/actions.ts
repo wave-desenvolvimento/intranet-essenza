@@ -6,6 +6,7 @@ import { getResend, FROM_EMAIL } from "@/lib/email";
 import { OrderNotificationEmail } from "@/emails/order-notification";
 import { notifyByPermission, notifyFranchise } from "@/app/(dashboard)/notifications-actions";
 import { requirePermission } from "@/lib/permissions";
+import { logAudit } from "@/lib/audit";
 
 // === Products ===
 
@@ -239,6 +240,8 @@ export async function createOrder(formData: FormData) {
     icon: "cart",
   }, user.id).catch(() => {});
 
+  await logAudit({ action: "create", entityType: "order", entityId: order.id, description: `Criou pedido #${order.id.slice(0, 8)} — R$ ${total.toFixed(2)}` });
+
   revalidatePath("/novo-pedido");
   return { success: true, orderId: order.id };
 }
@@ -272,6 +275,8 @@ export async function updateOrderStatus(orderId: string, status: string) {
       icon: "cart",
     }, user?.id).catch(() => {});
   }
+
+  await logAudit({ action: "approve", entityType: "order", entityId: orderId, description: `Atualizou pedido #${orderId.slice(0, 8)} → ${STATUS_LABELS[status] || status}` });
 
   revalidatePath("/novo-pedido");
   return { success: true };

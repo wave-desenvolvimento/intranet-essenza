@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getFranchiseBySlug, getFranchiseUsers } from "../actions";
+import { getFranchiseStock } from "../stock-actions";
 import { FranchiseDetail } from "./franchise-detail";
+import { StockTab } from "./stock-tab";
 import { isSystemAdmin as checkSystemAdmin, getRolesForContext } from "@/lib/permissions";
 
 export default async function FranchiseDetailPage({
@@ -28,9 +30,10 @@ export default async function FranchiseDetailPage({
   const isFranchiseAdmin = !!profile?.is_franchise_admin && profile?.franchise_id === franchise.id;
   const canManageUsers = isSysAdmin || isFranchiseAdmin;
 
-  const [users, availableRoles] = await Promise.all([
+  const [users, availableRoles, stock] = await Promise.all([
     getFranchiseUsers(franchise.id),
     getRolesForContext(userId),
+    getFranchiseStock(franchise.id),
   ]);
 
   return (
@@ -40,6 +43,7 @@ export default async function FranchiseDetailPage({
       roles={availableRoles}
       canManageUsers={canManageUsers}
       isSystemAdmin={isSysAdmin}
+      stockTab={<StockTab franchiseId={franchise.id} stock={stock} canEdit={canManageUsers} />}
     />
   );
 }

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermission } from "@/lib/permissions";
+import { logAudit } from "@/lib/audit";
 
 export async function getFranchises() {
   await requireAuth();
@@ -96,8 +97,10 @@ export async function createFranchise(formData: FormData) {
 
   if (!fields.name) return { error: "Nome é obrigatório." };
 
-  const { error } = await supabase.from("franchises").insert(fields);
+  const { data: created, error } = await supabase.from("franchises").insert(fields).select("id").single();
   if (error) return { error: "Erro ao criar franquia." };
+
+  await logAudit({ action: "create", entityType: "franchise", entityId: created.id, description: `Criou franquia "${fields.name}"` });
 
   revalidatePath("/franquias");
   return { success: true };
@@ -119,6 +122,8 @@ export async function updateFranchise(formData: FormData) {
 
   if (error) return { error: "Erro ao atualizar franquia." };
 
+  await logAudit({ action: "update", entityType: "franchise", entityId: id, description: `Editou franquia "${fields.name}"` });
+
   revalidatePath("/franquias");
   return { success: true };
 }
@@ -126,8 +131,11 @@ export async function updateFranchise(formData: FormData) {
 export async function deleteFranchise(id: string) {
   const p = await requirePermission("franquias", "delete"); if (p.error) return p;
   const supabase = await createClient();
+  const { data: f } = await supabase.from("franchises").select("name").eq("id", id).single();
   const { error } = await supabase.from("franchises").delete().eq("id", id);
   if (error) return { error: "Erro ao remover franquia. Verifique se não há usuários vinculados." };
+
+  await logAudit({ action: "delete", entityType: "franchise", entityId: id, description: `Removeu franquia "${f?.name || id}"` });
 
   revalidatePath("/franquias");
   return { success: true };

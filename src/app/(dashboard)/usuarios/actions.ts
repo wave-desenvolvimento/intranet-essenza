@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { notifyUsers } from "@/app/(dashboard)/notifications-actions";
 import { requirePermission, getUserRoleLevel } from "@/lib/permissions";
+import { logAudit } from "@/lib/audit";
 
 export async function getUsers() {
   const supabase = await createClient();
@@ -77,6 +78,8 @@ export async function inviteUser(formData: FormData) {
       roleIds.map((roleId) => ({ user_id: userId, role_id: roleId }))
     );
   }
+
+  await logAudit({ action: "invite", entityType: "user", entityId: userId, description: `Convidou "${fullName}" (${email})` });
 
   // Create welcome notification for the new user
   notifyUsers([userId], {

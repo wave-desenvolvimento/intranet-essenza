@@ -14,6 +14,8 @@ import {
   Shield,
   UserCheck,
   UserX,
+  Package,
+  Users as UsersIcon,
 } from "lucide-react";
 import { inviteUser, updateUser, toggleUserStatus, deleteUser } from "@/app/(dashboard)/usuarios/actions";
 import { cn } from "@/lib/utils";
@@ -49,9 +51,11 @@ interface Props {
   roles: Role[];
   canManageUsers: boolean;
   isSystemAdmin: boolean;
+  stockTab?: React.ReactNode;
 }
 
-export function FranchiseDetail({ franchise, users, roles, canManageUsers, isSystemAdmin }: Props) {
+export function FranchiseDetail({ franchise, users, roles, canManageUsers, isSystemAdmin, stockTab }: Props) {
+  const [tab, setTab] = useState<"users" | "stock">("users");
   const [editing, setEditing] = useState<UserProfile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
@@ -195,11 +199,25 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, isSys
         )}
       </div>
 
+      {/* Tabs */}
+      {stockTab && (
+        <div className="flex items-center gap-1 rounded-lg bg-ink-50 p-1 w-fit mb-5">
+          <button onClick={() => setTab("users")} className={cn("rounded-md px-4 py-1.5 text-sm font-medium transition-colors", tab === "users" ? "bg-white text-ink-900 shadow-sm" : "text-ink-500")}>
+            <span className="flex items-center gap-1.5"><UsersIcon size={14} /> Usuários</span>
+          </button>
+          <button onClick={() => setTab("stock")} className={cn("rounded-md px-4 py-1.5 text-sm font-medium transition-colors", tab === "stock" ? "bg-white text-ink-900 shadow-sm" : "text-ink-500")}>
+            <span className="flex items-center gap-1.5"><Package size={14} /> Estoque</span>
+          </button>
+        </div>
+      )}
+
       {error && (
         <p className="mb-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>
       )}
 
-      <div className="flex flex-col gap-6 lg:flex-row">
+      {tab === "stock" && stockTab}
+
+      {tab === "users" && <div className="flex flex-col gap-6 lg:flex-row">
         {/* Users table */}
         <div className="flex-1 overflow-x-auto rounded-xl border border-ink-100 bg-white">
           <table className="w-full text-sm">
@@ -394,7 +412,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, isSys
             </div>
           </div>
         )}
-      </div>
+      </div>}
       <ConfirmDialog {...dialogProps} />
     </div>
   );
