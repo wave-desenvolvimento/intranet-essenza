@@ -117,6 +117,14 @@ export default async function DashboardPage() {
     };
   }
 
+  // Fetch recent announcements (pinned + latest)
+  const { data: recentAnnouncements } = await supabase
+    .from("announcements")
+    .select("id, title, body, priority, banner_url, created_at, target_type")
+    .order("priority", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(3);
+
   const [materials, promotions, social, favorites] = await Promise.all([
     fetchRecentItems("materiais-pdv"),
     fetchRecentItems("posts-campanha"),
@@ -156,6 +164,7 @@ export default async function DashboardPage() {
       franchiseData={franchise || null}
       orderStats={orderStats}
       isOrderAdmin={canApproveOrders}
+      announcements={recentAnnouncements || []}
     />
   );
 }

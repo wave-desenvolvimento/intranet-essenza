@@ -62,6 +62,7 @@ interface Props {
     recentOrders: { id: string; status: string; total: number; created_at: string; franchise_name: string }[];
   };
   isOrderAdmin?: boolean;
+  announcements?: { id: string; title: string; body: string; priority: string; banner_url: string | null; created_at: string; target_type: string }[];
 }
 
 function getGreeting(): string {
@@ -108,7 +109,9 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
 
 function formatPrice(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 
-export function DashboardContent({ userName, franchiseName, permissions, banners, stats, recentMaterials, recentPromotions, recentSocial, favorites = [], franchiseData, orderStats, isOrderAdmin }: Props) {
+import { Pin, AlertTriangle } from "lucide-react";
+
+export function DashboardContent({ userName, franchiseName, permissions, banners, stats, recentMaterials, recentPromotions, recentSocial, favorites = [], franchiseData, orderStats, isOrderAdmin, announcements = [] }: Props) {
   const [campaignIndex, setCampaignIndex] = useState(0);
 
   const greeting = getGreeting();
@@ -211,6 +214,45 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
               <p className="text-[10px] text-ink-400 truncate">{s.change}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Announcements */}
+      {announcements.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {announcements.map((a) => {
+            const isUrgent = a.priority === "urgent";
+            const isPinned = a.priority === "pinned";
+            const PriorityIcon = isPinned ? Pin : isUrgent ? AlertTriangle : Megaphone;
+            const priorityColor = isPinned ? "text-brand-olive" : isUrgent ? "text-danger" : "text-info";
+            const priorityBg = isPinned ? "bg-brand-olive-soft" : isUrgent ? "bg-danger-soft" : "bg-info-soft";
+            return (
+              <Link key={a.id} href="/comunicados" className="group rounded-xl border border-ink-100 bg-white overflow-hidden hover:border-brand-olive/30 transition-colors">
+                {a.banner_url && (
+                  <div className="w-full h-28 sm:h-36 overflow-hidden">
+                    <img src={a.banner_url} alt="" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex items-start gap-3 px-4 py-3">
+                  <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg mt-0.5", priorityBg)}>
+                    <PriorityIcon size={14} className={priorityColor} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-ink-900 group-hover:text-brand-olive transition-colors">{a.title}</p>
+                      {(isUrgent || isPinned) && (
+                        <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-medium", priorityBg, priorityColor)}>
+                          {isPinned ? "Fixado" : "Urgente"}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-ink-500 line-clamp-1 mt-0.5">{a.body.replace(/<[^>]*>/g, "").slice(0, 120)}</p>
+                  </div>
+                  <span className="text-[10px] text-ink-400 shrink-0 mt-1">{new Date(a.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
 

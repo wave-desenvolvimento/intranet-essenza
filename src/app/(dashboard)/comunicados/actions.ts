@@ -10,10 +10,25 @@ export async function getAnnouncements() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("announcements")
-    .select("*, author:profiles!announcements_author_id_fkey(full_name), reads:announcement_reads(user_id)")
+    .select("*, reads:announcement_reads(user_id)")
     .order("priority", { ascending: false })
     .order("created_at", { ascending: false });
-  return data || [];
+
+  if (!data || data.length === 0) return [];
+
+  // Fetch author names separately (author_id → profiles.id)
+  const authorIds = [...new Set(data.map((a) => a.author_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", authorIds);
+
+  const profileMap = new Map((profiles || []).map((p) => [p.id, p.full_name]));
+
+  return data.map((a) => ({
+    ...a,
+    author: { full_name: profileMap.get(a.author_id) || "—" },
+  }));
 }
 
 export async function createAnnouncement(formData: FormData) {
