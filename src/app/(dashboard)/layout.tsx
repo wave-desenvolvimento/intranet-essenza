@@ -10,6 +10,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { InstallPrompt } from "@/components/layout/install-prompt";
 import { SwRegister } from "@/components/layout/sw-register";
 import { Toaster } from "sonner";
+import { SurveyWidget } from "@/components/layout/survey-widget";
 
 export default async function DashboardLayout({
   children,
@@ -38,6 +39,27 @@ export default async function DashboardLayout({
     role: roleName || "Usuário",
   };
 
+  // Fetch pending surveys (active, not expired, not yet responded by user)
+  const { data: activeSurveys } = await supabase
+    .from("surveys")
+    .select("id, title, description, questions:survey_questions(id, label, type, options, required, sort_order), responses:survey_responses!inner(user_id)")
+    .eq("active", true)
+    .eq("survey_responses.user_id", user?.id || "");
+
+  const { data: allActiveSurveys } = await supabase
+    .from("surveys")
+    .select("id, title, description, questions:survey_questions(id, label, type, options, required, sort_order)")
+    .eq("active", true);
+
+  // Surveys user hasn't responded to
+  const respondedIds = new Set((activeSurveys || []).map((s) => s.id));
+  const pendingSurveys = (allActiveSurveys || [])
+    .filter((s) => !respondedIds.has(s.id))
+    .map((s) => ({
+      ...s,
+      questions: (s.questions || []).sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order),
+    }));
+
   // Fetch pages for sidebar navigation
   const { data: cmsPages } = await supabase
     .from("cms_pages")
@@ -65,6 +87,7 @@ export default async function DashboardLayout({
       <TourAutoStart />
       <InstallPrompt />
       <SwRegister />
+      <SurveyWidget surveys={pendingSurveys} />
       <Toaster position="bottom-right" richColors />
     </div>
   );
