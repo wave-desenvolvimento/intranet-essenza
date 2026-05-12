@@ -47,11 +47,11 @@ export function SurveyWidget({ surveys }: Props) {
   const isLastStep = step === questions.length; // last step is comment
 
   function dismiss(id: string) {
+    // Only dismiss permanently after submitting
     const next = new Set(dismissed);
     next.add(id);
     setDismissed(next);
     sessionStorage.setItem("dismissed-surveys", JSON.stringify([...next]));
-    if (activeId === id) close();
   }
 
   function open(id: string) {
@@ -63,6 +63,7 @@ export function SurveyWidget({ surveys }: Props) {
   }
 
   function close() {
+    // Just close the modal, keep the floating button visible
     setActiveId(null);
     setStep(0);
   }
@@ -130,7 +131,7 @@ export function SurveyWidget({ surveys }: Props) {
             {activeSurvey?.description && <p className="text-xs text-ink-500 mt-0.5">{activeSurvey.description}</p>}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => dismiss(activeId!)} className="text-[10px] text-ink-400 hover:text-ink-600">Responder depois</button>
+            <button onClick={close} className="text-[10px] text-ink-400 hover:text-ink-600">Responder depois</button>
             <button onClick={close} className="rounded-full p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100"><X size={16} /></button>
           </div>
         </div>
