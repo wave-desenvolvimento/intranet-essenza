@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { getAllOrders, getOrderStats } from "@/app/(dashboard)/novo-pedido/actions";
+import { getAllOrders, getOrderStats, getPaymentPlans, getShippingTypes, getActiveProducts } from "@/app/(dashboard)/novo-pedido/actions";
 import { OrdersAdmin } from "./orders-admin";
 import { getEffectivePermissions } from "@/lib/dev-mode-server";
 
@@ -21,8 +21,9 @@ export default async function OrdersAdminPage() {
   const canDelete = effectivePerms.includes("pedidos.delete");
   const canManageProducts = effectivePerms.includes("pedidos.manage");
 
-  const orders = await getAllOrders();
-  const stats = await getOrderStats();
+  const [orders, stats, paymentPlans, shippingTypes, products] = await Promise.all([
+    getAllOrders(), getOrderStats(), getPaymentPlans(), getShippingTypes(), getActiveProducts(),
+  ]);
 
   const { data: franchises } = await supabase
     .from("franchises")
@@ -35,6 +36,10 @@ export default async function OrdersAdminPage() {
       stats={stats}
       franchises={franchises || []}
       permissions={{ canApprove, canEdit, canExport, canDelete, canManageProducts }}
+      paymentPlans={paymentPlans}
+      shippingTypes={shippingTypes}
+      products={products}
+      currentUserId={user?.id || ""}
     />
   );
 }

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getFranchises } from "./actions";
+import { getFranchises, getCommercialUsers } from "./actions";
 import { FranchisesManager } from "./franchises-manager";
 
 export default async function FranquiasPage() {
@@ -31,11 +31,11 @@ export default async function FranquiasPage() {
     }
   }
 
-  const franchises = await getFranchises();
+  const [franchises, commercialUsers] = await Promise.all([getFranchises(), getCommercialUsers()]);
 
   return (
     <div>
-      <FranchisesManager franchises={franchises} />
+      <FranchisesManager franchises={franchises} commercialUsers={commercialUsers} />
     </div>
   );
 }

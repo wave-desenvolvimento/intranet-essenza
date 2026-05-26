@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Pencil, Trash2, Search, Package, Check, X, Upload, FileSpreadsheet, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Check, X, Upload, FileSpreadsheet, Download, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
 import { createProduct, updateProduct, deleteProduct, createProductCategory, deleteProductCategory, importProducts } from "@/app/(dashboard)/novo-pedido/actions";
 import { cn } from "@/lib/utils";
 import { usePagination } from "@/hooks/use-pagination";
@@ -17,7 +17,7 @@ interface Price { id: string; segment: string; price: number }
 interface ProductCategory { id: string; name: string }
 interface Product {
   id: string; name: string; sku: string | null; category: string | null; category_id: string | null;
-  unit: string; min_qty: number; active: boolean; image_url: string | null;
+  unit: string; min_qty: number; active: boolean; image_url: string | null; images: string[] | null;
   stock_status: string; pre_order_date: string | null; prices: Price[];
   product_category: ProductCategory | null;
 }
@@ -57,9 +57,26 @@ export function ProductsManager({ products, categories }: { products: Product[];
   const [priceFranquia, setPriceFranquia] = useState("");
   const [pricePdv, setPricePdv] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [uploadingImg, setUploadingImg] = useState(false);
   const [stockStatus, setStockStatus] = useState("in_stock");
   const [preOrderDate, setPreOrderDate] = useState("");
+  const [discount, setDiscount] = useState("");
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  function getAllImages() { return [imageUrl, ...images].filter(Boolean); }
+  function setAllImages(urls: string[]) { setImageUrl(urls[0] || ""); setImages(urls.slice(1)); }
+  function handleImageDragEnd(fromIdx: number, toIdx: number) {
+    if (fromIdx === toIdx) return;
+    const all = getAllImages();
+    const [moved] = all.splice(fromIdx, 1);
+    all.splice(toIdx, 0, moved);
+    setAllImages(all);
+    setDragIdx(null);
+    setDragOverIdx(null);
+  }
 
   // CSV Import
   const [showImportSheet, setShowImportSheet] = useState(false);
@@ -75,8 +92,8 @@ export function ProductsManager({ products, categories }: { products: Product[];
 
   function openCreate() {
     setEditing(null); setName(""); setSku(""); setCategoryId(""); setUnit("un");
-    setMinQty("1"); setActive(true); setPriceFranquia(""); setPricePdv(""); setImageUrl("");
-    setStockStatus("in_stock"); setPreOrderDate("");
+    setMinQty("1"); setActive(true); setPriceFranquia(""); setPricePdv(""); setImageUrl(""); setImages([]);
+    setStockStatus("in_stock"); setPreOrderDate(""); setDiscount("");
     setError(""); setShowSheet(true);
   }
 
@@ -85,8 +102,9 @@ export function ProductsManager({ products, categories }: { products: Product[];
     setUnit(p.unit); setMinQty(String(p.min_qty)); setActive(p.active);
     setPriceFranquia(String(p.prices.find((pr) => pr.segment === "franquia")?.price || ""));
     setPricePdv(String(p.prices.find((pr) => pr.segment === "multimarca_pdv")?.price || ""));
-    setImageUrl(p.image_url || "");
+    setImageUrl(p.image_url || ""); setImages(Array.isArray(p.images) ? p.images : []);
     setStockStatus(p.stock_status || "in_stock"); setPreOrderDate(p.pre_order_date || "");
+    setDiscount(String((p as unknown as { discount?: number }).discount || ""));
     setError(""); setShowSheet(true);
   }
 
@@ -98,6 +116,7 @@ export function ProductsManager({ products, categories }: { products: Product[];
     fd.set("priceFranquia", priceFranquia); fd.set("pricePdv", pricePdv);
     fd.set("imageUrl", imageUrl);
     fd.set("stockStatus", stockStatus); fd.set("preOrderDate", preOrderDate);
+    fd.set("discount", discount); fd.set("images", JSON.stringify(images));
     if (editing) {
       fd.set("id", editing.id);
       startTransition(async () => { const r = await updateProduct(fd); r?.error ? setError(r.error) : setShowSheet(false); });
@@ -209,11 +228,19 @@ export function ProductsManager({ products, categories }: { products: Product[];
               const pFranquia = p.prices.find((pr) => pr.segment === "franquia");
               const pPdv = p.prices.find((pr) => pr.segment === "multimarca_pdv");
               return (
-                <tr key={p.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/50 transition-colors">
+                <tr key={p.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/50 transition-colors cursor-pointer" onClick={() => openEdit(p)}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       {p.image_url ? (
-                        <img src={p.image_url} alt="" className="h-9 w-9 rounded-lg object-cover shrink-0" />
+                        <div className="relative group/img shrink-0">
+                          <img src={p.image_url} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                          {((p.images?.length || 0) > 0) && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-olive text-[8px] font-bold text-white">{(p.images?.length || 0) + 1}</span>
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); const allImgs = [p.image_url!, ...(p.images || [])]; setLightbox({ urls: allImgs, index: 0 }); }} className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 group-hover/img:bg-black/30 transition-colors">
+                            <ZoomIn size={14} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity" />
+                          </button>
+                        </div>
                       ) : (
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ink-50">
                           <Package size={14} className="text-ink-400" />
@@ -228,22 +255,12 @@ export function ProductsManager({ products, categories }: { products: Product[];
                   <td className="px-4 py-3 text-right font-medium text-ink-900">{pPdv ? formatPrice(pPdv.price) : "—"}</td>
                   <td className="px-4 py-3 text-center text-ink-500">{p.unit}</td>
                   <td className="px-4 py-3 text-center">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", p.active ? "bg-success-soft text-success" : "bg-ink-100 text-ink-500")}>
-                        {p.active ? "Ativo" : "Inativo"}
-                      </span>
-                      {p.stock_status !== "in_stock" && (
-                        <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-medium", p.stock_status === "pre_order" ? "bg-info-soft text-info" : "bg-danger-soft text-danger")}>
-                          {p.stock_status === "pre_order" ? "Pré-venda" : "Sem estoque"}
-                        </span>
-                      )}
-                    </div>
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", p.active ? "bg-success-soft text-success" : "bg-ink-100 text-ink-500")}>
+                      {p.active ? "Ativo" : "Inativo"}
+                    </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-0.5 justify-end">
-                      <button onClick={() => openEdit(p)} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"><Pencil size={13} /></button>
-                      <button onClick={() => handleDelete(p.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors"><Trash2 size={13} /></button>
-                    </div>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => handleDelete(p.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors"><Trash2 size={13} /></button>
                   </td>
                 </tr>
               );
@@ -262,20 +279,51 @@ export function ProductsManager({ products, categories }: { products: Product[];
 
       <Sheet open={showSheet} onClose={() => setShowSheet(false)} onSubmit={handleSave} title={editing ? "Editar Produto" : "Novo Produto"} wide>
         <div className="flex flex-col gap-4">
-          {/* Image */}
-          <div className="flex items-center gap-4">
-            {imageUrl ? (
-              <div className="relative">
-                <img src={imageUrl} alt="" className="h-20 w-20 rounded-xl object-cover border border-ink-100" />
-                <button type="button" onClick={() => setImageUrl("")} className="absolute -top-1.5 -right-1.5 rounded-full bg-ink-700 p-0.5 text-white hover:bg-danger"><X size={10} /></button>
-              </div>
-            ) : (
-              <label className={cn("flex h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed cursor-pointer transition-colors shrink-0", uploadingImg ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 hover:border-brand-olive")}>
-                <input type="file" accept="image/*" className="sr-only" disabled={uploadingImg} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setUploadingImg(true); const r = await uploadToStorage(f, { bucket: "assets", folder: "products" }); setUploadingImg(false); if ("url" in r) setImageUrl(r.url); }} />
-                {uploadingImg ? <span className="text-[9px] text-brand-olive">...</span> : <Upload size={18} className="text-ink-400" />}
+          {/* Images */}
+          <div>
+            <label className="text-xs font-medium text-ink-700 mb-2 block">Imagens do produto</label>
+            <div className="flex gap-2 flex-wrap">
+              {getAllImages().map((url, i) => (
+                <div
+                  key={`${url}-${i}`}
+                  draggable
+                  onDragStart={() => setDragIdx(i)}
+                  onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
+                  onDragLeave={() => setDragOverIdx(null)}
+                  onDrop={(e) => { e.preventDefault(); if (dragIdx !== null) handleImageDragEnd(dragIdx, i); }}
+                  onDragEnd={() => { setDragIdx(null); setDragOverIdx(null); }}
+                  className={cn(
+                    "relative group/thumb cursor-grab active:cursor-grabbing transition-all",
+                    dragIdx === i && "opacity-40 scale-95",
+                    dragOverIdx === i && dragIdx !== null && dragIdx !== i && "ring-2 ring-brand-olive ring-offset-1 rounded-lg"
+                  )}
+                >
+                  <img src={url} alt="" className="h-16 w-16 rounded-lg object-cover border border-ink-100" />
+                  {i === 0 && <span className="absolute -top-1 -left-1 rounded-full bg-brand-olive px-1 text-[7px] font-bold text-white">CAPA</span>}
+                  <button
+                    type="button"
+                    onClick={() => { const all = getAllImages(); all.splice(i, 1); setAllImages(all); }}
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-ink-700 p-0.5 text-white hover:bg-danger opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                  >
+                    <X size={8} />
+                  </button>
+                </div>
+              ))}
+              <label className={cn("flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed cursor-pointer transition-colors shrink-0", uploadingImg ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 hover:border-brand-olive")}>
+                <input type="file" accept="image/*" multiple className="sr-only" disabled={uploadingImg} onChange={async (e) => {
+                  const files = e.target.files; if (!files?.length) return;
+                  setUploadingImg(true);
+                  for (const f of Array.from(files)) {
+                    const r = await uploadToStorage(f, { bucket: "assets", folder: "products" });
+                    if ("url" in r) { if (!imageUrl) { setImageUrl(r.url); } else { setImages((prev) => [...prev, r.url]); } }
+                  }
+                  setUploadingImg(false);
+                  e.target.value = "";
+                }} />
+                {uploadingImg ? <span className="text-[8px] text-brand-olive">...</span> : <Plus size={16} className="text-ink-400" />}
               </label>
-            )}
-            <p className="text-[10px] text-ink-400">Imagem do produto<br />Quadrada, mín. 200x200px</p>
+            </div>
+            <p className="text-[10px] text-ink-400 mt-1">Primeira imagem é a capa. Arraste para reordenar.</p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -327,6 +375,11 @@ export function ProductsManager({ products, categories }: { products: Product[];
               </div>
             </div>
           </fieldset>
+
+          <div>
+            <label className="text-xs font-medium text-ink-700 mb-1 block">Desconto padrão (%)</label>
+            <input type="number" step="0.01" min="0" max="100" value={discount} onChange={(e) => setDiscount(e.target.value)} className={inputCls} placeholder="0" />
+          </div>
 
           {/* Disponibilidade */}
           <fieldset>
@@ -433,6 +486,25 @@ export function ProductsManager({ products, categories }: { products: Product[];
         </div>
       </Sheet>
       <ConfirmDialog {...dialogProps} />
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-8" onClick={() => setLightbox(null)}>
+          <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"><X size={20} /></button>
+          <img src={lightbox.urls[lightbox.index]} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+          {lightbox.urls.length > 1 && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: (lightbox.index - 1 + lightbox.urls.length) % lightbox.urls.length }); }} className="absolute left-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"><ChevronLeft size={20} /></button>
+              <button onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: (lightbox.index + 1) % lightbox.urls.length }); }} className="absolute right-16 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"><ChevronRight size={20} /></button>
+              <div className="absolute bottom-4 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                {lightbox.urls.map((_, i) => (
+                  <button key={i} onClick={() => setLightbox({ ...lightbox, index: i })} className={cn("h-2 w-2 rounded-full transition-colors", i === lightbox.index ? "bg-white" : "bg-white/40")} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

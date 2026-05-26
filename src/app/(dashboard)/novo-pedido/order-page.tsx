@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo } from "react";
 import {
   ShoppingCart, Plus, Minus, Trash2, Send, Package, Search,
   FileText, Clock, CheckCircle, XCircle, ArrowRight, CalendarDays,
+  ZoomIn, X as XIcon, ChevronLeft, ChevronRight as ChevronRightIcon, Filter,
 } from "lucide-react";
 import { createOrder } from "./actions";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,7 @@ import Link from "next/link";
 interface Price { segment: string; price: number }
 interface Product { id: string; name: string; sku: string | null; category: string | null; unit: string; min_qty: number; image_url: string | null; stock_status: string; pre_order_date: string | null; prices: Price[] }
 interface OrderItem { product_name: string; quantity: number; unit_price: number; subtotal: number }
-interface Order { id: string; status: string; total: number; notes: string | null; created_at: string; items: OrderItem[] }
+interface Order { id: string; status: string; total: number; notes: string | null; purchase_order: string | null; created_at: string; items: OrderItem[] }
 
 interface CartItem { productId: string; productName: string; quantity: number; unitPrice: number; unit: string }
 
@@ -34,15 +35,16 @@ interface Props {
 }
 
 const STATUS_ICON: Record<string, React.ElementType> = {
-  enviado: Send, confirmado: CheckCircle, faturado: FileText, cancelado: XCircle, rascunho: Clock,
+  enviado: Send, confirmado: CheckCircle, separacao: Clock, faturado: FileText, entregue: CheckCircle, cancelado: XCircle, rascunho: Clock,
 };
 const STATUS_LABEL: Record<string, string> = {
-  rascunho: "Rascunho", enviado: "Enviado", confirmado: "Confirmado", faturado: "Faturado", cancelado: "Cancelado",
+  rascunho: "Rascunho", enviado: "Enviado", confirmado: "Confirmado", separacao: "Em Separação", faturado: "Faturado", entregue: "Entregue", cancelado: "Cancelado",
 };
 const STATUS_COLOR: Record<string, string> = {
   enviado: "bg-info-soft text-info", confirmado: "bg-success-soft text-success",
-  faturado: "bg-brand-olive-soft text-brand-olive", cancelado: "bg-danger-soft text-danger",
-  rascunho: "bg-ink-100 text-ink-500",
+  separacao: "bg-warning-soft text-warning",
+  faturado: "bg-brand-olive-soft text-brand-olive", entregue: "bg-brand-olive-soft text-brand-olive",
+  cancelado: "bg-danger-soft text-danger", rascunho: "bg-ink-100 text-ink-500",
 };
 
 function formatPrice(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
@@ -56,16 +58,22 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
   const [historyDateRange, setHistoryDateRange] = useState<DateRange | undefined>({ from: startOfMonth(new Date()), to: new Date() });
   const [historyCalendarOpen, setHistoryCalendarOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
 
-  const categories = [...new Set(products.map((p) => (p as unknown as { product_category?: { name: string } }).product_category?.name || p.category).filter(Boolean))] as string[];
+  const categories = [...new Set(products.map((p) => (p as unknown as { product_category?: { name: string } }).product_category?.name || p.category).filter(Boolean))].sort() as string[];
+
+  function toggleCategory(cat: string) {
+    setFilterCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
+  }
 
   const filteredProducts = products.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase());
     const catName = (p as unknown as { product_category?: { name: string } }).product_category?.name || p.category;
-    const matchCategory = !filterCategory || catName === filterCategory;
+    const matchCategory = filterCategories.length === 0 || (catName && filterCategories.includes(catName));
     return matchSearch && matchCategory;
   });
 
@@ -138,17 +146,37 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
         <div>
           {/* Product catalog — full width */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-white py-1 px-3 h-9 flex-1">
-                <Search size={14} className="text-ink-400" />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar produto..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
+            <div className="flex flex-col gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-white py-1 px-3 h-9 flex-1">
+                  <Search size={14} className="text-ink-400" />
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou SKU..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
+                </div>
+                {categories.length > 0 && (
+                  <button onClick={() => setShowCategoryFilter(!showCategoryFilter)} className={cn("flex items-center gap-1.5 rounded-lg border px-3 h-9 text-xs font-medium transition-colors shrink-0", filterCategories.length > 0 ? "border-brand-olive bg-brand-olive-soft text-brand-olive" : "border-ink-100 bg-white text-ink-600 hover:border-ink-200")}>
+                    <Filter size={13} />
+                    {filterCategories.length > 0 ? `${filterCategories.length} categorias` : "Categorias"}
+                  </button>
+                )}
               </div>
-              {categories.length > 0 && (
-                <div className="flex gap-1 overflow-x-auto scrollbar-hide">
-                  <button onClick={() => setFilterCategory("")} className={cn("rounded-lg px-2.5 py-1 text-xs font-medium transition-colors", !filterCategory ? "bg-brand-olive text-white" : "bg-ink-50 text-ink-600 hover:bg-ink-100")}>Todos</button>
-                  {categories.map((c) => (
-                    <button key={c} onClick={() => setFilterCategory(c)} className={cn("rounded-lg px-2.5 py-1 text-xs font-medium transition-colors", filterCategory === c ? "bg-brand-olive text-white" : "bg-ink-50 text-ink-600 hover:bg-ink-100")}>{c}</button>
-                  ))}
+              {showCategoryFilter && (
+                <div className="rounded-lg border border-ink-100 bg-white p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] text-ink-400 uppercase font-medium">Filtrar por categoria</p>
+                    {filterCategories.length > 0 && (
+                      <button onClick={() => setFilterCategories([])} className="text-[10px] text-ink-500 hover:text-ink-900 transition-colors">Limpar</button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {categories.map((c) => {
+                      const isActive = filterCategories.includes(c);
+                      return (
+                        <button key={c} onClick={() => toggleCategory(c)} className={cn("rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors border", isActive ? "border-brand-olive bg-brand-olive text-white" : "border-ink-100 bg-ink-50/50 text-ink-600 hover:border-ink-200")}>
+                          {c}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -161,7 +189,12 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
                 return (
                   <div key={p.id} className={cn("flex items-center gap-3 px-4 py-3 hover:bg-ink-50/50 transition-colors", i < paginatedProducts.length - 1 && "border-b border-ink-50")}>
                     {p.image_url ? (
-                      <img src={p.image_url} alt="" className="h-10 w-10 rounded-lg object-cover shrink-0" />
+                      <div className="relative group/img shrink-0">
+                        <img src={p.image_url} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                        <button onClick={(e) => { e.stopPropagation(); const allImgs = [p.image_url!, ...((p as unknown as { images?: string[] }).images || [])].filter(Boolean); setLightbox({ urls: allImgs, index: 0 }); }} className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 group-hover/img:bg-black/30 transition-colors">
+                          <ZoomIn size={12} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity" />
+                        </button>
+                      </div>
                     ) : (
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-50">
                         <Package size={16} className="text-ink-300" />
@@ -244,9 +277,17 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
                   </div>
 
                   <div className="border-t border-ink-100 pt-3">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-ink-500">Subtotal produtos</span>
+                      <span className="text-sm text-ink-700">{formatPrice(cartTotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-sm text-ink-500">Royalties (30%)</span>
+                      <span className="text-sm text-ink-700">{formatPrice(cartTotal * 0.3)}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-ink-100 mb-3">
                       <span className="text-sm font-medium text-ink-700">Total</span>
-                      <span className="text-xl font-bold text-ink-900">{formatPrice(cartTotal)}</span>
+                      <span className="text-xl font-bold text-ink-900">{formatPrice(cartTotal * 1.3)}</span>
                     </div>
 
                     <textarea
@@ -321,14 +362,14 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-ink-900">Pedido #{order.id.slice(0, 8)}</p>
+                      <p className="text-sm font-medium text-ink-900">{order.purchase_order || `Pedido #${order.id.slice(0, 8)}`}</p>
                       <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-medium", STATUS_COLOR[order.status])}>
                         {STATUS_LABEL[order.status]}
                       </span>
                     </div>
                     <p className="text-[10px] text-ink-400">{formatDate(order.created_at)} · {order.items.length} {order.items.length === 1 ? "item" : "itens"}</p>
                   </div>
-                  <span className="text-sm font-bold text-ink-900 shrink-0">{formatPrice(order.total)}</span>
+                  <span className="text-sm font-bold text-ink-900 shrink-0">{formatPrice(order.total * 1.3)}</span>
                   <ArrowRight size={14} className={cn("text-ink-400 transition-transform shrink-0", isExpanded && "rotate-90")} />
                 </button>
                 {isExpanded && (
@@ -353,6 +394,11 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
                         ))}
                       </tbody>
                     </table>
+                    <div className="flex flex-col gap-0.5 mt-2 pt-2 border-t border-ink-50 text-[10px]">
+                      <div className="flex justify-between text-ink-400"><span>Subtotal produtos</span><span>{formatPrice(order.total)}</span></div>
+                      <div className="flex justify-between text-ink-400"><span>Royalties (30%)</span><span>{formatPrice(order.total * 0.3)}</span></div>
+                      <div className="flex justify-between font-medium text-ink-700 pt-1 border-t border-ink-50"><span>Total</span><span>{formatPrice(order.total * 1.3)}</span></div>
+                    </div>
                     {order.notes && <p className="text-[10px] text-ink-400 mt-2 pt-2 border-t border-ink-50">Obs: {order.notes}</p>}
                   </div>
                 )}
@@ -362,6 +408,24 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
         </div>
         );
       })()}
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-8" onClick={() => setLightbox(null)}>
+          <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"><XIcon size={20} /></button>
+          <img src={lightbox.urls[lightbox.index]} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+          {lightbox.urls.length > 1 && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: (lightbox.index - 1 + lightbox.urls.length) % lightbox.urls.length }); }} className="absolute left-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"><ChevronLeft size={20} /></button>
+              <button onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: (lightbox.index + 1) % lightbox.urls.length }); }} className="absolute right-16 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"><ChevronRightIcon size={20} /></button>
+              <div className="absolute bottom-4 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                {lightbox.urls.map((_, i) => (
+                  <button key={i} onClick={() => setLightbox({ ...lightbox, index: i })} className={cn("h-2 w-2 rounded-full transition-colors", i === lightbox.index ? "bg-white" : "bg-white/40")} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

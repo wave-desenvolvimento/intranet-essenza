@@ -106,9 +106,12 @@ export function FaqManager({ items, categories, canManage }: Props) {
     const isOpen = expandedId === item.id;
     return (
       <div key={item.id} className={cn("border-b border-ink-50 last:border-0", !item.published && "opacity-50")}>
-        <button
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setExpandedId(isOpen ? null : item.id)}
-          className="flex items-center gap-3 w-full px-5 py-4 text-left hover:bg-ink-50/50 transition-colors"
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpandedId(isOpen ? null : item.id); } }}
+          className="flex items-center gap-3 w-full px-5 py-4 text-left hover:bg-ink-50/50 transition-colors cursor-pointer"
         >
           <HelpCircle size={16} className={cn("shrink-0", isOpen ? "text-brand-olive" : "text-ink-400")} />
           <span className={cn("flex-1 text-sm font-medium", isOpen ? "text-brand-olive" : "text-ink-900")}>{item.question}</span>
@@ -119,7 +122,7 @@ export function FaqManager({ items, categories, canManage }: Props) {
             </div>
           )}
           <ChevronDown size={14} className={cn("shrink-0 text-ink-400 transition-transform", isOpen && "rotate-180")} />
-        </button>
+        </div>
         {isOpen && (
           <div className="px-5 pb-4 pl-12">
             <div className="prose prose-sm max-w-none text-ink-700" dangerouslySetInnerHTML={{ __html: item.answer }} />

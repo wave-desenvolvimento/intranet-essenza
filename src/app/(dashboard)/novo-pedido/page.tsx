@@ -17,8 +17,7 @@ export default async function PedidosPage() {
   const rawFranchise = profile?.franchise as any;
   const franchise = Array.isArray(rawFranchise) ? rawFranchise[0] : rawFranchise;
 
-  const products = await getActiveProducts();
-  const orders = await getMyOrders();
+  const [products, orders] = await Promise.all([getActiveProducts(), getMyOrders()]);
   const isAdmin = await isSystemAdmin(user?.id || "");
 
   return (
@@ -29,6 +28,6 @@ export default async function PedidosPage() {
       franchiseName={franchise?.name || ""}
       franchiseId={profile?.franchise_id || ""}
       isAdmin={isAdmin}
-    />
+/>
   );
 }

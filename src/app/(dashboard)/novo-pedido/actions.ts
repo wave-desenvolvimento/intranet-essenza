@@ -49,7 +49,7 @@ export async function createProduct(formData: FormData) {
 
   const { data: product, error } = await supabase
     .from("products")
-    .insert({ name, sku: sku || null, category: category || null, category_id: (formData.get("categoryId") as string) || null, unit, min_qty: minQty, image_url: imageUrl || null, stock_status: stockStatus, pre_order_date: preOrderDate || null })
+    .insert({ name, sku: sku || null, category: category || null, category_id: (formData.get("categoryId") as string) || null, unit, min_qty: minQty, image_url: imageUrl || null, images: JSON.parse(formData.get("images") as string || "[]"), stock_status: stockStatus, pre_order_date: preOrderDate || null, discount: Number(formData.get("discount")) || 0 })
     .select()
     .single();
 
@@ -89,7 +89,7 @@ export async function updateProduct(formData: FormData) {
 
   const { error } = await supabase
     .from("products")
-    .update({ name, sku: sku || null, category: category || null, category_id: (formData.get("categoryId") as string) || null, unit, min_qty: minQty, active, image_url: imageUrl || null, stock_status: stockStatus, pre_order_date: preOrderDate || null })
+    .update({ name, sku: sku || null, category: category || null, category_id: (formData.get("categoryId") as string) || null, unit, min_qty: minQty, active, image_url: imageUrl || null, images: JSON.parse(formData.get("images") as string || "[]"), stock_status: stockStatus, pre_order_date: preOrderDate || null, discount: Number(formData.get("discount")) || 0 })
     .eq("id", id);
 
   if (error) return { error: error.message };
@@ -151,6 +151,9 @@ export async function createOrder(formData: FormData) {
 
   const itemsRaw = formData.get("items") as string;
   const notes = formData.get("notes") as string;
+  const paymentPlanId = formData.get("paymentPlanId") as string;
+  const shippingTypeId = formData.get("shippingTypeId") as string;
+  const purchaseOrder = formData.get("purchaseOrder") as string;
 
   let items: { productId: string; productName: string; quantity: number; unitPrice: number }[];
   try { items = JSON.parse(itemsRaw); } catch { return { error: "Dados inválidos." }; }
@@ -158,8 +161,9 @@ export async function createOrder(formData: FormData) {
   if (items.length > 200) return { error: "Limite de 200 itens por pedido." };
 
   // Validate prices server-side — fetch real prices from DB
-  const { data: franchiseSegment } = await supabase.from("franchises").select("segment").eq("id", profile.franchise_id).single();
-  const segment = franchiseSegment?.segment || "franquia";
+  const { data: franchiseData } = await supabase.from("franchises").select("segment, seller_id").eq("id", profile.franchise_id).single();
+  const segment = franchiseData?.segment || "franquia";
+  const sellerId = franchiseData?.seller_id || null;
   const productIds = items.map((i) => i.productId);
   const { data: dbPrices } = await supabase
     .from("product_prices")
@@ -181,15 +185,21 @@ export async function createOrder(formData: FormData) {
 
   const total = validatedItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
 
+  // Generate OC number
+  const { data: seqData } = await supabase.rpc("nextval_order_number");
+  const ocNumber = `OC-${String(seqData || Date.now()).padStart(6, "0")}`;
+
   const { data: order, error } = await supabase
     .from("orders")
     .insert({
       franchise_id: profile.franchise_id,
       created_by: user.id,
+      seller_id: sellerId,
       status: "enviado",
       notes: notes || null,
       total,
       sent_at: new Date().toISOString(),
+      purchase_order: ocNumber,
     })
     .select()
     .single();
@@ -240,16 +250,31 @@ export async function createOrder(formData: FormData) {
     icon: "cart",
   }, user.id).catch(() => {});
 
-  await logAudit({ action: "create", entityType: "order", entityId: order.id, description: `Criou pedido #${order.id.slice(0, 8)} — R$ ${total.toFixed(2)}` });
+  await logAudit({ action: "create", entityType: "order", entityId: order.id, description: `Criou pedido ${ocNumber} — R$ ${total.toFixed(2)}` });
 
   revalidatePath("/novo-pedido");
   return { success: true, orderId: order.id };
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  enviado: "Enviado", aprovado: "Aprovado", separacao: "Em Separação",
-  faturado: "Faturado", cancelado: "Cancelado",
+  rascunho: "Rascunho", enviado: "Enviado", confirmado: "Confirmado",
+  separacao: "Em Separação", faturado: "Faturado", entregue: "Entregue",
+  cancelado: "Cancelado",
 };
+
+// === Payment Plans & Shipping Types ===
+
+export async function getPaymentPlans() {
+  const supabase = await createClient();
+  const { data } = await supabase.from("payment_plans").select("*").eq("active", true).order("sort_order");
+  return data || [];
+}
+
+export async function getShippingTypes() {
+  const supabase = await createClient();
+  const { data } = await supabase.from("shipping_types").select("*").eq("active", true).order("sort_order");
+  return data || [];
+}
 
 export async function updateOrderStatus(orderId: string, status: string) {
   const p = await requirePermission("pedidos", "approve"); if (p.error) return p;
@@ -269,14 +294,17 @@ export async function updateOrderStatus(orderId: string, status: string) {
   const { data: order } = await supabase.from("orders").select("franchise_id, id").eq("id", orderId).single();
   if (order?.franchise_id) {
     notifyFranchise(order.franchise_id, {
-      title: `Pedido #${orderId.slice(0, 8)} — ${STATUS_LABELS[status] || status}`,
+      title: `Pedido atualizado — ${STATUS_LABELS[status] || status}`,
       body: `Status do seu pedido foi atualizado`,
       href: "/novo-pedido",
       icon: "cart",
     }, user?.id).catch(() => {});
   }
 
-  await logAudit({ action: "approve", entityType: "order", entityId: orderId, description: `Atualizou pedido #${orderId.slice(0, 8)} → ${STATUS_LABELS[status] || status}` });
+  // Get OC for audit
+  const { data: orderData } = await supabase.from("orders").select("purchase_order").eq("id", orderId).single();
+  const ocLabel = orderData?.purchase_order || `#${orderId.slice(0, 8)}`;
+  await logAudit({ action: "approve", entityType: "order", entityId: orderId, description: `Atualizou pedido ${ocLabel} → ${STATUS_LABELS[status] || status}` });
 
   revalidatePath("/novo-pedido");
   return { success: true };
@@ -313,6 +341,50 @@ export async function updateOrderNotes(orderId: string, adminNotes: string) {
   return { success: true };
 }
 
+export async function updateOrder(orderId: string, data: {
+  notes?: string; adminNotes?: string; paymentPlanId?: string | null; shippingTypeId?: string | null; purchaseOrder?: string | null;
+  items?: { productId: string; productName: string; quantity: number; unitPrice: number }[];
+}) {
+  const p = await requirePermission("pedidos", "edit"); if (p.error) return p;
+  const supabase = await createClient();
+
+  const updates: Record<string, unknown> = {};
+  if (data.notes !== undefined) updates.notes = data.notes || null;
+  if (data.adminNotes !== undefined) updates.admin_notes = data.adminNotes || null;
+  if (data.paymentPlanId !== undefined) updates.payment_plan_id = data.paymentPlanId || null;
+  if (data.shippingTypeId !== undefined) updates.shipping_type_id = data.shippingTypeId || null;
+  if (data.purchaseOrder !== undefined) updates.purchase_order = data.purchaseOrder || null;
+
+  // Update items if provided
+  if (data.items) {
+    await supabase.from("order_items").delete().eq("order_id", orderId);
+    if (data.items.length > 0) {
+      await supabase.from("order_items").insert(
+        data.items.map((i) => ({
+          order_id: orderId,
+          product_id: i.productId,
+          product_name: i.productName,
+          quantity: i.quantity,
+          unit_price: i.unitPrice,
+          subtotal: i.quantity * i.unitPrice,
+        }))
+      );
+    }
+    updates.total = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  }
+
+  if (Object.keys(updates).length > 0) {
+    const { error } = await supabase.from("orders").update(updates).eq("id", orderId);
+    if (error) return { error: error.message };
+  }
+
+  const { data: orderForAudit } = await supabase.from("orders").select("purchase_order").eq("id", orderId).single();
+  await logAudit({ action: "update", entityType: "order", entityId: orderId, description: `Editou pedido ${orderForAudit?.purchase_order || "#" + orderId.slice(0, 8)}` });
+  revalidatePath("/gestao-de-pedidos");
+  revalidatePath("/novo-pedido");
+  return { success: true };
+}
+
 export async function getAllOrders(filters?: { status?: string; franchiseId?: string; dateFrom?: string; dateTo?: string }) {
   const supabase = await createClient();
   let query = supabase
@@ -328,16 +400,34 @@ export async function getAllOrders(filters?: { status?: string; franchiseId?: st
   const { data, error } = await query;
   if (error) { console.error("getAllOrders error:", error.message); return []; }
 
-  // Enrich with creator names
   const orders = data || [];
   if (orders.length > 0) {
-    const creatorIds = [...new Set(orders.map((o) => o.created_by).filter(Boolean))];
-    if (creatorIds.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", creatorIds);
+    // Enrich with creator + seller names
+    const userIds = [...new Set([
+      ...orders.map((o) => o.created_by),
+      ...orders.map((o) => o.seller_id),
+    ].filter(Boolean))];
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
       const profileMap = new Map((profiles || []).map((p) => [p.id, p.full_name]));
       for (const order of orders) {
         (order as Record<string, unknown>).creator_name = profileMap.get(order.created_by) || null;
+        (order as Record<string, unknown>).seller_name = order.seller_id ? profileMap.get(order.seller_id) || null : null;
       }
+    }
+
+    // Enrich with payment plan and shipping type names
+    const ppIds = [...new Set(orders.map((o) => o.payment_plan_id).filter(Boolean))];
+    const stIds = [...new Set(orders.map((o) => o.shipping_type_id).filter(Boolean))];
+    const [ppResult, stResult] = await Promise.all([
+      ppIds.length > 0 ? supabase.from("payment_plans").select("id, name").in("id", ppIds) : { data: [] },
+      stIds.length > 0 ? supabase.from("shipping_types").select("id, name").in("id", stIds) : { data: [] },
+    ]);
+    const ppMap = new Map((ppResult.data || []).map((p) => [p.id, p]));
+    const stMap = new Map((stResult.data || []).map((s) => [s.id, s]));
+    for (const order of orders) {
+      (order as Record<string, unknown>).payment_plan = order.payment_plan_id ? ppMap.get(order.payment_plan_id) || null : null;
+      (order as Record<string, unknown>).shipping_type = order.shipping_type_id ? stMap.get(order.shipping_type_id) || null : null;
     }
   }
 

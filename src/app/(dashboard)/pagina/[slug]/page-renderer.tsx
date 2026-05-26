@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import DOMPurify from "dompurify";
-import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight } from "lucide-react";
+import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { Sheet } from "@/components/ui/sheet";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -542,6 +543,7 @@ function PageCollectionMultiRefField({ field, value, onChange }: { field: Field;
 function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set() }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string> }) {
   const [lightbox, setLightbox] = useState<{ url: string; variants: ImageVariant[] } | null>(null);
   const [detailItem, setDetailItem] = useState<Item | null>(null);
+  const [fileModal, setFileModal] = useState<{ title: string; files: { title: string; url: string }[] } | null>(null);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -552,7 +554,6 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
   useEffect(() => {
     if (trackedRef.current) return;
     trackedRef.current = true;
-    // Track first item as page view (represents the collection being viewed)
     if (collection.items[0]) trackEvent(collection.items[0].id, collection.id, "view");
   }, [collection.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -566,6 +567,34 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
   const titleField = collection.fields.find((f) => f.field_type === "text");
   const tagsField = collection.fields.find((f) => f.slug === "tags");
   const refField = collection.fields.find((f) => f.field_type === "collection_ref" || f.field_type === "collection_multi_ref");
+  const fileField = collection.fields.find((f) => f.field_type === "file");
+  const fileArrayField = collection.fields.find((f) => f.field_type === "file_array");
+  const hasImages = imageField || variantsField;
+  const hasFiles = fileField || fileArrayField;
+
+  function getItemFiles(item: Item): { title: string; url: string }[] {
+    if (fileArrayField) {
+      const arr = Array.isArray(item.data[fileArrayField.slug]) ? (item.data[fileArrayField.slug] as { title?: string; url: string }[]) : [];
+      return arr.map((f) => ({ title: f.title || "Arquivo", url: f.url }));
+    }
+    if (fileField) {
+      const url = String(item.data[fileField.slug] || "");
+      if (url) return [{ title: titleField ? String(item.data[titleField.slug] || "Arquivo") : "Arquivo", url }];
+    }
+    return [];
+  }
+
+  function handleFileCardClick(item: Item) {
+    const title = titleField ? String(item.data[titleField.slug] || "") : "";
+    const files = getItemFiles(item);
+    if (files.length === 1) {
+      window.open(files[0].url, "_blank");
+      trackEvent(item.id, collection.id, "download");
+    } else if (files.length > 1) {
+      setFileModal({ title, files });
+      trackEvent(item.id, collection.id, "view");
+    }
+  }
 
   const filterCollection = filterCollections[0];
   const filterTitleField = filterCollection?.fields.find((f) => f.field_type === "text");
@@ -673,29 +702,57 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
           const tags = tagsField ? String(item.data[tagsField.slug] || "") : "";
           const isSelected = selected.has(item.id);
 
-          // Image: try dedicated image field, then first variant
           const variantsData = variantsField ? (item.data[variantsField.slug] as Record<string, string> | undefined) : undefined;
           const itemVariants: ImageVariant[] = variantsData
             ? Object.entries(variantsData).filter(([, url]) => url).map(([label, url]) => ({ label, url }))
             : [];
           const imgUrl = (imageField ? String(item.data[imageField.slug] || "") : "") || itemVariants[0]?.url || "";
 
-          // Description (strip HTML)
-          const descField = collection.fields.find((f) => f.field_type === "textarea" || f.field_type === "rich_text");
-          const rawDesc = descField ? String(item.data[descField.slug] || "") : "";
+          const descFieldLocal = collection.fields.find((f) => f.field_type === "textarea" || f.field_type === "rich_text");
+          const rawDesc = descFieldLocal ? String(item.data[descFieldLocal.slug] || "") : "";
           const descText = rawDesc.replace(/<[^>]*>/g, "").trim();
+
+          const files = getItemFiles(item);
+          const firstFileUrl = files[0]?.url || "";
+          const firstExt = firstFileUrl ? firstFileUrl.match(/\.(\w{2,5})(?:\?|$)/)?.[1]?.toUpperCase() || "FILE" : "";
+          const showImage = hasImages && imgUrl;
+          const showFile = !hasImages && hasFiles;
+          const EXT_COLORS: Record<string, string> = { PDF: "bg-red-50 text-red-600", DOC: "bg-blue-50 text-blue-600", DOCX: "bg-blue-50 text-blue-600", XLS: "bg-green-50 text-green-600", XLSX: "bg-green-50 text-green-600" };
+
+          function onCardClick() {
+            if (showImage) {
+              handleOpenDetail(item);
+            } else if (showFile) {
+              handleFileCardClick(item);
+            }
+          }
 
           return (
             <div key={item.id} className={cn("rounded-xl border bg-white overflow-hidden transition-colors", isSelected ? "border-brand-olive ring-2 ring-brand-olive/20" : "border-ink-100 hover:border-ink-200")}>
-              {/* Image */}
-              <div className="relative aspect-square bg-ink-50 cursor-pointer" onClick={() => handleOpenDetail(item)}>
-                {imgUrl ? <img src={imgUrl} alt={title} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-ink-300 text-xs">Sem imagem</div>}
-                <button
-                  onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
-                  className={cn("absolute top-1.5 left-1.5 flex h-4 w-4 items-center justify-center rounded border-[1.5px] transition-all", isSelected ? "border-brand-olive bg-brand-olive" : "border-white/80 bg-white/60")}
-                >
-                  {isSelected && <Check size={9} className="text-white" strokeWidth={3} />}
-                </button>
+              {/* Thumbnail */}
+              <div
+                className={cn(
+                  "relative cursor-pointer",
+                  showImage ? "aspect-square bg-ink-50" : "aspect-[4/3] bg-brand-olive-soft/60 flex flex-col items-center justify-center"
+                )}
+                onClick={onCardClick}
+              >
+                {showImage ? (
+                  imgUrl ? <img src={imgUrl} alt={title} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-ink-300 text-xs">Sem imagem</div>
+                ) : showFile ? (
+                  <>
+                    <BrandLogo width={148} height={148} />
+                    {files.length > 1 && <span className="absolute top-2 right-2 rounded-md bg-brand-olive/70 px-1.5 py-0.5 text-[9px] font-medium text-white">{files.length} arquivos</span>}
+                  </>
+                ) : null}
+                {hasImages && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
+                    className={cn("absolute top-1.5 left-1.5 flex h-4 w-4 items-center justify-center rounded border-[1.5px] transition-all", isSelected ? "border-brand-olive bg-brand-olive" : "border-white/80 bg-white/60")}
+                  >
+                    {isSelected && <Check size={9} className="text-white" strokeWidth={3} />}
+                  </button>
+                )}
                 {itemVariants.length > 0 && (
                   <span className="absolute top-1.5 right-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[8px] font-medium text-white flex items-center gap-0.5">
                     <Image size={8} /> {itemVariants.length}
@@ -715,10 +772,17 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
                   </div>
                 )}
                 <div className="flex items-center gap-0.5 mt-1.5 -mx-0.5">
-                  {imgUrl && (
-                    <button onClick={() => handleOpenDetail(item)} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Ver detalhe"><Eye size={12} /></button>
+                  {showImage && imgUrl && (
+                    <>
+                      <button onClick={() => handleOpenDetail(item)} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Ver detalhe"><Eye size={12} /></button>
+                      <ImageFormatDownload imageUrl={imgUrl} variants={itemVariants} />
+                    </>
                   )}
-                  {imgUrl && <ImageFormatDownload imageUrl={imgUrl} variants={itemVariants} />}
+                  {showFile && files.length > 0 && (
+                    <button onClick={() => handleFileCardClick(item)} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title={files.length === 1 ? "Abrir" : "Ver arquivos"}>
+                      <Eye size={12} />
+                    </button>
+                  )}
                   <FavoriteButton itemId={item.id} collectionId={collection.id} initialFavorited={favoriteIds.has(item.id)} size={12} />
                   <div className="flex-1" />
                   {canEdit && <button onClick={() => onEdit?.(item)} className="rounded-md p-1 text-ink-300 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={11} /></button>}
@@ -740,14 +804,23 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
         </div>
       )}
 
-      {filtered.length === 0 && <p className="text-center text-sm text-ink-400 py-8">Nenhuma imagem encontrada</p>}
+      {filtered.length === 0 && <p className="text-center text-sm text-ink-400 py-8">{hasImages ? "Nenhuma imagem encontrada" : "Nenhum arquivo encontrado"}</p>}
 
-      {/* Detail modal */}
+      {/* Detail modal (images) */}
       {detailItem && (
         <GalleryDetailModal
           item={detailItem}
           collection={collection}
           onClose={() => setDetailItem(null)}
+        />
+      )}
+
+      {/* File modal */}
+      {fileModal && (
+        <FileListModal
+          title={fileModal.title}
+          files={fileModal.files}
+          onClose={() => setFileModal(null)}
         />
       )}
     </>
@@ -877,10 +950,42 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
             </div>
           )}
 
+          {/* File array fields */}
+          {collection.fields
+            .filter((f) => f.field_type === "file_array" && Array.isArray(item.data[f.slug]) && (item.data[f.slug] as unknown[]).length > 0)
+            .map((f) => {
+              const files = item.data[f.slug] as { title?: string; url: string; filename?: string }[];
+              return (
+                <div key={f.id} className="px-5 pt-4">
+                  <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">{f.name}</p>
+                  <div className="flex flex-col gap-1">
+                    {files.map((file, i) => {
+                      const ext = file.url.match(/\.(\w{2,5})(?:\?|$)/)?.[1]?.toUpperCase() || "FILE";
+                      return (
+                        <a
+                          key={i}
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 rounded-lg border border-ink-100 bg-ink-50/50 px-3 py-2.5 hover:bg-ink-50 transition-colors group"
+                        >
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white border border-ink-100">
+                            <span className="text-[8px] font-bold text-ink-500">{ext}</span>
+                          </div>
+                          <span className="flex-1 text-sm text-ink-700 truncate">{file.title || file.filename || "Arquivo"}</span>
+                          <Download size={14} className="text-ink-400 group-hover:text-brand-olive shrink-0 transition-colors" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
           {/* Other fields */}
           <div className="px-5 pt-4 pb-5">
             {collection.fields
-              .filter((f) => !["text", "textarea", "rich_text", "image", "image_variants", "collection_ref", "collection_multi_ref"].includes(f.field_type) && item.data[f.slug])
+              .filter((f) => !["text", "textarea", "rich_text", "image", "image_variants", "image_array", "file_array", "collection_ref", "collection_multi_ref"].includes(f.field_type) && item.data[f.slug])
               .map((f) => {
                 const val = item.data[f.slug];
                 if (!val) return null;
@@ -1026,7 +1131,7 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
 function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelete, isPending }: { collection: CollectionData; filterCollections: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean }) {
   const [search, setSearch] = useState("");
   const titleField = collection.fields.find((f) => f.field_type === "text");
-  const visibleFields = collection.fields.filter((f) => !["boolean", "image", "file"].includes(f.field_type)).slice(0, 4);
+  const visibleFields = collection.fields.filter((f) => !["boolean", "image", "file", "file_array", "image_array"].includes(f.field_type)).slice(0, 4);
 
   const filtered = collection.items.filter((item) => {
     if (!search) return true;
@@ -1088,6 +1193,57 @@ function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelet
 }
 
 // === Course View (Bunny/YouTube/native video + PDF + anti-skip + progress) ===
+// === File List Modal (shared: gallery file mode) ===
+function FileListModal({ title, files, onClose }: { title: string; files: { title: string; url: string }[]; onClose: () => void }) {
+  const FILE_EXT_COLORS: Record<string, string> = { PDF: "bg-red-50 text-red-600", DOC: "bg-blue-50 text-blue-600", DOCX: "bg-blue-50 text-blue-600", XLS: "bg-green-50 text-green-600", XLSX: "bg-green-50 text-green-600", PPT: "bg-orange-50 text-orange-600", PPTX: "bg-orange-50 text-orange-600", ZIP: "bg-yellow-50 text-yellow-700", MP4: "bg-purple-50 text-purple-600" };
+
+  function getExt(url: string) {
+    return url.match(/\.(\w{2,5})(?:\?|$)/)?.[1]?.toUpperCase() || "FILE";
+  }
+
+  function isImg(url: string) {
+    const ext = url.split(".").pop()?.toLowerCase() || "";
+    return ["jpg", "jpeg", "png", "webp", "gif", "avif", "svg"].includes(ext);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white shadow-modal overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-ink-100">
+          <h3 className="text-base font-semibold text-ink-900">{title || "Arquivos"}</h3>
+          <button onClick={onClose} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-4 flex flex-col gap-2">
+          {files.map((file, i) => {
+            const ext = getExt(file.url);
+            const extColor = FILE_EXT_COLORS[ext] || "bg-ink-100 text-ink-600";
+            return (
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-lg border border-ink-100 px-4 py-3 hover:bg-ink-50 transition-colors group"
+              >
+                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", extColor)}>
+                  {isImg(file.url) ? <Image size={18} /> : ext === "PDF" ? <FileText size={18} /> : <File size={18} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-ink-900 truncate">{file.title}</p>
+                  <p className="text-[10px] text-ink-400">{ext}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Abrir"><Eye size={14} /></a>
+                  <a href={file.url} download className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Baixar"><Download size={14} /></a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CoursePageView({ collection }: { collection: CollectionData }) {
   const titleField = collection.fields.find((f) => f.field_type === "text");
   const descField = collection.fields.find((f) => f.field_type === "textarea" || f.field_type === "rich_text" || f.slug === "descricao");

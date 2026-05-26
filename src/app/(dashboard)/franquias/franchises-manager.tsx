@@ -42,17 +42,20 @@ interface Franchise {
   cnpj: string | null;
   opening_hours: string | null;
   manager_name: string | null;
+  seller_id: string | null;
+  seller?: { id: string; full_name: string } | null;
   created_at: string;
   totalUsers: number;
   activeUsers: number;
   inactiveUsers: number;
 }
 
-interface Props { franchises: Franchise[] }
+interface CommercialUser { id: string; full_name: string }
+interface Props { franchises: Franchise[]; commercialUsers?: CommercialUser[] }
 
 const inputCls = "h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10 transition-colors";
 
-export function FranchisesManager({ franchises }: Props) {
+export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSegment, setFilterSegment] = useState("");
@@ -86,6 +89,7 @@ export function FranchisesManager({ franchises }: Props) {
   const [cnpj, setCnpj] = useState("");
   const [openingHours, setOpeningHours] = useState("");
   const [managerName, setManagerName] = useState("");
+  const [sellerId, setSellerId] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const filtered = franchises.filter((f) => {
@@ -103,7 +107,7 @@ export function FranchisesManager({ franchises }: Props) {
     setName(""); setCity(""); setState(""); setSegment("franquia"); setStatus("active");
     setPhone(""); setWhatsapp(""); setEmail(""); setInstagram(""); setFacebook("");
     setTiktok(""); setWebsite(""); setLogoUrl(""); setAddress(""); setNeighborhood("");
-    setCep(""); setCnpj(""); setOpeningHours(""); setManagerName("");
+    setCep(""); setCnpj(""); setOpeningHours(""); setManagerName(""); setSellerId("");
     setError(""); setShowSheet(true);
   }
 
@@ -114,7 +118,7 @@ export function FranchisesManager({ franchises }: Props) {
     setInstagram(f.instagram || ""); setFacebook(f.facebook || ""); setTiktok(f.tiktok || "");
     setWebsite(f.website || ""); setLogoUrl(f.logo_url || ""); setAddress(f.address || "");
     setNeighborhood(f.neighborhood || ""); setCep(f.cep || ""); setCnpj(f.cnpj || "");
-    setOpeningHours(f.opening_hours || ""); setManagerName(f.manager_name || "");
+    setOpeningHours(f.opening_hours || ""); setManagerName(f.manager_name || ""); setSellerId(f.seller_id || "");
     setError(""); setShowSheet(true);
   }
 
@@ -128,7 +132,7 @@ export function FranchisesManager({ franchises }: Props) {
     fd.set("instagram", instagram); fd.set("facebook", facebook); fd.set("tiktok", tiktok);
     fd.set("website", website); fd.set("logo_url", logoUrl); fd.set("address", address);
     fd.set("neighborhood", neighborhood); fd.set("cep", cep); fd.set("cnpj", cnpj);
-    fd.set("opening_hours", openingHours); fd.set("manager_name", managerName);
+    fd.set("opening_hours", openingHours); fd.set("manager_name", managerName); fd.set("seller_id", sellerId);
     return fd;
   }
 
@@ -317,6 +321,13 @@ export function FranchisesManager({ franchises }: Props) {
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Responsável</label>
                 <input value={managerName} onChange={(e) => setManagerName(e.target.value)} className={inputCls} placeholder="Nome do gerente" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Vendedor</label>
+                <select value={sellerId} onChange={(e) => setSellerId(e.target.value)} className={inputCls}>
+                  <option value="">Sem vendedor</option>
+                  {commercialUsers.map((u) => <option key={u.id} value={u.id}>{u.full_name}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Segmento</label>

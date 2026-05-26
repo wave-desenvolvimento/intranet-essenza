@@ -87,7 +87,18 @@ function extractFranchiseFields(formData: FormData) {
     cnpj: formData.get("cnpj") as string || null,
     opening_hours: formData.get("opening_hours") as string || null,
     manager_name: formData.get("manager_name") as string || null,
+    seller_id: formData.get("seller_id") as string || null,
   };
+}
+
+export async function getCommercialUsers() {
+  const supabase = await createClient();
+  const { data: commercialRole } = await supabase.from("roles").select("id").eq("name", "Comercial Matriz").single();
+  if (!commercialRole) return [];
+  const { data: userRoles } = await supabase.from("user_roles").select("user_id").eq("role_id", commercialRole.id);
+  if (!userRoles?.length) return [];
+  const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userRoles.map((ur) => ur.user_id));
+  return profiles || [];
 }
 
 export async function createFranchise(formData: FormData) {
