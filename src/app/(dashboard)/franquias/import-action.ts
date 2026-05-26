@@ -5,8 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/permissions";
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+import { getResend, FROM_EMAIL } from "@/lib/email";
 
 interface ImportResult {
   franchisesCreated: number;
@@ -114,25 +113,57 @@ export async function importFranchisesFromXlsx(formData: FormData): Promise<Impo
       continue;
     }
 
-    // Throttle to avoid Supabase email rate limit
-    if (i > 0) await sleep(1500);
-
-    // Invite user
-    const { data: userData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName },
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback?next=/inicio`,
+    // Create user without sending email (bypasses Supabase email rate limit)
+    const { data: userData, error: createError } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: false,
+      user_metadata: { full_name: fullName },
     });
 
-    if (inviteError) {
-      if (inviteError.message.includes("already")) {
+    if (createError) {
+      if (createError.message.includes("already")) {
         result.errors.push(`Linha ${i + 2} (Usuários): ${email} já cadastrado`);
       } else {
-        result.errors.push(`Linha ${i + 2} (Usuários): ${inviteError.message}`);
+        result.errors.push(`Linha ${i + 2} (Usuários): ${createError.message}`);
       }
       continue;
     }
 
     const userId = userData.user.id;
+
+    // Generate invite link and send via Resend
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback?next=/inicio`,
+      },
+    });
+
+    if (linkError) {
+      result.errors.push(`Linha ${i + 2} (Usuários): link error - ${linkError.message}`);
+    } else {
+      const resend = getResend();
+      if (resend) {
+        const confirmUrl = linkData.properties?.action_link;
+        await resend.emails.send({
+          from: FROM_EMAIL,
+          to: email,
+          subject: "Você foi convidado para o Essenza Hub",
+          html: `
+            <h2>Olá, ${fullName}!</h2>
+            <p>Você foi convidado para acessar o <strong>Essenza Hub</strong>.</p>
+            <p>Clique no botão abaixo para criar sua senha e acessar a plataforma:</p>
+            <p style="margin: 24px 0;">
+              <a href="${confirmUrl}" style="background:#18181b;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
+                Aceitar convite
+              </a>
+            </p>
+            <p style="color:#666;font-size:14px;">Se você não esperava este convite, ignore este email.</p>
+          `,
+        });
+      }
+    }
 
     // Update profile
     await supabase.from("profiles").update({
