@@ -6,6 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/permissions";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 interface ImportResult {
   franchisesCreated: number;
   usersInvited: number;
@@ -111,6 +113,9 @@ export async function importFranchisesFromXlsx(formData: FormData): Promise<Impo
       result.errors.push(`Linha ${i + 2} (Usuários): franquia "${franchiseName}" não encontrada`);
       continue;
     }
+
+    // Throttle to avoid Supabase email rate limit
+    if (i > 0) await sleep(1500);
 
     // Invite user
     const { data: userData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
