@@ -926,9 +926,9 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
                       <div className="flex items-center gap-0.5">
                         <ShareLink imageUrl={img.url} />
                         <button
-                          onClick={() => { const a = document.createElement("a"); a.href = img.url; a.download = `${title}_${img.label}`.replace(/\s+/g, "_"); a.click(); }}
+                          onClick={() => window.open(img.url, "_blank")}
                           className="rounded-md p-1 text-ink-400 hover:text-brand-olive transition-colors"
-                          title="Baixar"
+                          title="Abrir em nova aba"
                         >
                           <Download size={13} />
                         </button>
@@ -1239,7 +1239,7 @@ function FileListModal({ title, files, onClose }: { title: string; files: { titl
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <a href={file.url} target="_blank" rel="noopener noreferrer" className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Abrir"><Eye size={14} /></a>
-                  <a href={file.url} download className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Baixar"><Download size={14} /></a>
+                  <a href={file.url} target="_blank" rel="noopener noreferrer" download className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Baixar"><Download size={14} /></a>
                 </div>
               </div>
             );

@@ -243,7 +243,7 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
                       <a href={file.url} target="_blank" rel="noopener noreferrer" className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Abrir">
                         <Eye size={14} />
                       </a>
-                      <a href={file.url} download className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Baixar">
+                      <a href={file.url} target="_blank" rel="noopener noreferrer" download className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Baixar">
                         <Download size={14} />
                       </a>
                     </div>
