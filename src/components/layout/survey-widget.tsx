@@ -93,7 +93,7 @@ export function SurveyWidget({ surveys }: Props) {
   // --- Floating button (no survey open) ---
   if (!activeId) {
     return (
-      <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[80] flex flex-col items-end gap-2">
+      <div className="fixed bottom-20 left-4 md:bottom-6 md:left-6 z-[80] flex flex-col items-start gap-2">
         {pending.map((s) => (
           <button
             key={s.id}
