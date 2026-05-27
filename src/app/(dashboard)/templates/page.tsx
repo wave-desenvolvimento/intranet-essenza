@@ -1,25 +1,40 @@
 import { createClient } from "@/lib/supabase/server";
-import { getTemplates } from "./actions";
+import { getTemplates, getPublishedTemplates } from "./actions";
 import { TemplatesModule } from "./templates-module";
-import { isSystemAdmin } from "@/lib/permissions";
 
 export default async function TemplatesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id || "";
 
-  const templates = await getTemplates();
-  const isAdmin = await isSystemAdmin(user?.id || "");
+  // Check permissions
+  const { data: canView } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "view" });
+  const { data: canCreate } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "create" });
+  const { data: canEdit } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "edit" });
+  const { data: canDelete } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "delete" });
+
+  // Users with create/edit see all templates (including drafts); others see only published
+  const canManage = !!(canCreate || canEdit);
+  const templates = canManage ? await getTemplates() : await getPublishedTemplates();
 
   // Get franchise data for rendering
   const { data: profile } = await supabase
     .from("profiles")
     .select("franchise:franchises(*)")
-    .eq("id", user?.id || "")
+    .eq("id", userId)
     .single();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawFranchise = profile?.franchise as any;
   const franchise = Array.isArray(rawFranchise) ? rawFranchise[0] : rawFranchise;
 
-  return <TemplatesModule templates={templates} isAdmin={isAdmin} franchiseData={franchise || null} />;
+  return (
+    <TemplatesModule
+      templates={templates}
+      canCreate={!!canCreate}
+      canEdit={!!canEdit}
+      canDelete={!!canDelete}
+      franchiseData={franchise || null}
+    />
+  );
 }

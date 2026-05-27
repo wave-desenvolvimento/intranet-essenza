@@ -50,11 +50,11 @@ interface Props {
   users: UserProfile[];
   roles: Role[];
   canManageUsers: boolean;
-  isSystemAdmin: boolean;
+  canManageRoles: boolean;
   stockTab?: React.ReactNode;
 }
 
-export function FranchiseDetail({ franchise, users, roles, canManageUsers, isSystemAdmin, stockTab }: Props) {
+export function FranchiseDetail({ franchise, users, roles, canManageUsers, canManageRoles, stockTab }: Props) {
   const [tab, setTab] = useState<"users" | "stock">("users");
   const [editing, setEditing] = useState<UserProfile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -369,7 +369,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, isSys
               )}
 
               {/* Roles — only system admins can assign roles */}
-              {isSystemAdmin && roles.length > 0 && (
+              {canManageRoles && roles.length > 0 && (
                 <div>
                   <label className="text-xs font-medium text-ink-700 mb-2 block flex items-center gap-1.5">
                     <Shield size={12} /> Tipos de Acesso
@@ -387,7 +387,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, isSys
                   </div>
                 </div>
               )}
-              {!isSystemAdmin && (
+              {!canManageRoles && (
                 <p className="text-[10px] text-ink-400 bg-ink-50 rounded-lg px-3 py-2">
                   Como admin de franquia, você pode convidar usuários e definir admin da franquia. Tipos de acesso avançados são gerenciados pelo administrador do sistema.
                 </p>

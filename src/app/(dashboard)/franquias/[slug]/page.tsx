@@ -4,7 +4,7 @@ import { getFranchiseBySlug, getFranchiseUsers } from "../actions";
 import { getFranchiseStock } from "../stock-actions";
 import { FranchiseDetail } from "./franchise-detail";
 import { StockTab } from "./stock-tab";
-import { isSystemAdmin as checkSystemAdmin, getRolesForContext } from "@/lib/permissions";
+import { getRolesForContext } from "@/lib/permissions";
 
 export default async function FranchiseDetailPage({
   params,
@@ -26,9 +26,9 @@ export default async function FranchiseDetailPage({
     .eq("id", userId)
     .single();
 
-  const isSysAdmin = await checkSystemAdmin(userId);
+  const { data: canManageRoles } = await supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "manage" });
   const isFranchiseAdmin = !!profile?.is_franchise_admin && profile?.franchise_id === franchise.id;
-  const canManageUsers = isSysAdmin || isFranchiseAdmin;
+  const canManageUsers = !!canManageRoles || isFranchiseAdmin;
 
   const [users, availableRoles, stock] = await Promise.all([
     getFranchiseUsers(franchise.id),
@@ -42,7 +42,7 @@ export default async function FranchiseDetailPage({
       users={users}
       roles={availableRoles}
       canManageUsers={canManageUsers}
-      isSystemAdmin={isSysAdmin}
+      canManageRoles={!!canManageRoles}
       stockTab={<StockTab franchiseId={franchise.id} stock={stock} canEdit={canManageUsers} />}
     />
   );

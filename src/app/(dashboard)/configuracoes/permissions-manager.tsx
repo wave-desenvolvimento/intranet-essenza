@@ -22,7 +22,9 @@ const ACTION_LABELS: Record<string, string> = {
 const MODULE_LABELS: Record<string, string> = {
   dashboard: "Início", inicio: "Início", usuarios: "Usuários", franquias: "Franquias",
   cms: "CMS", templates: "Templates", pedidos: "Pedidos", analytics: "Relatórios",
-  relatorios: "Relatórios", "universo-da-marca": "Universo da Marca",
+  relatorios: "Relatórios", produtos: "Produtos", comunicados: "Comunicados",
+  historico: "Histórico", faq: "FAQ", pesquisas: "Pesquisas",
+  "universo-da-marca": "Universo da Marca",
   "material-corporativo": "Material Corp.", campanhas: "Campanhas",
   "redes-sociais": "Redes Sociais", biblioteca: "Biblioteca", videos: "Vídeos",
   treinamento: "Treinamento", cigam: "CIGAM", configuracoes: "Configurações",

@@ -30,7 +30,9 @@ interface Template {
 
 interface Props {
   templates: Template[];
-  isAdmin: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   franchiseData: any;
 }
@@ -72,7 +74,8 @@ const ASPECT_OPTIONS = [
 
 const inputCls = "h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10";
 
-export function TemplatesModule({ templates, isAdmin, franchiseData }: Props) {
+export function TemplatesModule({ templates, canCreate, canEdit, canDelete, franchiseData }: Props) {
+  const canManage = canCreate || canEdit;
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const { confirm, dialogProps } = useConfirm();
@@ -98,7 +101,7 @@ export function TemplatesModule({ templates, isAdmin, franchiseData }: Props) {
   const [copied, setCopied] = useState(false);
 
   const published = templates.filter((t) => t.status === "published");
-  const visibleTemplates = isAdmin ? templates : published;
+  const visibleTemplates = canManage ? templates : published;
 
   // Use real franchise or sample for admin preview
   const renderData = franchiseData || SAMPLE_FRANCHISE;
@@ -400,13 +403,13 @@ export function TemplatesModule({ templates, isAdmin, franchiseData }: Props) {
         <div>
           <h1 className="text-lg font-semibold text-ink-900">Templates</h1>
           <p className="text-sm text-ink-500">
-            {isAdmin
+            {canManage
               ? `${templates.length} templates · ${published.length} publicados`
               : `${published.length} templates disponíveis`
             }
           </p>
         </div>
-        {isAdmin && (
+        {canCreate && (
           <button onClick={openCreate} className="flex items-center gap-2 rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors">
             <Plus size={16} /> Novo Template
           </button>
@@ -419,8 +422,8 @@ export function TemplatesModule({ templates, isAdmin, franchiseData }: Props) {
       {visibleTemplates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 bg-ink-50/50 py-16">
           <ImageIcon size={32} className="text-ink-300 mb-3" />
-          <p className="text-sm text-ink-400">{isAdmin ? "Nenhum template criado" : "Nenhum template disponível"}</p>
-          {isAdmin && <button onClick={openCreate} className="mt-2 text-sm font-medium text-brand-olive">Criar primeiro</button>}
+          <p className="text-sm text-ink-400">{canManage ? "Nenhum template criado" : "Nenhum template disponível"}</p>
+          {canCreate && <button onClick={openCreate} className="mt-2 text-sm font-medium text-brand-olive">Criar primeiro</button>}
         </div>
       ) : (
         <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -450,7 +453,7 @@ export function TemplatesModule({ templates, isAdmin, franchiseData }: Props) {
                 <div className="px-3 pt-2.5 pb-2">
                   <div className="flex items-center justify-between gap-1">
                     <p className="text-xs font-medium text-ink-900 truncate">{t.title}</p>
-                    {isAdmin && (
+                    {canManage && (
                       <span className={cn(
                         "rounded-full px-1.5 py-0.5 text-[8px] font-medium shrink-0",
                         t.status === "published" ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
@@ -471,11 +474,11 @@ export function TemplatesModule({ templates, isAdmin, franchiseData }: Props) {
                     <Download size={10} /> Baixar
                   </button>
                   <div className="flex-1" />
-                  {isAdmin && (
-                    <>
-                      <button onClick={() => openEdit(t)} className="rounded-md p-1 text-ink-300 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={12} /></button>
-                      <button onClick={() => handleDelete(t.id)} disabled={isPending} className="rounded-md p-1 text-ink-300 hover:text-danger hover:bg-danger-soft transition-colors" title="Remover"><Trash2 size={12} /></button>
-                    </>
+                  {canEdit && (
+                    <button onClick={() => openEdit(t)} className="rounded-md p-1 text-ink-300 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={12} /></button>
+                  )}
+                  {canDelete && (
+                    <button onClick={() => handleDelete(t.id)} disabled={isPending} className="rounded-md p-1 text-ink-300 hover:text-danger hover:bg-danger-soft transition-colors" title="Remover"><Trash2 size={12} /></button>
                   )}
                 </div>
               </div>
@@ -531,7 +534,7 @@ export function TemplatesModule({ templates, isAdmin, franchiseData }: Props) {
                 </button>
               </div>
 
-              {!franchiseData && isAdmin && (
+              {!franchiseData && canManage && (
                 <p className="text-[10px] text-white/30 mt-2">Dados de exemplo (Essenza Gramado)</p>
               )}
             </div>
