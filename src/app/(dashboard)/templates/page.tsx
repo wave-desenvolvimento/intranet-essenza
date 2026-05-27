@@ -13,9 +13,9 @@ export default async function TemplatesPage() {
   const { data: canEdit } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "edit" });
   const { data: canDelete } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "delete" });
 
-  // Users with create/edit see all templates (including drafts); others see only published
+  // Anyone with view permission sees all published; create/edit also sees drafts
   const canManage = !!(canCreate || canEdit);
-  const templates = canManage ? await getTemplates() : await getPublishedTemplates();
+  const templates = canManage ? await getTemplates() : canView ? await getPublishedTemplates() : [];
 
   // Get franchise data for rendering
   const { data: profile } = await supabase
