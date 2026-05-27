@@ -152,7 +152,7 @@ export function CollectionDetail({ collection, fields, items }: Props) {
   const [fSelectOptions, setFSelectOptions] = useState<{ value: string; label: string }[]>([]);
 
   // Visible columns (first 4 text-ish fields)
-  const visibleFields = fields.filter((f) => !["boolean", "image", "file"].includes(f.field_type)).slice(0, 4);
+  const visibleFields = fields.filter((f) => !["boolean", "image", "file", "file_array", "image_array", "image_variants"].includes(f.field_type)).slice(0, 4);
 
   // === Item handlers ===
   function openItem(item?: Item) {
