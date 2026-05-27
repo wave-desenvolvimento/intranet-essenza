@@ -54,7 +54,7 @@ export function PermissionsManager({ roles, permissions }: Props) {
   const { confirm: confirmAction, dialogProps } = useConfirm();
 
   const modules = groupByModule(permissions);
-  const allActions = [...new Set(permissions.map((p) => p.action))].sort();
+  const allActions = ["approve", "create", "delete", "download", "edit", "export", "manage", "view", "view_all"];
 
   function openCreate() {
     setEditingRole(null); setIsCreating(true);
@@ -210,7 +210,7 @@ export function PermissionsManager({ roles, permissions }: Props) {
                         </td>
                         {allActions.map((action) => {
                           const perm = perms.find((p) => p.action === action);
-                          if (!perm) return <td key={action} className="text-center px-1.5 py-2"><span className="text-ink-200">—</span></td>;
+                          if (!perm) return <td key={action} className="text-center px-1.5 py-2" />;
                           const isOn = selectedPermissions.has(perm.id);
                           return (
                             <td key={action} className="text-center px-1.5 py-2">

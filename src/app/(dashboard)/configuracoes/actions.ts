@@ -4,6 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth, requireSystemAdmin, getUserRoleLevel } from "@/lib/permissions";
 
+const ALL_MODULES = [
+  "dashboard", "usuarios", "franquias", "cms", "templates", "pedidos", "produtos",
+  "relatorios", "comunicados", "historico", "faq", "pesquisas",
+  "universo-da-marca", "material-corporativo", "campanhas",
+  "redes-sociais", "biblioteca", "videos", "treinamento", "cigam", "configuracoes",
+];
+
+const ALL_ACTIONS = ["approve", "create", "delete", "download", "edit", "export", "manage", "view", "view_all"];
+
 export async function getRoles() {
   await requireAuth();
   const supabase = await createClient();
@@ -17,12 +26,31 @@ export async function getRoles() {
 export async function getPermissions() {
   await requireAuth();
   const supabase = await createClient();
+
+  // Ensure all module×action combinations exist
+  await ensureAllPermissions();
+
   const { data } = await supabase
     .from("permissions")
     .select("*")
     .order("module")
     .order("action");
   return data || [];
+}
+
+async function ensureAllPermissions() {
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("permissions").select("module, action");
+  const existingSet = new Set((existing || []).map((p) => `${p.module}::${p.action}`));
+
+  const missing = ALL_MODULES.flatMap((module) =>
+    ALL_ACTIONS.filter((action) => !existingSet.has(`${module}::${action}`))
+      .map((action) => ({ module, action, description: `${module}.${action}` }))
+  );
+
+  if (missing.length > 0) {
+    await supabase.from("permissions").insert(missing);
+  }
 }
 
 function generateSlug(name: string) {
