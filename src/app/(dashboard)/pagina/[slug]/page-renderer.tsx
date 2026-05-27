@@ -679,20 +679,24 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-white py-1 px-3 h-9 flex-1">
           <Search size={14} className="text-ink-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar imagens..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={hasImages ? "Buscar imagens..." : "Buscar..."} className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
         </div>
-        <button onClick={selectAll} className="rounded-lg border border-ink-100 bg-white px-3 h-9 text-xs font-medium text-ink-600 hover:bg-ink-50 transition-colors">
-          {selected.size === filtered.length && filtered.length > 0 ? "Desmarcar tudo" : "Selecionar tudo"}
-        </button>
-        {selected.size > 0 && (
-          <button
-            onClick={handleDownloadSelected}
-            disabled={downloading}
-            className="flex items-center gap-2 rounded-lg bg-brand-olive px-3 h-9 text-xs font-medium text-white hover:bg-brand-olive-dark transition-colors disabled:opacity-50"
-          >
-            <Download size={13} />
-            {downloading ? "Baixando..." : `Baixar ${selected.size} ${selected.size === 1 ? "imagem" : "imagens"}`}
-          </button>
+        {hasImages && (
+          <>
+            <button onClick={selectAll} className="rounded-lg border border-ink-100 bg-white px-3 h-9 text-xs font-medium text-ink-600 hover:bg-ink-50 transition-colors">
+              {selected.size === filtered.length && filtered.length > 0 ? "Desmarcar tudo" : "Selecionar tudo"}
+            </button>
+            {selected.size > 0 && (
+              <button
+                onClick={handleDownloadSelected}
+                disabled={downloading}
+                className="flex items-center gap-2 rounded-lg bg-brand-olive px-3 h-9 text-xs font-medium text-white hover:bg-brand-olive-dark transition-colors disabled:opacity-50"
+              >
+                <Download size={13} />
+                {downloading ? "Baixando..." : `Baixar ${selected.size} ${selected.size === 1 ? "imagem" : "imagens"}`}
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -805,7 +809,7 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
         </div>
       )}
 
-      {filtered.length === 0 && <p className="text-center text-sm text-ink-400 py-8">{hasImages ? "Nenhuma imagem encontrada" : "Nenhum arquivo encontrado"}</p>}
+      {filtered.length === 0 && <p className="text-center text-sm text-ink-400 py-8">{hasImages ? "Nenhuma imagem encontrada" : "Nenhum item encontrado"}</p>}
 
       {/* Detail modal (images) */}
       {detailItem && (
