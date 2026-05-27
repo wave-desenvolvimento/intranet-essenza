@@ -110,14 +110,15 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {items.map((item) => {
-          const title = titleField ? String(item.data[titleField.slug] || "") : "";
-          const tags = tagsField ? String(item.data[tagsField.slug] || "") : "";
+          const safeStr = (v: unknown) => (v == null || typeof v === "object" ? "" : String(v));
+          const title = titleField ? safeStr(item.data[titleField.slug]) : "";
+          const tags = tagsField ? safeStr(item.data[tagsField.slug]) : "";
           const variantsData = variantsField ? (item.data[variantsField.slug] as Record<string, string> | undefined) : undefined;
-          const variants: ImageVariant[] = variantsData
+          const variants: ImageVariant[] = variantsData && typeof variantsData === "object" && !Array.isArray(variantsData)
             ? Object.entries(variantsData).filter(([, url]) => url).map(([label, url]) => ({ label, url }))
             : [];
-          const imgUrl = (imageField ? String(item.data[imageField.slug] || "") : "") || variants[0]?.url || "";
-          const rawDesc = descField ? String(item.data[descField.slug] || "") : "";
+          const imgUrl = (imageField ? safeStr(item.data[imageField.slug]) : "") || variants[0]?.url || "";
+          const rawDesc = descField ? safeStr(item.data[descField.slug]) : "";
           const descText = rawDesc.replace(/<[^>]*>/g, "").trim();
           const files = getItemFiles(item);
           const firstFileUrl = files[0]?.url || "";

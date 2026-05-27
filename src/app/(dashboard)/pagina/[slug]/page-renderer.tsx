@@ -698,18 +698,19 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {paginatedItems.map((item) => {
-          const title = titleField ? String(item.data[titleField.slug] || "") : "";
-          const tags = tagsField ? String(item.data[tagsField.slug] || "") : "";
+          const safeStr = (v: unknown) => (v == null || typeof v === "object" ? "" : String(v));
+          const title = titleField ? safeStr(item.data[titleField.slug]) : "";
+          const tags = tagsField ? safeStr(item.data[tagsField.slug]) : "";
           const isSelected = selected.has(item.id);
 
           const variantsData = variantsField ? (item.data[variantsField.slug] as Record<string, string> | undefined) : undefined;
-          const itemVariants: ImageVariant[] = variantsData
+          const itemVariants: ImageVariant[] = variantsData && typeof variantsData === "object" && !Array.isArray(variantsData)
             ? Object.entries(variantsData).filter(([, url]) => url).map(([label, url]) => ({ label, url }))
             : [];
-          const imgUrl = (imageField ? String(item.data[imageField.slug] || "") : "") || itemVariants[0]?.url || "";
+          const imgUrl = (imageField ? safeStr(item.data[imageField.slug]) : "") || itemVariants[0]?.url || "";
 
           const descFieldLocal = collection.fields.find((f) => f.field_type === "textarea" || f.field_type === "rich_text");
-          const rawDesc = descFieldLocal ? String(item.data[descFieldLocal.slug] || "") : "";
+          const rawDesc = descFieldLocal ? safeStr(item.data[descFieldLocal.slug]) : "";
           const descText = rawDesc.replace(/<[^>]*>/g, "").trim();
 
           const files = getItemFiles(item);
@@ -840,12 +841,13 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
   const dateField = collection.fields.find((f) => f.field_type === "date");
   const selectField = collection.fields.find((f) => f.field_type === "select");
 
-  const title = titleField ? String(item.data[titleField.slug] || "") : "";
-  const rawDesc = descField ? String(item.data[descField.slug] || "") : "";
+  const safeStr = (v: unknown) => (v == null || typeof v === "object" ? "" : String(v));
+  const title = titleField ? safeStr(item.data[titleField.slug]) : "";
+  const rawDesc = descField ? safeStr(item.data[descField.slug]) : "";
   const descText = rawDesc.replace(/<[^>]*>/g, "").trim();
-  const mainImg = imageField ? String(item.data[imageField.slug] || "") : "";
+  const mainImg = imageField ? safeStr(item.data[imageField.slug]) : "";
   const variantsData = variantsField ? (item.data[variantsField.slug] as Record<string, string> | undefined) : undefined;
-  const variants = variantsData
+  const variants = variantsData && typeof variantsData === "object" && !Array.isArray(variantsData)
     ? Object.entries(variantsData).filter(([, url]) => url).map(([label, url]) => ({ label, url }))
     : [];
   const allImages = [...(mainImg ? [{ label: "Original", url: mainImg }] : []), ...variants];
