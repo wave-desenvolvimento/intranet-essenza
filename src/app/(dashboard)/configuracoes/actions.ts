@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { requireAuth, requireSystemAdmin, getUserRoleLevel } from "@/lib/permissions";
+import { requireAuth, requirePermission, getUserRoleLevel } from "@/lib/permissions";
 
 const ALL_MODULES = [
   "dashboard", "usuarios", "franquias", "cms", "templates", "pedidos", "produtos",
@@ -58,7 +58,7 @@ function generateSlug(name: string) {
 }
 
 export async function createRole(formData: FormData) {
-  const p = await requireSystemAdmin(); if (p.error) return p;
+  const p = await requirePermission("configuracoes", "edit"); if (p.error) return p;
   const supabase = await createClient();
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -95,7 +95,7 @@ export async function createRole(formData: FormData) {
 }
 
 export async function updateRole(formData: FormData) {
-  const p = await requireSystemAdmin(); if (p.error) return p;
+  const p = await requirePermission("configuracoes", "edit"); if (p.error) return p;
   const supabase = await createClient();
   const roleId = formData.get("roleId") as string;
   const name = formData.get("name") as string;
@@ -133,7 +133,7 @@ export async function updateRole(formData: FormData) {
 }
 
 export async function deleteRole(roleId: string) {
-  const p = await requireSystemAdmin(); if (p.error) return p;
+  const p = await requirePermission("configuracoes", "edit"); if (p.error) return p;
   const supabase = await createClient();
 
   // Prevent deleting system roles

@@ -22,18 +22,19 @@ export async function requirePermission(module: string, action: string) {
   return { user, supabase, error: null };
 }
 
-/** Checks if user is system admin. Returns { error } if not. */
+/** @deprecated Use requirePermission("configuracoes", "edit") instead */
 export async function requireSystemAdmin() {
-  const { user, supabase } = await requireAuth();
-  const { data: isAdmin } = await supabase.rpc("is_system_admin", { _user_id: user.id });
-  if (!isAdmin) return { error: "Sem permissão", user: null, supabase: null };
-  return { user, supabase, error: null };
+  return requirePermission("configuracoes", "edit");
 }
 
-// Check if user is system admin (level >= 80) via DB function
-export async function isSystemAdmin(userId: string): Promise<boolean> {
+/** @deprecated RPC now uses auth.uid() internally — param is ignored */
+export async function isSystemAdmin(_userId: string): Promise<boolean> {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("is_system_admin", { _user_id: userId });
+  const { data } = await supabase.rpc("has_permission", {
+    _user_id: _userId,
+    _module: "configuracoes",
+    _action: "edit",
+  });
   return !!data;
 }
 
@@ -58,17 +59,21 @@ export async function getAssignableRoles(userId: string) {
   return roles || [];
 }
 
-// Get roles filtered: system admins see all, franchise admins see non-system only
+// Get roles filtered: users with configuracoes.edit see all, others see non-system only
 export async function getRolesForContext(userId: string) {
   const supabase = await createClient();
-  const isSysAdmin = await isSystemAdmin(userId);
+  const { data: canManageConfig } = await supabase.rpc("has_permission", {
+    _user_id: userId,
+    _module: "configuracoes",
+    _action: "edit",
+  });
 
-  if (isSysAdmin) {
+  if (canManageConfig) {
     const { data } = await supabase.from("roles").select("id, name, slug, is_system, level").order("level", { ascending: false });
     return data || [];
   }
 
-  // Non-system admins: only see non-system roles at or below their level
+  // Non-admin: only see non-system roles at or below their level
   const userLevel = await getUserRoleLevel(userId);
   const { data } = await supabase
     .from("roles")
