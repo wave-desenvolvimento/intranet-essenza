@@ -6,8 +6,6 @@ import {
   Megaphone,
   FileText,
   Users,
-  Plus,
-  Upload,
   ChevronLeft,
   ChevronRight,
   ArrowRight,
@@ -124,8 +122,6 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
   const showPromotions = canAny(permissions, "campanhas");
   const showSocial = canAny(permissions, "redes-sociais");
   const showUserStats = can(permissions, "usuarios.view");
-  const canCreateMaterial = can(permissions, "material-corporativo.create");
-
   // Stats cards config
   const showOrders = canAny(permissions, "pedidos");
 
@@ -186,21 +182,6 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
             Confira as novidades e acesse seus materiais.
           </p>
         </div>
-        {canCreateMaterial && (
-          <div className="flex items-center gap-2 self-start sm:self-auto hidden sm:flex">
-            <Link
-              href="/material-corporativo"
-              className="flex items-center gap-2 rounded-[9px] bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors"
-            >
-              <Plus size={14} />
-              Novo material
-            </Link>
-            <button className="flex items-center gap-2 rounded-[9px] border border-ink-100 bg-white px-4 py-2 text-sm font-medium text-ink-900 hover:bg-ink-50 transition-colors">
-              <Upload size={14} />
-              Exportar
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Stats Cards */}
