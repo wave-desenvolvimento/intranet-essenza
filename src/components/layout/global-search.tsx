@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, X, Command, FileText, Image, Megaphone, Layers, Folder, ArrowRight } from "lucide-react";
+import {
+  Search, X, Command, FileText, Image, Megaphone, Layers, Folder, ArrowRight,
+  Building2, Package, ShoppingCart, Users, MessageSquare, HelpCircle, BarChart3,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { getIconComponent } from "@/components/ui/icon-picker";
@@ -28,12 +31,24 @@ function useIsMobile() {
 
 interface SearchResult {
   id: string;
-  type: "page" | "item";
+  type: "page" | "item" | "franchise" | "product" | "order" | "user" | "announcement" | "faq" | "survey";
   title: string;
   subtitle: string;
   icon: string;
   href: string;
 }
+
+const TYPE_CONFIG: Record<SearchResult["type"], { label: string; icon: React.ElementType; bg: string; color: string }> = {
+  page: { label: "Páginas", icon: Layers, bg: "bg-brand-olive-soft", color: "text-brand-olive" },
+  item: { label: "Conteúdos", icon: FileText, bg: "bg-ink-50", color: "text-ink-400" },
+  franchise: { label: "Franquias", icon: Building2, bg: "bg-info-soft", color: "text-info" },
+  product: { label: "Produtos", icon: Package, bg: "bg-success-soft", color: "text-success" },
+  order: { label: "Pedidos", icon: ShoppingCart, bg: "bg-warning-soft", color: "text-warning" },
+  user: { label: "Usuários", icon: Users, bg: "bg-brand-olive-soft", color: "text-brand-olive" },
+  announcement: { label: "Comunicados", icon: MessageSquare, bg: "bg-info-soft", color: "text-info" },
+  faq: { label: "FAQ", icon: HelpCircle, bg: "bg-success-soft", color: "text-success" },
+  survey: { label: "Pesquisas", icon: BarChart3, bg: "bg-warning-soft", color: "text-warning" },
+};
 
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
@@ -70,80 +85,138 @@ export function GlobalSearch() {
     setLoading(true);
 
     const supabase = createClient();
-    const searchResults: SearchResult[] = [];
+    const all: SearchResult[] = [];
 
-    // Search pages
-    const { data: pages } = await supabase
-      .from("cms_pages")
-      .select("id, title, slug, icon, is_group")
-      .ilike("title", `%${q}%`)
-      .limit(5);
+    // Run all searches in parallel
+    const [pages, items, franchises, products, orders, profiles, announcements, faqItems, surveys] = await Promise.all([
+      // Pages
+      supabase.from("cms_pages").select("id, title, slug, icon, is_group").ilike("title", `%${q}%`).limit(5),
+      // CMS Items
+      supabase.from("cms_items").select("id, data, collection_id, status").ilike("data::text", `%${q}%`).limit(10),
+      // Franchises
+      supabase.from("franchises").select("id, name, slug, city, segment").or(`name.ilike.%${q}%,city.ilike.%${q}%,cnpj.ilike.%${q}%`).limit(5),
+      // Products
+      supabase.from("products").select("id, name, sku, category").or(`name.ilike.%${q}%,sku.ilike.%${q}%,category.ilike.%${q}%`).eq("active", true).limit(5),
+      // Orders
+      supabase.from("orders").select("id, status, total, created_at, purchase_order, franchises(name)").or(`id.ilike.%${q}%,purchase_order.ilike.%${q}%`).order("created_at", { ascending: false }).limit(5),
+      // Users/Profiles
+      supabase.from("profiles").select("id, full_name, franchise_id, franchises(name)").ilike("full_name", `%${q}%`).limit(5),
+      // Announcements
+      supabase.from("announcements").select("id, title, priority, created_at").ilike("title", `%${q}%`).order("created_at", { ascending: false }).limit(5),
+      // FAQ
+      supabase.from("faq_items").select("id, question, faq_categories(name)").ilike("question", `%${q}%`).limit(5),
+      // Surveys
+      supabase.from("surveys").select("id, title, active").ilike("title", `%${q}%`).limit(5),
+    ]);
 
-    for (const p of pages || []) {
-      searchResults.push({
-        id: `page-${p.id}`,
-        type: "page",
-        title: p.title,
-        subtitle: p.is_group ? "Seção" : `/pagina/${p.slug}`,
-        icon: p.icon,
-        href: p.is_group ? "/cms" : `/pagina/${p.slug}`,
+    // Pages
+    for (const p of pages.data || []) {
+      all.push({
+        id: `page-${p.id}`, type: "page", title: p.title,
+        subtitle: p.is_group ? "Seção" : "Página",
+        icon: p.icon, href: p.is_group ? "/cms" : `/pagina/${p.slug}`,
       });
     }
 
-    // Search items (search in data jsonb via text cast — all statuses)
-    const { data: items } = await supabase
-      .from("cms_items")
-      .select("id, data, collection_id, status")
-      .ilike("data::text", `%${q}%`)
-      .limit(15);
-
-    if (items && items.length > 0) {
-      // Get collection info for these items
-      const collectionIds = [...new Set(items.map((i) => i.collection_id))];
-      const { data: collections } = await supabase
-        .from("cms_collections")
-        .select("id, name, slug")
-        .in("id", collectionIds);
-
-      // Get page slugs for collections
-      const { data: pageLinks } = await supabase
-        .from("cms_page_collections")
-        .select("collection_id, page:cms_pages(slug)")
-        .in("collection_id", collectionIds)
-        .eq("role", "main");
-
-      const colMap = new Map((collections || []).map((c) => [c.id, c]));
-      const pageMap = new Map((pageLinks || []).map((pl) => {
+    // CMS Items
+    if (items.data && items.data.length > 0) {
+      const collectionIds = [...new Set(items.data.map((i) => i.collection_id))];
+      const [cols, pageLinks] = await Promise.all([
+        supabase.from("cms_collections").select("id, name, slug").in("id", collectionIds),
+        supabase.from("cms_page_collections").select("collection_id, page:cms_pages(slug)").in("collection_id", collectionIds).eq("role", "main"),
+      ]);
+      const colMap = new Map((cols.data || []).map((c) => [c.id, c]));
+      const pageMap = new Map((pageLinks.data || []).map((pl) => {
         const page = Array.isArray(pl.page) ? pl.page[0] : pl.page;
         return [pl.collection_id, page?.slug || ""];
       }));
 
-      for (const item of items) {
+      for (const item of items.data) {
         const d = item.data as Record<string, unknown>;
-        // Try common title fields, fallback to first string value
         let title = String(d.titulo || d.title || d.nome || "").trim();
         if (!title) {
           const firstStr = Object.values(d).find((v) => typeof v === "string" && v.length > 2 && !String(v).startsWith("http"));
           title = firstStr ? String(firstStr).replace(/<[^>]*>/g, "").trim().slice(0, 60) : "";
         }
         if (!title) continue;
-
         const col = colMap.get(item.collection_id);
         const pageSlug = pageMap.get(item.collection_id);
-        const statusLabel = item.status === "draft" ? " · Rascunho" : "";
-
-        searchResults.push({
-          id: `item-${item.id}`,
-          type: "item",
-          title,
-          subtitle: (col?.name || "") + statusLabel,
-          icon: "file",
-          href: pageSlug ? `/pagina/${pageSlug}` : `/cms/${col?.slug || ""}`,
+        all.push({
+          id: `item-${item.id}`, type: "item", title,
+          subtitle: (col?.name || "") + (item.status === "draft" ? " · Rascunho" : ""),
+          icon: "file", href: pageSlug ? `/pagina/${pageSlug}` : `/cms/${col?.slug || ""}`,
         });
       }
     }
 
-    setResults(searchResults);
+    // Franchises
+    for (const f of franchises.data || []) {
+      all.push({
+        id: `franchise-${f.id}`, type: "franchise", title: f.name,
+        subtitle: [f.city, f.segment === "multimarca_pdv" ? "Multimarca" : "Franquia"].filter(Boolean).join(" · "),
+        icon: "building", href: `/franquias/${f.slug}`,
+      });
+    }
+
+    // Products
+    for (const p of products.data || []) {
+      all.push({
+        id: `product-${p.id}`, type: "product", title: p.name,
+        subtitle: [p.sku, p.category].filter(Boolean).join(" · "),
+        icon: "package", href: "/produtos",
+      });
+    }
+
+    // Orders
+    for (const o of orders.data || []) {
+      const fname = (Array.isArray(o.franchises) ? o.franchises[0] : o.franchises) as { name: string } | null;
+      const oc = o.purchase_order || `#${o.id.slice(0, 8)}`;
+      all.push({
+        id: `order-${o.id}`, type: "order", title: oc,
+        subtitle: [fname?.name, o.status, `R$ ${Number(o.total).toFixed(2)}`].filter(Boolean).join(" · "),
+        icon: "cart", href: "/gestao-de-pedidos",
+      });
+    }
+
+    // Users
+    for (const u of profiles.data || []) {
+      const fname = (Array.isArray(u.franchises) ? u.franchises[0] : u.franchises) as { name: string } | null;
+      all.push({
+        id: `user-${u.id}`, type: "user", title: u.full_name,
+        subtitle: fname?.name || "Sem franquia",
+        icon: "users", href: u.franchise_id ? `/franquias/${u.franchise_id}` : "/usuarios",
+      });
+    }
+
+    // Announcements
+    for (const a of announcements.data || []) {
+      all.push({
+        id: `ann-${a.id}`, type: "announcement", title: a.title,
+        subtitle: a.priority === "urgent" ? "Urgente" : a.priority === "pinned" ? "Fixado" : "Comunicado",
+        icon: "message", href: "/comunicados",
+      });
+    }
+
+    // FAQ
+    for (const f of faqItems.data || []) {
+      const cat = (Array.isArray(f.faq_categories) ? f.faq_categories[0] : f.faq_categories) as { name: string } | null;
+      all.push({
+        id: `faq-${f.id}`, type: "faq", title: f.question,
+        subtitle: cat?.name || "FAQ",
+        icon: "help", href: "/faq",
+      });
+    }
+
+    // Surveys
+    for (const s of surveys.data || []) {
+      all.push({
+        id: `survey-${s.id}`, type: "survey", title: s.title,
+        subtitle: s.active ? "Ativa" : "Inativa",
+        icon: "chart", href: "/pesquisas",
+      });
+    }
+
+    setResults(all);
     setLoading(false);
   }, []);
 
@@ -166,6 +239,15 @@ export function GlobalSearch() {
   function resolveIcon(icon: string): React.ElementType {
     return getIconComponent(icon) || ICON_MAP[icon] || FileText;
   }
+
+  // Group results by type
+  const grouped = results.reduce<Record<string, SearchResult[]>>((acc, r) => {
+    if (!acc[r.type]) acc[r.type] = [];
+    acc[r.type].push(r);
+    return acc;
+  }, {});
+
+  const typeOrder: SearchResult["type"][] = ["page", "item", "franchise", "product", "order", "user", "announcement", "faq", "survey"];
 
   return (
     <>
@@ -205,7 +287,7 @@ export function GlobalSearch() {
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar páginas, campanhas, materiais..."
+                placeholder="Buscar páginas, produtos, pedidos, franquias..."
                 className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none"
               />
               {query && (
@@ -219,7 +301,7 @@ export function GlobalSearch() {
             <div className="max-h-[50vh] overflow-y-auto">
               {!query && (
                 <p className="px-4 py-6 text-center text-sm text-ink-400">
-                  Digite para buscar páginas, campanhas, materiais...
+                  Digite para buscar em todos os módulos
                 </p>
               )}
 
@@ -235,54 +317,35 @@ export function GlobalSearch() {
 
               {results.length > 0 && (
                 <div className="py-2">
-                  {/* Pages */}
-                  {results.filter((r) => r.type === "page").length > 0 && (
-                    <div>
-                      <p className="px-4 py-1.5 text-[10px] font-semibold text-ink-400 uppercase tracking-wider">Páginas</p>
-                      {results.filter((r) => r.type === "page").map((r) => {
-                        const Icon = resolveIcon(r.icon);
-                        return (
-                          <button
-                            key={r.id}
-                            onClick={() => navigate(r.href)}
-                            className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-ink-50 transition-colors"
-                          >
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-olive-soft">
-                              <Icon size={14} className="text-brand-olive" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-ink-900 truncate">{r.title}</p>
-                              <p className="text-[10px] text-ink-400">{r.subtitle}</p>
-                            </div>
-                            <ArrowRight size={12} className="text-ink-300 shrink-0" />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Items */}
-                  {results.filter((r) => r.type === "item").length > 0 && (
-                    <div>
-                      <p className="px-4 py-1.5 text-[10px] font-semibold text-ink-400 uppercase tracking-wider">Conteúdos</p>
-                      {results.filter((r) => r.type === "item").map((r) => (
-                        <button
-                          key={r.id}
-                          onClick={() => navigate(r.href)}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-ink-50 transition-colors"
-                        >
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink-50">
-                            <FileText size={14} className="text-ink-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-ink-900 truncate">{r.title}</p>
-                            <p className="text-[10px] text-ink-400">{r.subtitle}</p>
-                          </div>
-                          <ArrowRight size={12} className="text-ink-300 shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {typeOrder.map((type) => {
+                    const items = grouped[type];
+                    if (!items || items.length === 0) return null;
+                    const config = TYPE_CONFIG[type];
+                    return (
+                      <div key={type}>
+                        <p className="px-4 py-1.5 text-[10px] font-semibold text-ink-400 uppercase tracking-wider">{config.label}</p>
+                        {items.map((r) => {
+                          const Icon = r.type === "page" ? resolveIcon(r.icon) : config.icon;
+                          return (
+                            <button
+                              key={r.id}
+                              onClick={() => navigate(r.href)}
+                              className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-ink-50 transition-colors"
+                            >
+                              <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", config.bg)}>
+                                <Icon size={14} className={config.color} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-ink-900 truncate">{r.title}</p>
+                                <p className="text-[10px] text-ink-400 truncate">{r.subtitle}</p>
+                              </div>
+                              <ArrowRight size={12} className="text-ink-300 shrink-0" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
