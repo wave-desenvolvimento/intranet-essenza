@@ -5,12 +5,13 @@ import { revalidatePath } from "next/cache";
 import { getResend, FROM_EMAIL } from "@/lib/email";
 import { OrderNotificationEmail } from "@/emails/order-notification";
 import { notifyByPermission, notifyFranchise } from "@/app/(dashboard)/notifications-actions";
-import { requirePermission } from "@/lib/permissions";
+import { requireAuth, requirePermission } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
 // === Products ===
 
 export async function getProducts() {
+  await requireAuth();
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
@@ -20,6 +21,7 @@ export async function getProducts() {
 }
 
 export async function getActiveProducts() {
+  await requireAuth();
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
@@ -267,12 +269,14 @@ const STATUS_LABELS: Record<string, string> = {
 // === Payment Plans & Shipping Types ===
 
 export async function getPaymentPlans() {
+  await requireAuth();
   const supabase = await createClient();
   const { data } = await supabase.from("payment_plans").select("*").eq("active", true).order("sort_order");
   return data || [];
 }
 
 export async function getShippingTypes() {
+  await requireAuth();
   const supabase = await createClient();
   const { data } = await supabase.from("shipping_types").select("*").eq("active", true).order("sort_order");
   return data || [];

@@ -8,6 +8,7 @@ import { requirePermission, getUserRoleLevel } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
 export async function getUsers() {
+  const p = await requirePermission("usuarios", "view"); if (p.error) return [];
   const supabase = await createClient();
   const { data: profiles } = await supabase
     .from("profiles")

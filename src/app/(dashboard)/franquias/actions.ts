@@ -97,6 +97,7 @@ function extractFranchiseFields(formData: FormData) {
 }
 
 export async function getCommercialUsers() {
+  await requireAuth();
   const supabase = await createClient();
   const { data: commercialRole } = await supabase.from("roles").select("id").eq("name", "Comercial Matriz").single();
   if (!commercialRole) return [];
