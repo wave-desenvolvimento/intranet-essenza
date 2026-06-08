@@ -4,10 +4,11 @@ import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import {
   Plus, Database, Pencil, Trash2, X, FileText, Layers, Image,
-  Megaphone, Folder, Search, Copy,
+  Megaphone, Folder, Search, Copy, Settings,
 } from "lucide-react";
 import { createCollection, updateCollection, deleteCollection, duplicateCollection } from "./actions";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipProvider } from "@/components/ui/tooltip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -135,15 +136,25 @@ export function CmsOverview({ collections }: { collections: Collection[] }) {
           <span>{c.items.length} itens</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(c); }} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={13} /></button>
-          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDuplicate(c.id); }} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Duplicar"><Copy size={13} /></button>
-          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(c.id); }} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors" title="Remover"><Trash2 size={13} /></button>
+          <Tooltip content="Editar coleção">
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(c); }} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"><Pencil size={13} /></button>
+          </Tooltip>
+          <Tooltip content="Configurar campos">
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/cms/${c.slug}?campos=1`; }} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"><Settings size={13} /></button>
+          </Tooltip>
+          <Tooltip content="Duplicar coleção">
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDuplicate(c.id); }} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"><Copy size={13} /></button>
+          </Tooltip>
+          <Tooltip content="Remover coleção">
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(c.id); }} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors"><Trash2 size={13} /></button>
+          </Tooltip>
         </div>
       </Link>
     );
   }
 
   return (
+    <TooltipProvider>
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -261,5 +272,6 @@ export function CmsOverview({ collections }: { collections: Collection[] }) {
       )}
       <ConfirmDialog {...dialogProps} />
     </div>
+    </TooltipProvider>
   );
 }

@@ -87,9 +87,15 @@ export function CollectionDetail({ collection, fields, items }: Props) {
     startTransition(async () => { await reorderFields(ids); });
   });
 
-  // Sheets
+  // Sheets — auto-open campos if ?campos=1
   const [itemSheet, setItemSheet] = useState(false);
-  const [schemaSheet, setSchemaSheet] = useState(false);
+  const [schemaSheet, setSchemaSheet] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("campos") === "1";
+    }
+    return false;
+  });
   const [fieldSheet, setFieldSheet] = useState(false);
 
   // Item editing

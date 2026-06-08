@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useTransition } from "react";
 import {
   BarChart3, Eye, Download, Users, Building2, TrendingUp, FileText,
   ShoppingCart, DollarSign, Package, ArrowUpRight, ArrowDownRight,
-  FileSpreadsheet, Check,
+  FileSpreadsheet, Check, CalendarDays, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
+import { getAnalyticsDashboard, getOrdersAnalytics } from "../analytics-actions";
 
 interface TopItem {
   itemId: string;
@@ -82,10 +83,76 @@ const EXPORT_SECTIONS = [
 
 type ExportKey = (typeof EXPORT_SECTIONS)[number]["key"];
 
-export function AnalyticsContent({ data, ordersData }: Props) {
+const PERIOD_OPTIONS = [
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "30d", label: "Últimos 30 dias" },
+  { value: "90d", label: "Últimos 90 dias" },
+  { value: "month", label: "Este mês" },
+  { value: "prev_month", label: "Mês anterior" },
+  { value: "year", label: "Este ano" },
+  { value: "custom", label: "Personalizado" },
+];
+
+function getPeriodDates(period: string): { from: string; to: string; label: string } {
+  const now = new Date();
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  switch (period) {
+    case "7d": return { from: new Date(now.getTime() - 7 * 86400000).toISOString(), to: endOfDay.toISOString(), label: "últimos 7 dias" };
+    case "90d": return { from: new Date(now.getTime() - 90 * 86400000).toISOString(), to: endOfDay.toISOString(), label: "últimos 90 dias" };
+    case "month": {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: start.toISOString(), to: endOfDay.toISOString(), label: "este mês" };
+    }
+    case "prev_month": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      return { from: start.toISOString(), to: end.toISOString(), label: "mês anterior" };
+    }
+    case "year": {
+      const start = new Date(now.getFullYear(), 0, 1);
+      return { from: start.toISOString(), to: endOfDay.toISOString(), label: "este ano" };
+    }
+    default: return { from: new Date(now.getTime() - 30 * 86400000).toISOString(), to: endOfDay.toISOString(), label: "últimos 30 dias" };
+  }
+}
+
+export function AnalyticsContent({ data: initialData, ordersData: initialOrdersData }: Props) {
+  const [data, setData] = useState(initialData);
+  const [ordersData, setOrdersData] = useState(initialOrdersData);
   const [tab, setTab] = useState<"overview" | "franchises" | "orders">("overview");
   const [showExport, setShowExport] = useState(false);
   const [selectedSections, setSelectedSections] = useState<Set<ExportKey>>(new Set(EXPORT_SECTIONS.map((s) => s.key)));
+  const [period, setPeriod] = useState("30d");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [isRefreshing, startRefresh] = useTransition();
+
+  function handlePeriodChange(value: string) {
+    setPeriod(value);
+    if (value !== "custom") {
+      const { from, to } = getPeriodDates(value);
+      startRefresh(async () => {
+        const [newData, newOrders] = await Promise.all([getAnalyticsDashboard(from, to), getOrdersAnalytics(from, to)]);
+        if (!("error" in newData)) setData(newData);
+        if (!("error" in newOrders)) setOrdersData(newOrders);
+      });
+    }
+  }
+
+  function applyCustomPeriod() {
+    if (!customFrom || !customTo) return;
+    const from = new Date(customFrom).toISOString();
+    const to = new Date(customTo + "T23:59:59").toISOString();
+    startRefresh(async () => {
+      const [newData, newOrders] = await Promise.all([getAnalyticsDashboard(from, to), getOrdersAnalytics(from, to)]);
+      if (!("error" in newData)) setData(newData);
+      if (!("error" in newOrders)) setOrdersData(newOrders);
+    });
+  }
+
+  const periodLabel = period === "custom" && customFrom && customTo
+    ? `${new Date(customFrom).toLocaleDateString("pt-BR")} — ${new Date(customTo).toLocaleDateString("pt-BR")}`
+    : getPeriodDates(period).label;
 
   const maxViewed = data.topViewed[0]?.count || 1;
   const maxDownloaded = data.topDownloaded[0]?.count || 1;
@@ -193,12 +260,39 @@ export function AnalyticsContent({ data, ordersData }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-ink-900">Relatórios</h1>
-          <p className="text-sm text-ink-500">Métricas de uso e vendas dos últimos 30 dias</p>
+          <h1 className="text-lg font-semibold text-ink-900">
+            Relatórios
+            {isRefreshing && <Loader2 size={14} className="inline-block ml-2 animate-spin text-ink-400" />}
+          </h1>
+          <p className="text-sm text-ink-500">Métricas de uso e vendas — {periodLabel}</p>
         </div>
-        <div className="relative">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Period filter */}
+          <div className="relative">
+            <CalendarDays size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+            <select
+              value={period}
+              onChange={(e) => handlePeriodChange(e.target.value)}
+              className="h-9 rounded-lg border border-ink-100 bg-white pl-8 pr-8 text-sm text-ink-700 focus:border-brand-olive focus:outline-none appearance-none"
+              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center" }}
+            >
+              {PERIOD_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          {period === "custom" && (
+            <div className="flex items-center gap-1.5">
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-9 rounded-lg border border-ink-100 bg-white px-2 text-sm text-ink-700 focus:border-brand-olive focus:outline-none" />
+              <span className="text-xs text-ink-400">até</span>
+              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9 rounded-lg border border-ink-100 bg-white px-2 text-sm text-ink-700 focus:border-brand-olive focus:outline-none" />
+              <button onClick={applyCustomPeriod} disabled={!customFrom || !customTo || isRefreshing} className="h-9 rounded-lg bg-brand-olive px-3 text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-50 transition-colors">
+                Aplicar
+              </button>
+            </div>
+          )}
+          {/* Export */}
+          <div className="relative">
           <button
             onClick={() => setShowExport(!showExport)}
             className="flex items-center gap-2 rounded-lg border border-ink-100 px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
@@ -249,6 +343,7 @@ export function AnalyticsContent({ data, ordersData }: Props) {
               </div>
             </>
           )}
+        </div>
         </div>
       </div>
 

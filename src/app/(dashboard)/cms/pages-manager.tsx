@@ -19,6 +19,7 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import { Sheet } from "@/components/ui/sheet";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirm } from "@/hooks/use-confirm";
+import { Tooltip, TooltipProvider } from "@/components/ui/tooltip";
 import { IconPicker, getIconComponent } from "@/components/ui/icon-picker";
 
 const VIEW_TYPE_OPTIONS = [
@@ -133,11 +134,11 @@ function SortablePageRow({
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        <button onClick={() => onEdit(page)} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={13} /></button>
+        <Tooltip content="Editar página"><button onClick={() => onEdit(page)} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"><Pencil size={13} /></button></Tooltip>
         {!isSystem && (
-          <button onClick={() => onDuplicate(page.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Duplicar"><Copy size={13} /></button>
+          <Tooltip content="Duplicar página"><button onClick={() => onDuplicate(page.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"><Copy size={13} /></button></Tooltip>
         )}
-        <button onClick={() => onDelete(page.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors" title="Remover"><Trash2 size={13} /></button>
+        <Tooltip content="Remover página"><button onClick={() => onDelete(page.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors"><Trash2 size={13} /></button></Tooltip>
         {!page.is_group && (
           <a
             href={isSystem && page.href ? page.href : `/pagina/${page.slug}`}
@@ -186,8 +187,8 @@ function SortableSection({
             <Cog size={8} /> Sistema
           </span>
         )}
-        <button onClick={() => onEdit(group)} className="rounded-md p-0.5 text-ink-300 hover:text-ink-500" title="Editar seção"><Pencil size={10} /></button>
-        <button onClick={() => onDelete(group.id)} disabled={isPending} className="rounded-md p-0.5 text-ink-300 hover:text-danger" title="Remover"><Trash2 size={10} /></button>
+        <Tooltip content="Editar seção"><button onClick={() => onEdit(group)} className="rounded-md p-0.5 text-ink-300 hover:text-ink-500"><Pencil size={10} /></button></Tooltip>
+        <Tooltip content="Remover seção"><button onClick={() => onDelete(group.id)} disabled={isPending} className="rounded-md p-0.5 text-ink-300 hover:text-danger"><Trash2 size={10} /></button></Tooltip>
       </div>
       {childrenContent}
     </div>
@@ -467,6 +468,7 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
   const editingIsSystem = editing?.page_type === "system";
 
   return (
+    <TooltipProvider>
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -654,5 +656,6 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
       </Sheet>
       <ConfirmDialog {...dialogProps} />
     </div>
+    </TooltipProvider>
   );
 }

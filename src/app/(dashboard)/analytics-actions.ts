@@ -31,25 +31,28 @@ export async function trackEvent(
   });
 }
 
-export async function getAnalyticsDashboard() {
+export async function getAnalyticsDashboard(from?: string, to?: string) {
   const p = await requirePermission("relatorios", "view"); if (p.error) return p;
   const supabase = await createClient();
 
-  // Top items by views (last 30 days)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const dateFrom = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const dateTo = to || new Date().toISOString();
+  const thirtyDaysAgo = dateFrom;
 
   const { data: topViewed } = await supabase
     .from("analytics_events")
     .select("item_id, cms_items!inner(data, collection_id, cms_collections(name))")
     .eq("event_type", "view")
-    .gte("created_at", thirtyDaysAgo)
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo)
     .limit(500);
 
   const { data: topDownloaded } = await supabase
     .from("analytics_events")
     .select("item_id, cms_items!inner(data, collection_id, cms_collections(name))")
     .eq("event_type", "download")
-    .gte("created_at", thirtyDaysAgo)
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo)
     .limit(500);
 
   // Aggregate by item
@@ -70,7 +73,8 @@ export async function getAnalyticsDashboard() {
   const { data: franchiseEvents } = await supabase
     .from("analytics_events")
     .select("franchise_id, event_type, franchises(name)")
-    .gte("created_at", thirtyDaysAgo)
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo)
     .limit(2000);
 
   function aggregateByFranchise(events: typeof franchiseEvents) {
@@ -91,19 +95,22 @@ export async function getAnalyticsDashboard() {
     .from("analytics_events")
     .select("*", { count: "exact", head: true })
     .eq("event_type", "view")
-    .gte("created_at", thirtyDaysAgo);
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo);
 
   const { count: totalDownloads } = await supabase
     .from("analytics_events")
     .select("*", { count: "exact", head: true })
     .eq("event_type", "download")
-    .gte("created_at", thirtyDaysAgo);
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo);
 
   // Active users (unique users with events)
   const { data: activeUserIds } = await supabase
     .from("analytics_events")
     .select("user_id")
-    .gte("created_at", thirtyDaysAgo)
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo)
     .limit(5000);
 
   const uniqueActiveUsers = new Set((activeUserIds || []).map((e) => e.user_id)).size;
@@ -120,33 +127,36 @@ export async function getAnalyticsDashboard() {
   };
 }
 
-export async function getOrdersAnalytics() {
+export async function getOrdersAnalytics(from?: string, to?: string) {
   const p = await requirePermission("relatorios", "view"); if (p.error) return p;
   const supabase = await createClient();
 
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  const dateFrom = from || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const dateTo = to || now.toISOString();
+  // Previous period: same duration before dateFrom
+  const periodMs = new Date(dateTo).getTime() - new Date(dateFrom).getTime();
+  const prevFrom = new Date(new Date(dateFrom).getTime() - periodMs).toISOString();
 
-  // All orders last 30 days
   const { data: recentOrders } = await supabase
     .from("orders")
     .select("id, status, total, franchise_id, created_at, franchises(name, segment), items:order_items(product_name, quantity, subtotal)")
-    .gte("created_at", thirtyDaysAgo)
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo)
     .order("created_at", { ascending: false });
 
-  // Previous 30 days for comparison
+  // Previous period for comparison
   const { count: prevCount } = await supabase
     .from("orders")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", sixtyDaysAgo)
-    .lt("created_at", thirtyDaysAgo);
+    .gte("created_at", prevFrom)
+    .lt("created_at", dateFrom);
 
   const { data: prevTotalData } = await supabase
     .from("orders")
     .select("total")
-    .gte("created_at", sixtyDaysAgo)
-    .lt("created_at", thirtyDaysAgo);
+    .gte("created_at", prevFrom)
+    .lt("created_at", dateFrom);
 
   const orders = recentOrders || [];
   const prevRevenue = (prevTotalData || []).reduce((s, o) => s + Number(o.total), 0);
