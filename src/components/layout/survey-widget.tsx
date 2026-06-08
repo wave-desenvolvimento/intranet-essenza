@@ -26,7 +26,7 @@ interface Props {
 }
 
 export function SurveyWidget({ surveys }: Props) {
-  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<"closed" | "survey" | "confirm">("closed");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [comment, setComment] = useState("");
@@ -55,13 +55,22 @@ export function SurveyWidget({ surveys }: Props) {
     setComment("");
     setStep(0);
     setSubmitted(false);
-    setOpen(true);
+    setView("survey");
   }
 
-  function close() {
-    setOpen(false);
+  function tryClose() {
+    // Show confirmation instead of closing directly
+    setView("confirm");
+  }
+
+  function confirmClose() {
+    setView("closed");
     setActiveId(null);
     setStep(0);
+  }
+
+  function backToSurvey() {
+    setView("survey");
   }
 
   function handleSubmit() {
@@ -74,7 +83,7 @@ export function SurveyWidget({ surveys }: Props) {
       const r = await submitResponse(activeSurvey.id, answerList, comment);
       if (r?.error) return;
       setSubmitted(true);
-      setTimeout(() => close(), 2000);
+      setTimeout(() => { setView("closed"); setActiveId(null); }, 2000);
     });
   }
 
@@ -101,21 +110,18 @@ export function SurveyWidget({ surveys }: Props) {
         <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-danger animate-ping opacity-50" />
       </button>
 
-      {/* Modal */}
-      {open && activeSurvey && (
+      {/* Survey Modal */}
+      {view === "survey" && activeSurvey && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={close} />
+          <div className="absolute inset-0 bg-black/40" onClick={tryClose} />
           <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-ink-100 bg-brand-olive-soft/30">
-              <div>
+            <div className="px-6 py-4 border-b border-ink-100 bg-brand-olive-soft/30">
+              <div className="flex items-start justify-between gap-3">
                 <h2 className="text-sm font-semibold text-ink-900">{activeSurvey.title}</h2>
-                {activeSurvey.description && <p className="text-xs text-ink-500 mt-0.5">{activeSurvey.description}</p>}
+                <button onClick={tryClose} className="shrink-0 rounded-full p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100"><X size={16} /></button>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={close} className="text-[10px] text-ink-400 hover:text-ink-600">Responder depois</button>
-                <button onClick={close} className="rounded-full p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100"><X size={16} /></button>
-              </div>
+              {activeSurvey.description && <p className="text-xs text-ink-500 mt-1 line-clamp-3">{activeSurvey.description}</p>}
             </div>
 
             {/* Progress */}
@@ -147,10 +153,10 @@ export function SurveyWidget({ surveys }: Props) {
 
                   {currentQuestion.type === "nps" && (
                     <div>
-                      <div className="flex items-center gap-1 flex-wrap">
+                      <div className="grid grid-cols-11 gap-1">
                         {Array.from({ length: 11 }, (_, i) => i).map((n) => (
                           <button key={n} type="button" onClick={() => setAnswers((p) => ({ ...p, [currentQuestion.id]: String(n) }))} className={cn(
-                            "flex items-center justify-center h-10 w-10 rounded-xl text-sm font-semibold transition-all",
+                            "flex items-center justify-center aspect-square rounded-lg text-sm font-semibold transition-all",
                             answers[currentQuestion.id] === String(n)
                               ? (n <= 6 ? "bg-danger text-white scale-110" : n <= 8 ? "bg-warning text-white scale-110" : "bg-success text-white scale-110")
                               : "border border-ink-100 text-ink-600 hover:bg-ink-50"
@@ -221,9 +227,8 @@ export function SurveyWidget({ surveys }: Props) {
             {!submitted && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-ink-100 bg-ink-50/30">
                 <button
-                  onClick={() => setStep(Math.max(0, step - 1))}
-                  disabled={step === 0}
-                  className="text-xs font-medium text-ink-500 hover:text-ink-700 disabled:opacity-30"
+                  onClick={() => step === 0 ? tryClose() : setStep(step - 1)}
+                  className="text-xs font-medium text-ink-500 hover:text-ink-700"
                 >
                   Voltar
                 </button>
@@ -246,6 +251,38 @@ export function SurveyWidget({ surveys }: Props) {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {view === "confirm" && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-8 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-olive-soft mx-auto mb-4">
+                <BarChart3 size={24} className="text-brand-olive" />
+              </div>
+              <h3 className="text-base font-semibold text-ink-900">Sua opinião é muito importante!</h3>
+              <p className="text-sm text-ink-500 mt-2 leading-relaxed">
+                Leva menos de 1 minuto. Ajude-nos a melhorar sua experiência.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 px-6 pb-6">
+              <button
+                onClick={backToSurvey}
+                className="w-full rounded-xl bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors"
+              >
+                Responder agora
+              </button>
+              <button
+                onClick={confirmClose}
+                className="w-full rounded-xl px-4 py-2.5 text-xs text-ink-400 hover:text-ink-600 transition-colors"
+              >
+                Responder depois
+              </button>
+            </div>
           </div>
         </div>
       )}

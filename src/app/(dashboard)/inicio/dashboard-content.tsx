@@ -221,37 +221,56 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
 
       {/* Announcements */}
       {announcements.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {announcements.map((a) => {
             const isUrgent = a.priority === "urgent";
             const isPinned = a.priority === "pinned";
             const PriorityIcon = isPinned ? Pin : isUrgent ? AlertTriangle : Megaphone;
-            const priorityColor = isPinned ? "text-brand-olive" : isUrgent ? "text-danger" : "text-info";
-            const priorityBg = isPinned ? "bg-brand-olive-soft" : isUrgent ? "bg-danger-soft" : "bg-info-soft";
+            const borderColor = isUrgent ? "border-danger/40 ring-1 ring-danger/10" : isPinned ? "border-brand-olive/40 ring-1 ring-brand-olive/10" : "border-ink-100";
+            const accentBg = isUrgent ? "bg-danger" : isPinned ? "bg-brand-olive" : "bg-brand-olive";
+            const bodyText = a.body.replace(/<[^>]*>/g, "").trim();
+
             return (
-              <Link key={a.id} href="/comunicados" className="group rounded-xl border border-ink-100 bg-white overflow-hidden hover:border-brand-olive/30 transition-colors">
-                {a.banner_url && (
-                  <div className="w-full h-28 sm:h-36 overflow-hidden">
-                    <img src={a.banner_url} alt="" className="w-full h-full object-cover" />
+              <Link key={a.id} href="/comunicados" className={cn("group relative rounded-2xl border bg-white overflow-hidden hover:shadow-md transition-all", borderColor)}>
+                {/* Accent bar */}
+                <div className={cn("absolute top-0 left-0 bottom-0 w-1 rounded-l-2xl", accentBg)} />
+
+                {a.banner_url ? (
+                  <div className="flex flex-col sm:flex-row">
+                    <div className="sm:w-48 sm:shrink-0 h-40 sm:h-auto overflow-hidden">
+                      <img src={a.banner_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    </div>
+                    <div className="flex-1 min-w-0 p-4 pl-5 sm:pl-4 flex flex-col justify-center">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <PriorityIcon size={14} className={isUrgent ? "text-danger" : "text-brand-olive"} />
+                        <span className="text-[10px] font-medium text-ink-400 uppercase tracking-wide">
+                          {isUrgent ? "Urgente" : isPinned ? "Fixado" : "Comunicado"}
+                        </span>
+                        <span className="text-[10px] text-ink-300 ml-auto">{new Date(a.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
+                      </div>
+                      <h3 className="text-base font-semibold text-ink-900 group-hover:text-brand-olive transition-colors leading-snug">{a.title}</h3>
+                      {bodyText && <p className="text-sm text-ink-500 line-clamp-2 mt-1.5 leading-relaxed">{bodyText.slice(0, 200)}</p>}
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-olive mt-3 group-hover:gap-2 transition-all">
+                        Ler mais <ArrowRight size={12} />
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 pl-5">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <PriorityIcon size={14} className={isUrgent ? "text-danger" : "text-brand-olive"} />
+                      <span className="text-[10px] font-medium text-ink-400 uppercase tracking-wide">
+                        {isUrgent ? "Urgente" : isPinned ? "Fixado" : "Comunicado"}
+                      </span>
+                      <span className="text-[10px] text-ink-300 ml-auto">{new Date(a.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
+                    </div>
+                    <h3 className="text-base font-semibold text-ink-900 group-hover:text-brand-olive transition-colors leading-snug">{a.title}</h3>
+                    {bodyText && <p className="text-sm text-ink-500 line-clamp-2 mt-1.5 leading-relaxed">{bodyText.slice(0, 200)}</p>}
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-olive mt-3 group-hover:gap-2 transition-all">
+                      Ler mais <ArrowRight size={12} />
+                    </span>
                   </div>
                 )}
-                <div className="flex items-start gap-3 px-4 py-3">
-                  <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg mt-0.5", priorityBg)}>
-                    <PriorityIcon size={14} className={priorityColor} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-ink-900 group-hover:text-brand-olive transition-colors">{a.title}</p>
-                      {(isUrgent || isPinned) && (
-                        <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-medium", priorityBg, priorityColor)}>
-                          {isPinned ? "Fixado" : "Urgente"}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-ink-500 line-clamp-1 mt-0.5">{a.body.replace(/<[^>]*>/g, "").slice(0, 120)}</p>
-                  </div>
-                  <span className="text-[10px] text-ink-400 shrink-0 mt-1">{new Date(a.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
-                </div>
               </Link>
             );
           })}
