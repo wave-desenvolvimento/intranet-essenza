@@ -40,9 +40,12 @@ interface Props {
 // Sample data for admin preview when no franchise is assigned
 const SAMPLE_FRANCHISE = {
   name: "Essenza Gramado",
+  razao_social: "Essenza Cosméticos Gramado Ltda",
   city: "Gramado",
   state: "RS",
-  address: "Av. das Hortênsias, 1234",
+  address: "Av. das Hortênsias",
+  address_number: "1234",
+  complemento: "Loja 5",
   neighborhood: "Centro",
   cep: "95670-000",
   phone: "(54) 3286-1234",
@@ -53,6 +56,7 @@ const SAMPLE_FRANCHISE = {
   tiktok: "@essenza.gramado",
   website: "essenzagramado.com.br",
   cnpj: "12.345.678/0001-90",
+  inscricao_estadual: "096/1234567",
   opening_hours: "Seg-Sáb 9h-19h",
   manager_name: "Maria Silva",
   logo_url: null,
@@ -177,11 +181,15 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
       // Resolve franchise variables
       const varMap: Record<string, string> = {
         nome: renderData.name || "",
+        razao_social: renderData.razao_social || "",
         cidade: renderData.city || "",
         estado: renderData.state || "",
         endereco: renderData.address || "",
+        numero: renderData.address_number || "",
+        complemento: renderData.complemento || "",
         bairro: renderData.neighborhood || "",
         cep: renderData.cep || "",
+        endereco_completo: [renderData.address, renderData.address_number, renderData.complemento, renderData.neighborhood, renderData.city, renderData.state, renderData.cep].filter(Boolean).join(", "),
         telefone: renderData.phone || "",
         whatsapp: renderData.whatsapp || "",
         email: renderData.email || "",
@@ -190,6 +198,7 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
         tiktok: renderData.tiktok || "",
         website: renderData.website || "",
         cnpj: renderData.cnpj || "",
+        inscricao_estadual: renderData.inscricao_estadual || "",
         horario: renderData.opening_hours || "",
         responsavel: renderData.manager_name || "",
       };

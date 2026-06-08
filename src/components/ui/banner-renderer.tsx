@@ -9,6 +9,8 @@ interface FranchiseData {
   city: string | null;
   state: string | null;
   address: string | null;
+  address_number: string | null;
+  complemento: string | null;
   neighborhood: string | null;
   cep: string | null;
   phone: string | null;
@@ -19,29 +21,39 @@ interface FranchiseData {
   tiktok: string | null;
   website: string | null;
   cnpj: string | null;
+  razao_social: string | null;
+  inscricao_estadual: string | null;
   opening_hours: string | null;
   manager_name: string | null;
   logo_url: string | null;
 }
 
-const VARIABLE_MAP: Record<string, keyof FranchiseData> = {
-  nome: "name",
-  cidade: "city",
-  estado: "state",
-  endereco: "address",
-  bairro: "neighborhood",
-  cep: "cep",
-  telefone: "phone",
-  whatsapp: "whatsapp",
-  email: "email",
-  instagram: "instagram",
-  facebook: "facebook",
-  tiktok: "tiktok",
-  website: "website",
-  cnpj: "cnpj",
-  horario: "opening_hours",
-  responsavel: "manager_name",
-};
+function resolveVariable(variable: string, franchise: FranchiseData): string {
+  const map: Record<string, string | null> = {
+    nome: franchise.name,
+    razao_social: franchise.razao_social,
+    cidade: franchise.city,
+    estado: franchise.state,
+    endereco: franchise.address,
+    numero: franchise.address_number,
+    complemento: franchise.complemento,
+    bairro: franchise.neighborhood,
+    cep: franchise.cep,
+    endereco_completo: [franchise.address, franchise.address_number, franchise.complemento, franchise.neighborhood, franchise.city, franchise.state, franchise.cep].filter(Boolean).join(", "),
+    telefone: franchise.phone,
+    whatsapp: franchise.whatsapp,
+    email: franchise.email,
+    instagram: franchise.instagram,
+    facebook: franchise.facebook,
+    tiktok: franchise.tiktok,
+    website: franchise.website,
+    cnpj: franchise.cnpj,
+    inscricao_estadual: franchise.inscricao_estadual,
+    horario: franchise.opening_hours,
+    responsavel: franchise.manager_name,
+  };
+  return map[variable] || "";
+}
 
 function getQrValue(variable: string, franchise: FranchiseData): string {
   switch (variable) {
@@ -60,11 +72,6 @@ function getQrValue(variable: string, franchise: FranchiseData): string {
   }
 }
 
-function resolveVariable(variable: string, franchise: FranchiseData): string {
-  const key = VARIABLE_MAP[variable];
-  if (!key) return "";
-  return String(franchise[key] || "");
-}
 
 interface Props {
   overlays: BannerOverlay[];

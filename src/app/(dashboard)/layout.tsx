@@ -76,6 +76,7 @@ export default async function DashboardLayout({
           <div className="flex items-center gap-2 md:gap-3">
             <div data-tour="search"><GlobalSearch /></div>
             <div data-tour="notifications"><NotificationBell /></div>
+            <SurveyWidget surveys={pendingSurveys} />
             <HelpCenter />
             <div data-tour="user-menu"><UserMenu user={currentUser} /></div>
           </div>
@@ -87,7 +88,6 @@ export default async function DashboardLayout({
       <TourAutoStart />
       <InstallPrompt />
       <SwRegister />
-      <SurveyWidget surveys={pendingSurveys} />
       <Toaster position="bottom-right" richColors />
     </div>
   );

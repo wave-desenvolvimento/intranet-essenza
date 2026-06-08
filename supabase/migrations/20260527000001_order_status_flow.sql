@@ -4,16 +4,16 @@
 -- Integração externa dispara apenas após "aprovado"
 -- =============================================
 
--- 1. Alterar default de 'enviado' para 'pendente'
+-- 1. Dropar constraint antigo primeiro
+alter table public.orders drop constraint if exists orders_status_check;
+
+-- 2. Adicionar novo constraint com todos os status (antigos + novos)
+alter table public.orders add constraint orders_status_check
+  check (status in ('rascunho', 'enviado', 'pendente', 'aprovado', 'confirmado', 'separacao', 'faturado', 'entregue', 'cancelado'));
+
+-- 3. Alterar default de 'enviado' para 'pendente'
 alter table public.orders alter column status set default 'pendente';
 
--- 2. Migrar pedidos existentes com status 'enviado' para 'pendente'
+-- 4. Migrar pedidos existentes
 update public.orders set status = 'pendente' where status = 'enviado';
-
--- 3. Migrar pedidos com status 'rascunho' para 'pendente'
 update public.orders set status = 'pendente' where status = 'rascunho';
-
--- 4. Alterar constraint de check para novos status
-alter table public.orders drop constraint if exists orders_status_check;
-alter table public.orders add constraint orders_status_check
-  check (status in ('pendente', 'aprovado', 'confirmado', 'separacao', 'faturado', 'entregue', 'cancelado'));

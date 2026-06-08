@@ -136,7 +136,7 @@ export async function updateFranchise(formData: FormData) {
     .update({ ...fields, status })
     .eq("id", id);
 
-  if (error) return { error: "Erro ao atualizar franquia." };
+  if (error) return { error: `Erro ao atualizar franquia: ${error.message}` };
 
   await logAudit({ action: "update", entityType: "franchise", entityId: id, description: `Editou franquia "${fields.name}"` });
 

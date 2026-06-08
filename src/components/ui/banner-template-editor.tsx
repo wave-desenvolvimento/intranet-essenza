@@ -43,11 +43,15 @@ const FONT_OPTIONS = [
 
 export const FRANCHISE_VARIABLES = [
   { value: "nome", label: "Nome da franquia" },
+  { value: "razao_social", label: "Razão Social" },
   { value: "cidade", label: "Cidade" },
   { value: "estado", label: "Estado" },
   { value: "endereco", label: "Endereço" },
+  { value: "numero", label: "Número" },
+  { value: "complemento", label: "Complemento" },
   { value: "bairro", label: "Bairro" },
   { value: "cep", label: "CEP" },
+  { value: "endereco_completo", label: "Endereço completo" },
   { value: "telefone", label: "Telefone" },
   { value: "whatsapp", label: "WhatsApp" },
   { value: "email", label: "E-mail" },
@@ -56,6 +60,7 @@ export const FRANCHISE_VARIABLES = [
   { value: "tiktok", label: "TikTok" },
   { value: "website", label: "Website" },
   { value: "cnpj", label: "CNPJ" },
+  { value: "inscricao_estadual", label: "Inscrição Estadual" },
   { value: "horario", label: "Horário" },
   { value: "responsavel", label: "Responsável" },
 ];
