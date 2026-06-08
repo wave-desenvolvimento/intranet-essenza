@@ -1,8 +1,10 @@
-# Webhook de Integração — Pedidos Aprovados
+# Webhook de Integração — Pedidos Aprovados (Allcance)
 
 ## Visão Geral
 
-Quando um pedido muda para o status **aprovado** na intranet, um webhook (HTTP POST) é disparado automaticamente para o sistema externo configurado. Toda a lógica roda dentro do Supabase (trigger + pg_cron + pg_net), sem depender do Next.js.
+Quando um pedido muda para o status **aprovado** na intranet, um webhook (HTTP POST) é disparado automaticamente para o sistema Allcance. Toda a lógica roda dentro do Supabase (trigger + pg_cron + pg_net), sem depender do Next.js.
+
+A API key é armazenada de forma encriptada no **Supabase Vault** — nunca fica visível no banco.
 
 ---
 
@@ -10,38 +12,43 @@ Quando um pedido muda para o status **aprovado** na intranet, um webhook (HTTP P
 
 ```
 Pedido aprovado → Trigger no banco → Insere na webhook_queue → pg_cron (1 min)
-→ POST para URL configurada com API Key → Sucesso (delivered) ou Retry (até 5x)
+→ Busca API key do Vault → POST para URL configurada → Sucesso (delivered) ou Retry (até 5x)
 ```
 
 ---
 
 ## 1. Configuração
 
-### 1.1 Acessar o Supabase
+### 1.1 Configurar URL do endpoint
 
-1. Acesse o painel do Supabase: https://supabase.com/dashboard
-2. Selecione o projeto **Essenza** (ref: `vahjdglapjrjkgncbkze`)
-3. Vá em **Table Editor** → tabela `webhook_config`
-
-### 1.2 Atualizar a configuração
-
-Edite o registro `orders_approved` com os dados do sistema externo:
-
-| Campo | O que preencher | Exemplo |
-|---|---|---|
-| `url` | URL completa do endpoint que vai receber o POST | `https://erp.exemplo.com/api/webhooks/pedidos` |
-| `api_key` | Chave de autenticação fornecida pelo sistema externo | `sk_live_abc123def456` |
-| `active` | Marcar como `true` para ativar | `true` |
-
-**Via SQL Editor:**
+No **Supabase Dashboard > SQL Editor**:
 
 ```sql
 UPDATE webhook_config
-SET url = 'https://erp.exemplo.com/api/webhooks/pedidos',
-    api_key = 'sk_live_abc123def456',
+SET url = 'https://api.allcance.com.br/SEU_ENDPOINT',
     active = true
 WHERE name = 'orders_approved';
 ```
+
+### 1.2 Configurar API Key (encriptada no Vault)
+
+No **Supabase Dashboard > SQL Editor**:
+
+```sql
+INSERT INTO vault.secrets (name, secret, description)
+VALUES (
+  'webhook_api_key_orders_approved',
+  'SUA_API_KEY_ALLCANCE_AQUI',
+  'API key para webhook de pedidos aprovados - Allcance'
+)
+ON CONFLICT (name) DO UPDATE SET secret = EXCLUDED.secret, updated_at = now();
+```
+
+A key é encriptada automaticamente pelo Vault com `pgsodium`. O campo `api_key` na tabela `webhook_config` mostra apenas `***encrypted***`.
+
+### 1.3 Atualizar a API Key
+
+Mesmo comando do 1.2 — o `ON CONFLICT` atualiza o valor existente.
 
 > **IMPORTANTE:** Enquanto `active = false`, nenhum webhook será enviado, mesmo que pedidos sejam aprovados.
 
@@ -166,15 +173,14 @@ O sistema externo receberá um **POST** com um **array JSON** contendo o pedido:
 | `itens[].produto_nome` | `order_items.product_name` |
 | `comissoes_vendedores` | `profiles.external_id` + `profiles.comissao_percentual` |
 | `representada_*` | `webhook_config.metadata` (fixo) |
-```
 
 ### Headers
 
 | Header | Valor | Descrição |
 |---|---|---|
 | `Content-Type` | `application/json` | Sempre JSON |
-| `X-API-Key` | Valor do campo `api_key` da config | Autenticação |
-| `X-Webhook-Id` | UUID do item na fila | Idempotência — usar para evitar processar duplicatas |
+| `X-API-Key` | Valor decriptado do Vault | Autenticação |
+| `X-Webhook-Id` | UUID do item na fila | Idempotência |
 | `X-Webhook-Event` | `order.approved` | Tipo do evento |
 
 ---
@@ -200,25 +206,41 @@ Para o webhook montar o payload corretamente, os seguintes campos devem ser pree
 **Via SQL Editor:**
 
 ```sql
--- Exemplo: vincular franquia ao cliente na Allcance
+-- Vincular franquia ao cliente na Allcance
 UPDATE franchises SET external_id = 48330273, razao_social = 'EMPRESA LTDA', inscricao_estadual = '0590064258', address_number = '7' WHERE slug = 'essenza-marau';
 
--- Exemplo: vincular vendedor
+-- Vincular vendedor
 UPDATE profiles SET external_id = 674276, comissao_percentual = 1.5 WHERE id = 'uuid-do-vendedor';
 
--- Exemplo: vincular produto
+-- Vincular produto
 UPDATE products SET external_id = 206879199 WHERE sku = '1001';
 
--- Exemplo: vincular tabela de preço
+-- Vincular tabela de preço
 UPDATE product_prices SET external_id = 3217041 WHERE product_id = 'uuid-do-produto' AND segment = 'franquia';
 
--- Exemplo: vincular condição de pagamento
+-- Vincular condição de pagamento
 UPDATE payment_plans SET external_id = 2675221, forma_pagamento_external_id = 515394 WHERE name = '7 DIAS';
 ```
 
 ---
 
-## 4. Requisitos do sistema externo (Allcance)
+## 4. Segurança — API Key no Vault
+
+A API key **nunca** fica visível na tabela `webhook_config`. O campo `api_key` mostra `***encrypted***`.
+
+O valor real é armazenado no **Supabase Vault** (`vault.secrets`), encriptado com `pgsodium`.
+
+| Componente | Onde fica |
+|---|---|
+| URL do endpoint | `webhook_config.url` (texto puro) |
+| API key | `vault.secrets` (encriptada) |
+| Referência | `webhook_config.vault_secret_name` |
+
+A function `process_webhook_queue()` busca a key decriptada na hora de enviar via `get_webhook_api_key()`, que lê de `vault.decrypted_secrets`. A key decriptada existe apenas em memória durante a execução da function — nunca é persistida em texto puro.
+
+---
+
+## 5. Requisitos do sistema externo (Allcance)
 
 O endpoint que vai receber o webhook deve:
 
@@ -231,23 +253,23 @@ O endpoint que vai receber o webhook deve:
 
 ---
 
-## 5. Retry automático
+## 6. Retry automático
 
 Se o sistema externo falhar ou não responder, o webhook é reenviado com backoff exponencial:
 
 | Tentativa | Intervalo após falha |
 |---|---|
-| 1ª | Imediata (próximo ciclo de 1 min) |
-| 2ª | +2 minutos |
-| 3ª | +4 minutos |
-| 4ª | +8 minutos |
-| 5ª | +16 minutos |
+| 1a | Imediata (próximo ciclo de 1 min) |
+| 2a | +2 minutos |
+| 3a | +4 minutos |
+| 4a | +8 minutos |
+| 5a | +16 minutos |
 
 Após **5 tentativas falhadas**, o item é marcado como `failed` e não será mais reenviado automaticamente.
 
 ---
 
-## 6. Monitoramento
+## 7. Monitoramento
 
 ### Ver fila de webhooks
 
@@ -271,6 +293,12 @@ ORDER BY delivered_at DESC
 LIMIT 20;
 ```
 
+### Ver payload de um webhook específico
+
+```sql
+SELECT jsonb_pretty(payload) FROM webhook_queue WHERE id = 'uuid-do-item';
+```
+
 ### Reenviar um webhook que falhou
 
 ```sql
@@ -289,7 +317,7 @@ WHERE status = 'failed';
 
 ---
 
-## 7. Desativar temporariamente
+## 8. Desativar temporariamente
 
 Para pausar o envio de webhooks sem perder a fila:
 
@@ -305,26 +333,15 @@ UPDATE webhook_config SET active = true WHERE name = 'orders_approved';
 
 ---
 
-## 8. Alterar URL ou API Key
-
-```sql
-UPDATE webhook_config
-SET url = 'https://nova-url.com/webhook',
-    api_key = 'nova-api-key'
-WHERE name = 'orders_approved';
-```
-
-A alteração vale imediatamente para os próximos envios. Webhooks já na fila usarão a config atualizada.
-
----
-
 ## 9. Troubleshooting
 
 | Problema | Causa provável | Solução |
 |---|---|---|
 | Webhook não dispara | `active = false` na `webhook_config` | Ativar com `UPDATE webhook_config SET active = true ...` |
 | Webhook não dispara | Pedido não mudou para `aprovado` | Verificar se o status realmente mudou (não estava já aprovado) |
+| Status `failed` — "API key not found in vault" | Secret não inserida no vault | Inserir via SQL Editor: `INSERT INTO vault.secrets ...` |
 | Status `failed` após 5 tentativas | Sistema externo fora do ar ou rejeitando | Verificar `last_error` e `last_status_code` na `webhook_queue` |
 | Timeout (30s) | Sistema externo lento | Otimizar endpoint ou aumentar timeout no `check_webhook_responses` |
 | Pedido duplicado no sistema externo | Retry entregou mais de uma vez | Sistema externo deve usar `X-Webhook-Id` como chave de idempotência |
-| Jobs pg_cron não rodam | pg_cron desativado | Verificar em Database → Extensions se `pg_cron` está ativo |
+| Jobs pg_cron não rodam | pg_cron desativado | Verificar em Database > Extensions se `pg_cron` está ativo |
+| `external_id` null no payload | Campo não preenchido na tabela | Preencher `external_id` nas tabelas correspondentes (seção 3) |
