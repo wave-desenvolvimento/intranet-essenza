@@ -35,16 +35,16 @@ interface Props {
 }
 
 const STATUS_ICON: Record<string, React.ElementType> = {
-  enviado: Send, confirmado: CheckCircle, separacao: Clock, faturado: FileText, entregue: CheckCircle, cancelado: XCircle, rascunho: Clock,
+  pendente: Clock, aprovado: CheckCircle, confirmado: CheckCircle, separacao: Clock, faturado: FileText, entregue: CheckCircle, cancelado: XCircle,
 };
 const STATUS_LABEL: Record<string, string> = {
-  rascunho: "Rascunho", enviado: "Enviado", confirmado: "Confirmado", separacao: "Em Separação", faturado: "Faturado", entregue: "Entregue", cancelado: "Cancelado",
+  pendente: "Pendente", aprovado: "Aprovado", confirmado: "Confirmado", separacao: "Em Separação", faturado: "Faturado", entregue: "Entregue", cancelado: "Cancelado",
 };
 const STATUS_COLOR: Record<string, string> = {
-  enviado: "bg-info-soft text-info", confirmado: "bg-success-soft text-success",
+  pendente: "bg-warning-soft text-warning", aprovado: "bg-info-soft text-info", confirmado: "bg-success-soft text-success",
   separacao: "bg-warning-soft text-warning",
   faturado: "bg-brand-olive-soft text-brand-olive", entregue: "bg-brand-olive-soft text-brand-olive",
-  cancelado: "bg-danger-soft text-danger", rascunho: "bg-ink-100 text-ink-500",
+  cancelado: "bg-danger-soft text-danger",
 };
 
 function formatPrice(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
@@ -115,7 +115,7 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
     startTransition(async () => {
       const r = await createOrder(fd);
       if (r?.error) { toast.error(r.error); return; }
-      toast.success("Pedido enviado com sucesso!");
+      toast.success("Pedido criado com sucesso!");
       setCart([]);
       setNotes("");
       setTab("history");

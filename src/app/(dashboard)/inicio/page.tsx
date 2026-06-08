@@ -89,7 +89,7 @@ export default async function DashboardPage() {
     // Admin: see all orders
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
     const [{ count: pending }, { data: monthOrders }, { data: recent }] = await Promise.all([
-      supabase.from("orders").select("*", { count: "exact", head: true }).in("status", ["enviado", "aprovado"]),
+      supabase.from("orders").select("*", { count: "exact", head: true }).in("status", ["pendente"]),
       supabase.from("orders").select("total").gte("created_at", monthStart),
       supabase.from("orders").select("id, status, total, created_at, franchise:franchises(name)").order("created_at", { ascending: false }).limit(5),
     ]);
@@ -109,7 +109,7 @@ export default async function DashboardPage() {
       .eq("franchise_id", profile.franchise_id)
       .order("created_at", { ascending: false })
       .limit(5);
-    const pending = (myOrders || []).filter((o) => ["enviado", "aprovado"].includes(o.status)).length;
+    const pending = (myOrders || []).filter((o) => o.status === "pendente").length;
     orderStats = {
       pendingCount: pending,
       monthRevenue: 0,

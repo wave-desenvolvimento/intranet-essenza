@@ -47,3 +47,41 @@ export async function createShareLink(
 
   return { url: `${origin}/s/${code}` };
 }
+
+export async function createBulkShareLink(
+  items: { url: string; label: string; type: "image" | "file" }[],
+  expiresInSeconds: number = 86400
+): Promise<{ url?: string; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const signedItems: { signedUrl: string; label: string; type: "image" | "file" }[] = [];
+
+  for (const item of items) {
+    const match = item.url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+    if (!match) continue;
+    const [, bucket, path] = match;
+    const { data } = await supabase.storage.from(bucket).createSignedUrl(path, expiresInSeconds);
+    if (data?.signedUrl) signedItems.push({ signedUrl: data.signedUrl, label: item.label, type: item.type });
+  }
+
+  if (signedItems.length === 0) return { error: "Nenhum arquivo válido" };
+
+  const code = generateCode();
+  const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
+
+  // Store as JSON in signed_url field
+  await supabase.from("share_links").insert({
+    code,
+    signed_url: JSON.stringify(signedItems),
+    expires_at: expiresAt,
+    created_by: user?.id || null,
+  });
+
+  const h = await headers();
+  const host = h.get("host") || "localhost:3000";
+  const proto = h.get("x-forwarded-proto") || "http";
+  const origin = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+
+  return { url: `${origin}/s/${code}` };
+}

@@ -36,6 +36,8 @@ interface UserProfile {
   last_sign_in_at: string | null;
   created_at: string;
   user_roles: { role_id: string; role: Role }[];
+  external_id: number | null;
+  comissao_percentual: number;
 }
 
 interface Franchise {
@@ -68,6 +70,8 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
   const [isFranchiseAdmin, setIsFranchiseAdmin] = useState(false);
   const [status, setStatus] = useState("active");
   const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
+  const [externalId, setExternalId] = useState("");
+  const [comissaoPercentual, setComissaoPercentual] = useState("");
 
   const activeUsers = users.filter((u) => u.status === "active").length;
   const inactiveUsers = users.filter((u) => u.status === "inactive").length;
@@ -79,6 +83,8 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
     setEmail("");
     setIsFranchiseAdmin(false);
     setSelectedRoles(new Set());
+    setExternalId("");
+    setComissaoPercentual("");
     setError("");
   }
 
@@ -90,6 +96,8 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
     setIsFranchiseAdmin(user.is_franchise_admin);
     setStatus(user.status);
     setSelectedRoles(new Set(user.user_roles.map((ur) => ur.role_id)));
+    setExternalId(user.external_id?.toString() || "");
+    setComissaoPercentual(user.comissao_percentual?.toString() || "0");
     setError("");
   }
 
@@ -114,6 +122,8 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
     fd.set("fullName", fullName);
     fd.set("franchiseId", franchise.id);
     fd.set("isFranchiseAdmin", String(isFranchiseAdmin));
+    fd.set("externalId", externalId);
+    fd.set("comissaoPercentual", comissaoPercentual);
     for (const rid of selectedRoles) fd.append("roleIds", rid);
 
     if (isCreating) {
@@ -339,6 +349,17 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                   <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10 transition-colors" placeholder="email@exemplo.com" />
                 </div>
               )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-ink-700 mb-1 block">ID Externo (Allcance)</label>
+                  <input value={externalId} onChange={(e) => setExternalId(e.target.value)} type="number" className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10 transition-colors" placeholder="674276" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-ink-700 mb-1 block">Comissão (%)</label>
+                  <input value={comissaoPercentual} onChange={(e) => setComissaoPercentual(e.target.value)} type="number" step="0.01" className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10 transition-colors" placeholder="1.5" />
+                </div>
+              </div>
 
               <div className="rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-600 flex items-center gap-2">
                 <Building2 size={13} className="text-ink-400" />

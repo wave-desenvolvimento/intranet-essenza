@@ -52,13 +52,13 @@ export default function LoginPage() {
             </h1>
             <p className="text-center text-base leading-relaxed text-ink-600">
               Campanhas, materiais e conteúdo organizados para
-              fortalecer a rede Essenza Serra Gaúcha.
+              fortalecer à Empório Essenza Serra Gaúcha.
             </p>
           </div>
         </div>
 
         <p className="absolute bottom-6 text-xs text-ink-400">
-          © {new Date().getFullYear()} Essenza Serra Gaúcha ·{" "}
+          © {new Date().getFullYear()} Empório Essenza Serra Gaúcha ·{" "}
           <a href="https://www.wavecommerce.com.br/?utm_source=rodape&utm_medium=sistema-essenza" target="_blank" rel="noopener noreferrer" className="hover:text-ink-600 transition-colors">
             construído por WaveCommerce
           </a>

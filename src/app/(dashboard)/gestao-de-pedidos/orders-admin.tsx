@@ -35,10 +35,10 @@ interface Order {
 interface Stats { pending: number; today: number; week: number; month: number }
 interface Permissions { canApprove: boolean; canEdit: boolean; canExport: boolean; canDelete: boolean; canManageProducts: boolean }
 
-const STATUS_FLOW = ["enviado", "confirmado", "separacao", "faturado", "entregue"] as const;
+const STATUS_FLOW = ["pendente", "aprovado", "confirmado", "separacao", "faturado", "entregue"] as const;
 const STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bg: string; step: number }> = {
-  rascunho: { label: "Rascunho", icon: Clock, color: "text-ink-500", bg: "bg-ink-100", step: 0 },
-  enviado: { label: "Enviado", icon: Package, color: "text-info", bg: "bg-info-soft", step: 1 },
+  pendente: { label: "Pendente", icon: Clock, color: "text-warning", bg: "bg-warning-soft", step: 0 },
+  aprovado: { label: "Aprovado", icon: CheckCircle, color: "text-info", bg: "bg-info-soft", step: 1 },
   confirmado: { label: "Confirmado", icon: CheckCircle, color: "text-success", bg: "bg-success-soft", step: 2 },
   separacao: { label: "Em Separação", icon: Truck, color: "text-warning", bg: "bg-warning-soft", step: 3 },
   faturado: { label: "Faturado", icon: FileText, color: "text-brand-olive", bg: "bg-brand-olive-soft", step: 4 },
@@ -219,7 +219,7 @@ thead th:nth-child(2){text-align:center}thead th:nth-child(3),thead th:nth-child
   <div class="info-box"><label>Franquia</label><p>${o.franchise?.name || "—"}</p></div>
   <div class="info-box"><label>Vendedor</label><p>${o.seller_name || "—"}</p></div>
   <div class="info-box"><label>Solicitante</label><p>${o.creator_name || "—"}</p></div>
-  <div class="info-box"><label>Status</label><p><span class="badge" style="background:${o.status === "confirmado" ? "#dcfce7;color:#166534" : o.status === "faturado" || o.status === "entregue" ? "#f0e8d6;color:#5a5735" : o.status === "separacao" ? "#fef3c7;color:#92400e" : o.status === "cancelado" ? "#fef2f2;color:#991b1b" : "#dbeafe;color:#1e40af"}">${STATUS_CONFIG[o.status]?.label || o.status}</span></p></div>
+  <div class="info-box"><label>Status</label><p><span class="badge" style="background:${o.status === "pendente" ? "#fef3c7;color:#92400e" : o.status === "aprovado" ? "#dbeafe;color:#1e40af" : o.status === "confirmado" ? "#dcfce7;color:#166534" : o.status === "faturado" || o.status === "entregue" ? "#f0e8d6;color:#5a5735" : o.status === "separacao" ? "#fef3c7;color:#92400e" : o.status === "cancelado" ? "#fef2f2;color:#991b1b" : "#dbeafe;color:#1e40af"}">${STATUS_CONFIG[o.status]?.label || o.status}</span></p></div>
   <div class="info-box"><label>Pagamento</label><p>${(pp as PaymentPlan | null)?.name || "—"}</p></div>
   <div class="info-box"><label>Frete</label><p>${(st as ShippingType | null)?.name || "—"}</p></div>
 </div>
@@ -353,7 +353,7 @@ ${o.admin_notes ? `<div class="notes" style="margin-top:8px"><strong>Obs. do com
             {filtered.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-400">Nenhum pedido encontrado</td></tr>
             ) : paginatedOrders.map((o) => {
-              const cfg = STATUS_CONFIG[o.status] || STATUS_CONFIG.rascunho;
+              const cfg = STATUS_CONFIG[o.status] || STATUS_CONFIG.pendente;
               const Icon = cfg.icon;
               return (
                 <tr key={o.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/50 transition-colors cursor-pointer" onClick={() => openDetail(o)}>

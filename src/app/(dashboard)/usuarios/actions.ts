@@ -46,6 +46,8 @@ export async function inviteUser(formData: FormData) {
   const franchiseId = formData.get("franchiseId") as string;
   const isFranchiseAdmin = formData.get("isFranchiseAdmin") === "true";
   const roleIds = formData.getAll("roleIds") as string[];
+  const externalId = Number(formData.get("externalId")) || null;
+  const comissaoPercentual = Number(formData.get("comissaoPercentual")) || 0;
 
   if (!fullName || !email) return { error: "Nome e e-mail são obrigatórios." };
 
@@ -69,6 +71,8 @@ export async function inviteUser(formData: FormData) {
       full_name: fullName,
       franchise_id: franchiseId || null,
       is_franchise_admin: isFranchiseAdmin,
+      external_id: externalId,
+      comissao_percentual: comissaoPercentual,
     })
     .eq("id", userId);
 
@@ -105,6 +109,8 @@ export async function updateUser(formData: FormData) {
   const isFranchiseAdmin = formData.get("isFranchiseAdmin") === "true";
   const status = formData.get("status") as string;
   const roleIds = formData.getAll("roleIds") as string[];
+  const externalId = Number(formData.get("externalId")) || null;
+  const comissaoPercentual = Number(formData.get("comissaoPercentual")) || 0;
 
   if (!userId || !fullName) return { error: "Dados inválidos." };
 
@@ -121,6 +127,8 @@ export async function updateUser(formData: FormData) {
       franchise_id: franchiseId || null,
       is_franchise_admin: isFranchiseAdmin,
       status,
+      external_id: externalId,
+      comissao_percentual: comissaoPercentual,
     })
     .eq("id", userId);
 

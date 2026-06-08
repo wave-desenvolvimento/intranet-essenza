@@ -44,6 +44,11 @@ interface Franchise {
   manager_name: string | null;
   seller_id: string | null;
   seller?: { id: string; full_name: string } | null;
+  external_id: number | null;
+  razao_social: string | null;
+  inscricao_estadual: string | null;
+  address_number: string | null;
+  complemento: string | null;
   created_at: string;
   totalUsers: number;
   activeUsers: number;
@@ -90,6 +95,11 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
   const [openingHours, setOpeningHours] = useState("");
   const [managerName, setManagerName] = useState("");
   const [sellerId, setSellerId] = useState("");
+  const [externalId, setExternalId] = useState("");
+  const [razaoSocial, setRazaoSocial] = useState("");
+  const [inscricaoEstadual, setInscricaoEstadual] = useState("");
+  const [addressNumber, setAddressNumber] = useState("");
+  const [complemento, setComplemento] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const filtered = franchises.filter((f) => {
@@ -108,6 +118,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
     setPhone(""); setWhatsapp(""); setEmail(""); setInstagram(""); setFacebook("");
     setTiktok(""); setWebsite(""); setLogoUrl(""); setAddress(""); setNeighborhood("");
     setCep(""); setCnpj(""); setOpeningHours(""); setManagerName(""); setSellerId("");
+    setExternalId(""); setRazaoSocial(""); setInscricaoEstadual(""); setAddressNumber(""); setComplemento("");
     setError(""); setShowSheet(true);
   }
 
@@ -119,6 +130,8 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
     setWebsite(f.website || ""); setLogoUrl(f.logo_url || ""); setAddress(f.address || "");
     setNeighborhood(f.neighborhood || ""); setCep(f.cep || ""); setCnpj(f.cnpj || "");
     setOpeningHours(f.opening_hours || ""); setManagerName(f.manager_name || ""); setSellerId(f.seller_id || "");
+    setExternalId(f.external_id?.toString() || ""); setRazaoSocial(f.razao_social || "");
+    setInscricaoEstadual(f.inscricao_estadual || ""); setAddressNumber(f.address_number || ""); setComplemento(f.complemento || "");
     setError(""); setShowSheet(true);
   }
 
@@ -133,6 +146,8 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
     fd.set("website", website); fd.set("logo_url", logoUrl); fd.set("address", address);
     fd.set("neighborhood", neighborhood); fd.set("cep", cep); fd.set("cnpj", cnpj);
     fd.set("opening_hours", openingHours); fd.set("manager_name", managerName); fd.set("seller_id", sellerId);
+    fd.set("external_id", externalId); fd.set("razao_social", razaoSocial);
+    fd.set("inscricao_estadual", inscricaoEstadual); fd.set("address_number", addressNumber); fd.set("complemento", complemento);
     return fd;
   }
 
@@ -342,6 +357,25 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
             </div>
           </fieldset>
 
+          {/* Integration */}
+          <fieldset>
+            <legend className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-3">Integração</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">ID Externo (Allcance)</label>
+                <input type="number" value={externalId} onChange={(e) => setExternalId(e.target.value)} className={inputCls} placeholder="48330273" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Razão Social</label>
+                <input value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} className={inputCls} placeholder="Essenza Gramado LTDA" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Inscrição Estadual</label>
+                <input value={inscricaoEstadual} onChange={(e) => setInscricaoEstadual(e.target.value)} className={inputCls} placeholder="000/1234567" />
+              </div>
+            </div>
+          </fieldset>
+
           {/* Logo */}
           <fieldset>
             <legend className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-3">Logo</legend>
@@ -367,7 +401,15 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Endereço</label>
-                <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} placeholder="Rua Marechal Deodoro, 123" />
+                <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} placeholder="Rua Marechal Deodoro" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Número</label>
+                <input value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} className={inputCls} placeholder="123" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Complemento</label>
+                <input value={complemento} onChange={(e) => setComplemento(e.target.value)} className={inputCls} placeholder="Sala 2, Loja A" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Bairro</label>

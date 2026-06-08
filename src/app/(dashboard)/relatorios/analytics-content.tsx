@@ -61,10 +61,12 @@ interface Props {
 function formatPrice(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  enviado: { label: "Enviado", color: "text-info", bg: "bg-info-soft" },
-  aprovado: { label: "Aprovado", color: "text-success", bg: "bg-success-soft" },
+  pendente: { label: "Pendente", color: "text-warning", bg: "bg-warning-soft" },
+  aprovado: { label: "Aprovado", color: "text-info", bg: "bg-info-soft" },
+  confirmado: { label: "Confirmado", color: "text-success", bg: "bg-success-soft" },
   separacao: { label: "Em Separação", color: "text-warning", bg: "bg-warning-soft" },
   faturado: { label: "Faturado", color: "text-brand-olive", bg: "bg-brand-olive-soft" },
+  entregue: { label: "Entregue", color: "text-brand-olive", bg: "bg-brand-olive-soft" },
   cancelado: { label: "Cancelado", color: "text-danger", bg: "bg-danger-soft" },
 };
 

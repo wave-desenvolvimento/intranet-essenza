@@ -19,7 +19,7 @@ interface Product {
   id: string; name: string; sku: string | null; category: string | null; category_id: string | null;
   unit: string; min_qty: number; active: boolean; image_url: string | null; images: string[] | null;
   stock_status: string; pre_order_date: string | null; prices: Price[];
-  product_category: ProductCategory | null;
+  product_category: ProductCategory | null; external_id: number | null;
 }
 
 const STOCK_OPTIONS = [
@@ -59,6 +59,7 @@ export function ProductsManager({ products, categories }: { products: Product[];
   const [imageUrl, setImageUrl] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [uploadingImg, setUploadingImg] = useState(false);
+  const [externalId, setExternalId] = useState("");
   const [stockStatus, setStockStatus] = useState("in_stock");
   const [preOrderDate, setPreOrderDate] = useState("");
   const [discount, setDiscount] = useState("");
@@ -93,7 +94,7 @@ export function ProductsManager({ products, categories }: { products: Product[];
   function openCreate() {
     setEditing(null); setName(""); setSku(""); setCategoryId(""); setUnit("un");
     setMinQty("1"); setActive(true); setPriceFranquia(""); setPricePdv(""); setImageUrl(""); setImages([]);
-    setStockStatus("in_stock"); setPreOrderDate(""); setDiscount("");
+    setExternalId(""); setStockStatus("in_stock"); setPreOrderDate(""); setDiscount("");
     setError(""); setShowSheet(true);
   }
 
@@ -103,7 +104,7 @@ export function ProductsManager({ products, categories }: { products: Product[];
     setPriceFranquia(String(p.prices.find((pr) => pr.segment === "franquia")?.price || ""));
     setPricePdv(String(p.prices.find((pr) => pr.segment === "multimarca_pdv")?.price || ""));
     setImageUrl(p.image_url || ""); setImages(Array.isArray(p.images) ? p.images : []);
-    setStockStatus(p.stock_status || "in_stock"); setPreOrderDate(p.pre_order_date || "");
+    setExternalId(p.external_id?.toString() || ""); setStockStatus(p.stock_status || "in_stock"); setPreOrderDate(p.pre_order_date || "");
     setDiscount(String((p as unknown as { discount?: number }).discount || ""));
     setError(""); setShowSheet(true);
   }
@@ -115,7 +116,7 @@ export function ProductsManager({ products, categories }: { products: Product[];
     fd.set("unit", unit); fd.set("minQty", minQty); fd.set("active", String(active));
     fd.set("priceFranquia", priceFranquia); fd.set("pricePdv", pricePdv);
     fd.set("imageUrl", imageUrl);
-    fd.set("stockStatus", stockStatus); fd.set("preOrderDate", preOrderDate);
+    fd.set("externalId", externalId); fd.set("stockStatus", stockStatus); fd.set("preOrderDate", preOrderDate);
     fd.set("discount", discount); fd.set("images", JSON.stringify(images));
     if (editing) {
       fd.set("id", editing.id);
@@ -334,6 +335,10 @@ export function ProductsManager({ products, categories }: { products: Product[];
             <div>
               <label className="text-xs font-medium text-ink-700 mb-1 block">SKU</label>
               <input value={sku} onChange={(e) => setSku(e.target.value)} className={cn(inputCls, "font-mono")} placeholder="ESS-LAV-100" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-700 mb-1 block">ID Externo (Allcance)</label>
+              <input type="number" value={externalId} onChange={(e) => setExternalId(e.target.value)} className={inputCls} placeholder="206879199" />
             </div>
             <div>
               <label className="text-xs font-medium text-ink-700 mb-1 block">Categoria</label>

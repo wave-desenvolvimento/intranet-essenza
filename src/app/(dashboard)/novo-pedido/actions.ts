@@ -46,10 +46,11 @@ export async function createProduct(formData: FormData) {
   const imageUrl = formData.get("imageUrl") as string;
   const stockStatus = formData.get("stockStatus") as string || "in_stock";
   const preOrderDate = formData.get("preOrderDate") as string;
+  const externalId = formData.get("externalId") as string;
 
   const { data: product, error } = await supabase
     .from("products")
-    .insert({ name, sku: sku || null, category: category || null, category_id: (formData.get("categoryId") as string) || null, unit, min_qty: minQty, image_url: imageUrl || null, images: JSON.parse(formData.get("images") as string || "[]"), stock_status: stockStatus, pre_order_date: preOrderDate || null, discount: Number(formData.get("discount")) || 0 })
+    .insert({ name, sku: sku || null, category: category || null, category_id: (formData.get("categoryId") as string) || null, unit, min_qty: minQty, image_url: imageUrl || null, images: JSON.parse(formData.get("images") as string || "[]"), stock_status: stockStatus, pre_order_date: preOrderDate || null, discount: Number(formData.get("discount")) || 0, external_id: Number(externalId) || null })
     .select()
     .single();
 
@@ -86,10 +87,11 @@ export async function updateProduct(formData: FormData) {
   const imageUrl = formData.get("imageUrl") as string;
   const stockStatus = formData.get("stockStatus") as string || "in_stock";
   const preOrderDate = formData.get("preOrderDate") as string;
+  const externalId = formData.get("externalId") as string;
 
   const { error } = await supabase
     .from("products")
-    .update({ name, sku: sku || null, category: category || null, category_id: (formData.get("categoryId") as string) || null, unit, min_qty: minQty, active, image_url: imageUrl || null, images: JSON.parse(formData.get("images") as string || "[]"), stock_status: stockStatus, pre_order_date: preOrderDate || null, discount: Number(formData.get("discount")) || 0 })
+    .update({ name, sku: sku || null, category: category || null, category_id: (formData.get("categoryId") as string) || null, unit, min_qty: minQty, active, image_url: imageUrl || null, images: JSON.parse(formData.get("images") as string || "[]"), stock_status: stockStatus, pre_order_date: preOrderDate || null, discount: Number(formData.get("discount")) || 0, external_id: Number(externalId) || null })
     .eq("id", id);
 
   if (error) return { error: error.message };
@@ -195,7 +197,7 @@ export async function createOrder(formData: FormData) {
       franchise_id: profile.franchise_id,
       created_by: user.id,
       seller_id: sellerId,
-      status: "enviado",
+      status: "pendente",
       notes: notes || null,
       total,
       sent_at: new Date().toISOString(),
@@ -257,7 +259,7 @@ export async function createOrder(formData: FormData) {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  rascunho: "Rascunho", enviado: "Enviado", confirmado: "Confirmado",
+  pendente: "Pendente", aprovado: "Aprovado", confirmado: "Confirmado",
   separacao: "Em Separação", faturado: "Faturado", entregue: "Entregue",
   cancelado: "Cancelado",
 };
@@ -289,6 +291,9 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
   const { error } = await supabase.from("orders").update(updates).eq("id", orderId);
   if (error) return { error: error.message };
+
+  // Webhook de integração é disparado automaticamente pelo trigger no Supabase
+  // (webhook_queue + pg_cron) quando status muda para "aprovado"
 
   // Notify the franchise that placed the order
   const { data: order } = await supabase.from("orders").select("franchise_id, id").eq("id", orderId).single();
@@ -447,7 +452,7 @@ export async function getOrderStats() {
     { count: totalWeek },
     { count: totalMonth },
   ] = await Promise.all([
-    supabase.from("orders").select("*", { count: "exact", head: true }).in("status", ["enviado", "aprovado"]),
+    supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "pendente"),
     supabase.from("orders").select("*", { count: "exact", head: true }).gte("created_at", today),
     supabase.from("orders").select("*", { count: "exact", head: true }).gte("created_at", weekAgo),
     supabase.from("orders").select("*", { count: "exact", head: true }).gte("created_at", monthAgo),

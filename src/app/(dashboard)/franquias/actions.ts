@@ -88,6 +88,11 @@ function extractFranchiseFields(formData: FormData) {
     opening_hours: formData.get("opening_hours") as string || null,
     manager_name: formData.get("manager_name") as string || null,
     seller_id: formData.get("seller_id") as string || null,
+    external_id: Number(formData.get("external_id")) || null,
+    razao_social: formData.get("razao_social") as string || null,
+    inscricao_estadual: formData.get("inscricao_estadual") as string || null,
+    address_number: formData.get("address_number") as string || null,
+    complemento: formData.get("complemento") as string || null,
   };
 }
 
