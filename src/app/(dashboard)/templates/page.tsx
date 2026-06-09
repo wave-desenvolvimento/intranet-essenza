@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getTemplates, getPublishedTemplates } from "./actions";
 import { TemplatesModule } from "./templates-module";
 
-export default async function TemplatesPage() {
+export default async function TemplatesPage({ searchParams }: { searchParams: Promise<{ preview?: string }> }) {
+  const { preview } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || "";
@@ -35,6 +36,7 @@ export default async function TemplatesPage() {
       canEdit={!!canEdit}
       canDelete={!!canDelete}
       franchiseData={franchise || null}
+      initialPreviewId={preview || null}
     />
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import {
   Plus, Pencil, Trash2, X, Upload, Download, Image as ImageIcon, Eye, Share2, Copy, Check,
 } from "lucide-react";
@@ -11,6 +11,7 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirm } from "@/hooks/use-confirm";
 import { uploadToStorage } from "@/lib/upload";
+import { createBulkShareLink } from "@/app/(dashboard)/cms/share-action";
 import { BannerTemplateEditor, type BannerOverlay } from "@/components/ui/banner-template-editor";
 import { BannerRenderer } from "@/components/ui/banner-renderer";
 import { toast } from "sonner";
@@ -35,6 +36,7 @@ interface Props {
   canDelete: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   franchiseData: any;
+  initialPreviewId: string | null;
 }
 
 // Sample data for admin preview when no franchise is assigned
@@ -78,7 +80,7 @@ const ASPECT_OPTIONS = [
 
 const inputCls = "h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10";
 
-export function TemplatesModule({ templates, canCreate, canEdit, canDelete, franchiseData }: Props) {
+export function TemplatesModule({ templates, canCreate, canEdit, canDelete, franchiseData, initialPreviewId }: Props) {
   const canManage = canCreate || canEdit;
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -103,9 +105,18 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [generatingLink, setGeneratingLink] = useState(false);
 
   const published = templates.filter((t) => t.status === "published");
   const visibleTemplates = canManage ? templates : published;
+
+  // Auto-open preview from ?preview=ID link
+  useEffect(() => {
+    if (initialPreviewId) {
+      const t = templates.find((t) => t.id === initialPreviewId);
+      if (t) setPreviewTemplate(t);
+    }
+  }, [initialPreviewId, templates]);
 
   // Use real franchise or sample for admin preview
   const renderData = franchiseData || SAMPLE_FRANCHISE;
@@ -155,242 +166,180 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
     if ("url" in r) setBgImage(r.url);
   }
 
-  async function handleDownload(template: Template) {
-    setDownloading(true);
-    try {
-      const bgUrl = template.background_image;
-      if (!bgUrl) { toast.error("Template sem imagem de fundo"); setDownloading(false); return; }
+  async function renderTemplateToBlob(template: Template): Promise<Blob> {
+    const bgUrl = template.background_image;
+    if (!bgUrl) throw new Error("Template sem imagem de fundo");
 
-      // Load background image
-      const bgImg = new Image();
-      bgImg.crossOrigin = "anonymous";
-      await new Promise<void>((res, rej) => { bgImg.onload = () => res(); bgImg.onerror = () => rej(); bgImg.src = bgUrl; });
+    const bgImg = new Image();
+    bgImg.crossOrigin = "anonymous";
+    await new Promise<void>((res, rej) => { bgImg.onload = () => res(); bgImg.onerror = () => rej(); bgImg.src = bgUrl; });
 
-      const W = bgImg.naturalWidth;
-      const H = bgImg.naturalHeight;
+    const W = bgImg.naturalWidth;
+    const H = bgImg.naturalHeight;
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(bgImg, 0, 0, W, H);
 
-      // Create canvas at full image resolution
-      const canvas = document.createElement("canvas");
-      canvas.width = W;
-      canvas.height = H;
-      const ctx = canvas.getContext("2d")!;
+    const varMap: Record<string, string> = {
+      nome: renderData.name || "",
+      razao_social: renderData.razao_social || "",
+      cidade: renderData.city || "",
+      estado: renderData.state || "",
+      endereco: renderData.address || "",
+      numero: renderData.address_number || "",
+      complemento: renderData.complemento || "",
+      bairro: renderData.neighborhood || "",
+      cep: renderData.cep || "",
+      endereco_completo: [renderData.address, renderData.address_number, renderData.complemento, renderData.neighborhood, renderData.city, renderData.state, renderData.cep].filter(Boolean).join(", "),
+      telefone: renderData.phone || "",
+      whatsapp: renderData.whatsapp || "",
+      email: renderData.email || "",
+      instagram: renderData.instagram || "",
+      facebook: renderData.facebook || "",
+      tiktok: renderData.tiktok || "",
+      website: renderData.website || "",
+      cnpj: renderData.cnpj || "",
+      inscricao_estadual: renderData.inscricao_estadual || "",
+      horario: renderData.opening_hours || "",
+      responsavel: renderData.manager_name || "",
+    };
 
-      // Draw background
-      ctx.drawImage(bgImg, 0, 0, W, H);
+    for (const overlay of template.overlays) {
+      const x = (overlay.x / 100) * W;
+      const y = (overlay.y / 100) * H;
+      const pxFont = (overlay.fontSize / 100) * W;
 
-      // Resolve franchise variables
-      const varMap: Record<string, string> = {
-        nome: renderData.name || "",
-        razao_social: renderData.razao_social || "",
-        cidade: renderData.city || "",
-        estado: renderData.state || "",
-        endereco: renderData.address || "",
-        numero: renderData.address_number || "",
-        complemento: renderData.complemento || "",
-        bairro: renderData.neighborhood || "",
-        cep: renderData.cep || "",
-        endereco_completo: [renderData.address, renderData.address_number, renderData.complemento, renderData.neighborhood, renderData.city, renderData.state, renderData.cep].filter(Boolean).join(", "),
-        telefone: renderData.phone || "",
-        whatsapp: renderData.whatsapp || "",
-        email: renderData.email || "",
-        instagram: renderData.instagram || "",
-        facebook: renderData.facebook || "",
-        tiktok: renderData.tiktok || "",
-        website: renderData.website || "",
-        cnpj: renderData.cnpj || "",
-        inscricao_estadual: renderData.inscricao_estadual || "",
-        horario: renderData.opening_hours || "",
-        responsavel: renderData.manager_name || "",
-      };
+      if (overlay.type === "qrcode") {
+        let qrValue = "";
+        if (overlay.variable === "qr_whatsapp" && renderData.whatsapp) qrValue = `https://wa.me/${renderData.whatsapp.replace(/\D/g, "")}`;
+        else if (overlay.variable === "qr_telefone" && renderData.phone) qrValue = `tel:${renderData.phone.replace(/\D/g, "")}`;
+        else if (overlay.variable === "qr_instagram" && renderData.instagram) qrValue = `https://instagram.com/${renderData.instagram.replace("@", "")}`;
+        else if (overlay.variable === "qr_website" && renderData.website) { const s = renderData.website; qrValue = s.startsWith("http") ? s : `https://${s}`; }
 
-      // Draw each overlay
-      for (const overlay of template.overlays) {
-        const x = (overlay.x / 100) * W;
-        const y = (overlay.y / 100) * H;
-        const pxFont = (overlay.fontSize / 100) * W;
-
-        if (overlay.type === "qrcode") {
-          // Generate QR
-          let qrValue = "";
-          if (overlay.variable === "qr_whatsapp" && renderData.whatsapp) qrValue = `https://wa.me/${renderData.whatsapp.replace(/\D/g, "")}`;
-          else if (overlay.variable === "qr_telefone" && renderData.phone) qrValue = `tel:${renderData.phone.replace(/\D/g, "")}`;
-          else if (overlay.variable === "qr_instagram" && renderData.instagram) qrValue = `https://instagram.com/${renderData.instagram.replace("@", "")}`;
-          else if (overlay.variable === "qr_website" && renderData.website) { const s = renderData.website; qrValue = s.startsWith("http") ? s : `https://${s}`; }
-
-          if (qrValue) {
-            const QRCode = (await import("qrcode")).default;
-            const qrDataUrl = await QRCode.toDataURL(qrValue, { width: pxFont * 2, margin: 1 });
-            const qrImg = new Image();
-            await new Promise<void>((res) => { qrImg.onload = () => res(); qrImg.src = qrDataUrl; });
-            ctx.drawImage(qrImg, x - pxFont / 2, y - pxFont / 2, pxFont, pxFont);
-          }
-          continue;
+        if (qrValue) {
+          const QRCode = (await import("qrcode")).default;
+          const qrDataUrl = await QRCode.toDataURL(qrValue, { width: pxFont * 2, margin: 1 });
+          const qrImg = new Image();
+          await new Promise<void>((res) => { qrImg.onload = () => res(); qrImg.src = qrDataUrl; });
+          ctx.drawImage(qrImg, x - pxFont / 2, y - pxFont / 2, pxFont, pxFont);
         }
+        continue;
+      }
 
-        // Text overlay
-        const text = varMap[overlay.variable] || "";
-        if (!text) continue;
+      const text = varMap[overlay.variable] || "";
+      if (!text) continue;
 
-        const hasBox = overlay.width > 0 && overlay.height > 0;
-        const boxW = hasBox ? (overlay.width / 100) * W : 0;
-        const boxH = hasBox ? (overlay.height / 100) * W : 0; // width-based like CSS
+      const hasBox = overlay.width > 0 && overlay.height > 0;
+      const boxW = hasBox ? (overlay.width / 100) * W : 0;
+      const boxH = hasBox ? (overlay.height / 100) * W : 0;
 
-        const fontStyle = overlay.fontStyle === "italic" ? "italic " : "";
-        const fontWeight = overlay.fontWeight === "bold" ? "bold " : "";
-        const fontFamily = overlay.fontFamily || "Comfortaa, sans-serif";
-        ctx.font = `${fontStyle}${fontWeight}${pxFont}px ${fontFamily}`;
+      const fontStyle = overlay.fontStyle === "italic" ? "italic " : "";
+      const fontWeight = overlay.fontWeight === "bold" ? "bold " : "";
+      const fontFamily = overlay.fontFamily || "Comfortaa, sans-serif";
+      ctx.font = `${fontStyle}${fontWeight}${pxFont}px ${fontFamily}`;
 
-        // Compute text position and box
-        const padX = overlay.backgroundColor ? pxFont * 0.4 : 0;
-        const padY = overlay.backgroundColor ? pxFont * 0.15 : 0;
+      const padX = overlay.backgroundColor ? pxFont * 0.4 : 0;
+      const padY = overlay.backgroundColor ? pxFont * 0.15 : 0;
 
-        let textX = x;
-        let textY = y;
-        let bgX: number, bgY: number, bgW: number, bgH: number;
+      let textX = x;
+      let textY = y;
+      let bgX: number, bgY: number, bgW: number, bgH: number;
 
-        if (hasBox) {
-          // Box mode: use defined width/height, centered on x,y
-          bgW = boxW;
-          bgH = boxH;
-          bgX = x - bgW / 2;
-          bgY = y - bgH / 2;
-          // Text inside the box
-          if (overlay.textAlign === "left") textX = bgX + padX;
-          else if (overlay.textAlign === "right") textX = bgX + bgW - padX;
-          else textX = bgX + bgW / 2;
-          textY = bgY + bgH / 2;
-        } else {
-          // Auto mode: size from text measurement
-          const metrics = ctx.measureText(text);
-          const tw = metrics.width;
-          bgW = tw + padX * 2;
-          bgH = pxFont * 1.2 + padY * 2;
-          if (overlay.textAlign === "center") bgX = x - bgW / 2;
-          else if (overlay.textAlign === "right") bgX = x - bgW;
-          else bgX = x;
-          bgY = y - bgH / 2;
-        }
+      if (hasBox) {
+        bgW = boxW; bgH = boxH;
+        bgX = x - bgW / 2; bgY = y - bgH / 2;
+        if (overlay.textAlign === "left") textX = bgX + padX;
+        else if (overlay.textAlign === "right") textX = bgX + bgW - padX;
+        else textX = bgX + bgW / 2;
+        textY = bgY + bgH / 2;
+      } else {
+        const metrics = ctx.measureText(text);
+        bgW = metrics.width + padX * 2;
+        bgH = pxFont * 1.2 + padY * 2;
+        if (overlay.textAlign === "center") bgX = x - bgW / 2;
+        else if (overlay.textAlign === "right") bgX = x - bgW;
+        else bgX = x;
+        bgY = y - bgH / 2;
+      }
 
-        // Draw background box
-        if (overlay.backgroundColor) {
-          ctx.save();
-          ctx.shadowColor = "transparent";
-          ctx.fillStyle = overlay.backgroundColor;
-          ctx.beginPath();
-          ctx.roundRect(bgX, bgY, bgW, bgH, pxFont * 0.15);
-          ctx.fill();
-          ctx.restore();
-        }
-
-        // Draw text
+      if (overlay.backgroundColor) {
         ctx.save();
-        ctx.fillStyle = overlay.color;
-        ctx.textAlign = (hasBox ? overlay.textAlign : overlay.textAlign) as CanvasTextAlign;
-        ctx.textBaseline = "middle";
-        ctx.shadowColor = "rgba(0,0,0,0.4)";
-        ctx.shadowBlur = 4;
-        ctx.shadowOffsetY = 1;
-
-        if (hasBox) {
-          // Clip to box bounds
-          ctx.rect(bgX, bgY, bgW, bgH);
-          ctx.clip();
-        }
-
-        ctx.fillText(text, textX, textY);
+        ctx.shadowColor = "transparent";
+        ctx.fillStyle = overlay.backgroundColor;
+        ctx.beginPath();
+        ctx.roundRect(bgX, bgY, bgW, bgH, pxFont * 0.15);
+        ctx.fill();
         ctx.restore();
       }
 
-      // Download
+      ctx.save();
+      ctx.fillStyle = overlay.color;
+      ctx.textAlign = overlay.textAlign as CanvasTextAlign;
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(0,0,0,0.4)";
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetY = 1;
+      if (hasBox) { ctx.rect(bgX, bgY, bgW, bgH); ctx.clip(); }
+      ctx.fillText(text, textX, textY);
+      ctx.restore();
+    }
+
+    return new Promise<Blob>((res) => canvas.toBlob((b) => res(b!), "image/png"));
+  }
+
+  async function handleDownload(template: Template) {
+    setDownloading(true);
+    try {
+      const blob = await renderTemplateToBlob(template);
       const link = document.createElement("a");
       link.download = `${template.title.replace(/\s+/g, "-").toLowerCase()}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = URL.createObjectURL(blob);
       link.click();
       toast.success("Imagem baixada");
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Erro ao gerar imagem");
     }
     setDownloading(false);
   }
 
-  function handleCopyLink(template: Template) {
-    const url = `${window.location.origin}/templates?preview=${template.id}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    toast.success("Link copiado");
-    setTimeout(() => setCopied(false), 2000);
+  async function handleCopyLink(template: Template) {
+    setGeneratingLink(true);
+    try {
+      const blob = await renderTemplateToBlob(template);
+      const file = new File([blob], `${template.title.replace(/\s+/g, "-").toLowerCase()}.png`, { type: "image/png" });
+
+      // Upload to Storage
+      const uploadResult = await uploadToStorage(file, { bucket: "assets", folder: "shared-templates" });
+      if ("error" in uploadResult) { toast.error(uploadResult.error); setGeneratingLink(false); return; }
+
+      // Create public share link (/s/[code])
+      const shareResult = await createBulkShareLink(
+        [{ url: uploadResult.url, label: template.title, type: "image" }]
+      );
+      if (shareResult.error || !shareResult.url) { toast.error(shareResult.error || "Erro ao gerar link"); setGeneratingLink(false); return; }
+
+      await navigator.clipboard.writeText(shareResult.url);
+      setCopied(true);
+      toast.success("Link copiado");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Erro ao gerar link");
+    }
+    setGeneratingLink(false);
   }
 
   async function handleShareImage(template: Template) {
     try {
-      // Generate PNG (same logic as download)
-      const bgUrl = template.background_image;
-      if (!bgUrl) { toast.error("Template sem imagem"); return; }
-
       toast.loading("Gerando imagem...", { id: "share" });
-
-      const bgImg = new Image();
-      bgImg.crossOrigin = "anonymous";
-      await new Promise<void>((res, rej) => { bgImg.onload = () => res(); bgImg.onerror = () => rej(); bgImg.src = bgUrl; });
-
-      const W = bgImg.naturalWidth;
-      const H = bgImg.naturalHeight;
-      const canvas = document.createElement("canvas");
-      canvas.width = W; canvas.height = H;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(bgImg, 0, 0, W, H);
-
-      // Draw overlays (simplified — text only, same as download)
-      const varMap: Record<string, string> = {
-        nome: renderData.name || "", cidade: renderData.city || "", estado: renderData.state || "",
-        endereco: renderData.address || "", bairro: renderData.neighborhood || "", cep: renderData.cep || "",
-        telefone: renderData.phone || "", whatsapp: renderData.whatsapp || "", email: renderData.email || "",
-        instagram: renderData.instagram || "", facebook: renderData.facebook || "", tiktok: renderData.tiktok || "",
-        website: renderData.website || "", cnpj: renderData.cnpj || "", horario: renderData.opening_hours || "",
-        responsavel: renderData.manager_name || "",
-      };
-
-      for (const overlay of template.overlays) {
-        if (overlay.type === "qrcode") continue; // skip QR for share speed
-        const text = varMap[overlay.variable] || "";
-        if (!text) continue;
-        const pxFont = (overlay.fontSize / 100) * W;
-        const x = (overlay.x / 100) * W;
-        const y = (overlay.y / 100) * H;
-        const fontStyle = overlay.fontStyle === "italic" ? "italic " : "";
-        const fontWeight = overlay.fontWeight === "bold" ? "bold " : "";
-        ctx.font = `${fontStyle}${fontWeight}${pxFont}px ${overlay.fontFamily || "sans-serif"}`;
-        ctx.fillStyle = overlay.color;
-        ctx.textAlign = overlay.textAlign as CanvasTextAlign;
-        ctx.textBaseline = "middle";
-        ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
-        if (overlay.backgroundColor) {
-          const hasBox = overlay.width > 0 && overlay.height > 0;
-          const metrics = ctx.measureText(text);
-          const padX = pxFont * 0.4; const padY = pxFont * 0.15;
-          const boxW = hasBox ? (overlay.width / 100) * W : metrics.width + padX * 2;
-          const boxH = hasBox ? (overlay.height / 100) * W : pxFont * 1.2 + padY * 2;
-          const bgX = overlay.textAlign === "center" ? x - boxW / 2 : overlay.textAlign === "right" ? x - boxW : x;
-          ctx.save(); ctx.shadowColor = "transparent"; ctx.fillStyle = overlay.backgroundColor;
-          ctx.beginPath(); ctx.roundRect(bgX, y - boxH / 2, boxW, boxH, pxFont * 0.15); ctx.fill(); ctx.restore();
-          ctx.fillStyle = overlay.color; ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 4;
-        }
-        ctx.fillText(text, x, y);
-        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
-      }
-
-      // Convert to blob
-      const blob = await new Promise<Blob>((res) => canvas.toBlob((b) => res(b!), "image/png"));
+      const blob = await renderTemplateToBlob(template);
       const file = new File([blob], `${template.title.replace(/\s+/g, "-").toLowerCase()}.png`, { type: "image/png" });
-
       toast.dismiss("share");
 
-      // Try native share (works on mobile + desktop with WhatsApp)
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: template.title });
       } else {
-        // Fallback: download + open whatsapp with text
         const link = document.createElement("a");
         link.download = file.name;
         link.href = URL.createObjectURL(blob);
@@ -534,9 +483,9 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
                 <button onClick={() => handleDownload(t)} disabled={downloading} className="flex items-center gap-1.5 rounded-xl bg-brand-olive px-4 py-2 text-xs font-medium text-white hover:bg-brand-olive-dark transition-colors">
                   <Download size={13} /> {downloading ? "Gerando..." : "Baixar PNG"}
                 </button>
-                <button onClick={() => handleCopyLink(t)} className="flex items-center gap-1.5 rounded-xl bg-ink-50 px-4 py-2 text-xs font-medium text-ink-700 hover:bg-ink-100 transition-colors">
-                  {copied ? <Check size={13} className="text-success" /> : <Share2 size={13} />}
-                  {copied ? "Copiado!" : "Link"}
+                <button onClick={() => handleCopyLink(t)} disabled={generatingLink} className="flex items-center gap-1.5 rounded-xl bg-ink-50 px-4 py-2 text-xs font-medium text-ink-700 hover:bg-ink-100 transition-colors disabled:opacity-50">
+                  {copied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                  {generatingLink ? "Gerando..." : copied ? "Copiado!" : "Link"}
                 </button>
                 <button onClick={() => handleShareImage(t)} className="flex items-center gap-1.5 rounded-xl bg-ink-50 px-4 py-2 text-xs font-medium text-ink-700 hover:bg-ink-100 transition-colors">
                   <Share2 size={13} /> Compartilhar
