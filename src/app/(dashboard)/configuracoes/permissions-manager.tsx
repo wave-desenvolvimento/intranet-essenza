@@ -13,7 +13,8 @@ interface Role {
   is_default: boolean; is_system: boolean; level: number;
   role_permissions: { permission_id: string }[];
 }
-interface Props { roles: Role[]; permissions: Permission[] }
+interface PageModule { slug: string; label: string; icon?: string | null }
+interface Props { roles: Role[]; permissions: Permission[]; pageModules: PageModule[] }
 
 const ACTION_LABELS: Record<string, string> = {
   view: "Ver", view_all: "Ver todos", create: "Criar", edit: "Editar",
@@ -39,7 +40,42 @@ function groupByModule(permissions: Permission[]) {
   return groups;
 }
 
-export function PermissionsManager({ roles, permissions }: Props) {
+function ModuleRow({ module, perms, label, even, selectedPermissions, allActions, onToggleModule, onTogglePermission }: {
+  module: string; perms: Permission[]; label: string; even: boolean;
+  selectedPermissions: Set<string>; allActions: string[];
+  onToggleModule: (perms: Permission[]) => void; onTogglePermission: (id: string) => void;
+}) {
+  const allChecked = perms.every((p) => selectedPermissions.has(p.id));
+  const someChecked = perms.some((p) => selectedPermissions.has(p.id));
+  return (
+    <tr className={cn("border-b border-ink-50 last:border-0 hover:bg-brand-olive-soft/20 transition-colors", even ? "bg-white" : "bg-ink-50/30")}>
+      <td className={cn("px-3 py-2 sticky left-0", even ? "bg-white" : "bg-ink-50/30")}>
+        <button type="button" onClick={() => onToggleModule(perms)} className="flex items-center gap-2.5">
+          <div className={cn("relative h-[18px] w-8 rounded-full transition-colors shrink-0", allChecked ? "bg-brand-olive" : someChecked ? "bg-brand-olive/40" : "bg-ink-200")}>
+            <div className={cn("absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform", allChecked ? "translate-x-[14px]" : someChecked ? "translate-x-[7px]" : "translate-x-[2px]")} />
+          </div>
+          <span className={cn("text-sm", allChecked || someChecked ? "font-medium text-ink-900" : "text-ink-600")}>{label}</span>
+        </button>
+      </td>
+      {allActions.map((action) => {
+        const perm = perms.find((p) => p.action === action);
+        if (!perm) return <td key={action} className="text-center px-1.5 py-2" />;
+        const isOn = selectedPermissions.has(perm.id);
+        return (
+          <td key={action} className="text-center px-1.5 py-2">
+            <button type="button" onClick={() => onTogglePermission(perm.id)} className="inline-flex items-center justify-center">
+              <div className={cn("h-4 w-4 rounded border-[1.5px] flex items-center justify-center transition-all", isOn ? "bg-brand-olive border-brand-olive" : "border-ink-300 hover:border-ink-400")}>
+                {isOn && <svg viewBox="0 0 12 12" className="text-white" width={9} height={9}><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+              </div>
+            </button>
+          </td>
+        );
+      })}
+    </tr>
+  );
+}
+
+export function PermissionsManager({ roles, permissions, pageModules }: Props) {
   const [editingRole, setEditingRole] = useState<Role | null>(roles[0] || null);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(
@@ -55,6 +91,21 @@ export function PermissionsManager({ roles, permissions }: Props) {
 
   const modules = groupByModule(permissions);
   const allActions = ["approve", "create", "delete", "download", "edit", "export", "manage", "view", "view_all"];
+
+  // Build dynamic labels from pageModules
+  const pageModuleLabels: Record<string, string> = {};
+  const pageModuleSlugs = new Set<string>();
+  for (const pm of pageModules) {
+    pageModuleLabels[pm.slug] = pm.label;
+    pageModuleSlugs.add(pm.slug);
+  }
+
+  // Merge all labels (static + dynamic)
+  const allModuleLabels: Record<string, string> = { ...MODULE_LABELS, ...pageModuleLabels };
+
+  // Split modules into system and CMS page groups
+  const systemModuleEntries = Object.entries(modules).filter(([mod]) => !pageModuleSlugs.has(mod));
+  const pageModuleEntries = Object.entries(modules).filter(([mod]) => pageModuleSlugs.has(mod));
 
   function openCreate() {
     setEditingRole(null); setIsCreating(true);
@@ -195,36 +246,19 @@ export function PermissionsManager({ roles, permissions }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(modules).map(([module, perms], i) => {
-                    const allChecked = perms.every((p) => selectedPermissions.has(p.id));
-                    const someChecked = perms.some((p) => selectedPermissions.has(p.id));
-                    return (
-                      <tr key={module} className={cn("border-b border-ink-50 last:border-0 hover:bg-brand-olive-soft/20 transition-colors", i % 2 === 0 ? "bg-white" : "bg-ink-50/30")}>
-                        <td className={cn("px-3 py-2 sticky left-0", i % 2 === 0 ? "bg-white" : "bg-ink-50/30")}>
-                          <button type="button" onClick={() => toggleModule(perms)} className="flex items-center gap-2.5">
-                            <div className={cn("relative h-[18px] w-8 rounded-full transition-colors shrink-0", allChecked ? "bg-brand-olive" : someChecked ? "bg-brand-olive/40" : "bg-ink-200")}>
-                              <div className={cn("absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform", allChecked ? "translate-x-[14px]" : someChecked ? "translate-x-[7px]" : "translate-x-[2px]")} />
-                            </div>
-                            <span className={cn("text-sm", allChecked || someChecked ? "font-medium text-ink-900" : "text-ink-600")}>{MODULE_LABELS[module] || module}</span>
-                          </button>
-                        </td>
-                        {allActions.map((action) => {
-                          const perm = perms.find((p) => p.action === action);
-                          if (!perm) return <td key={action} className="text-center px-1.5 py-2" />;
-                          const isOn = selectedPermissions.has(perm.id);
-                          return (
-                            <td key={action} className="text-center px-1.5 py-2">
-                              <button type="button" onClick={() => togglePermission(perm.id)} className="inline-flex items-center justify-center">
-                                <div className={cn("h-4 w-4 rounded border-[1.5px] flex items-center justify-center transition-all", isOn ? "bg-brand-olive border-brand-olive" : "border-ink-300 hover:border-ink-400")}>
-                                  {isOn && <svg viewBox="0 0 12 12" className="text-white" width={9} height={9}><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                                </div>
-                              </button>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
+                  {systemModuleEntries.map(([module, perms], i) => (
+                    <ModuleRow key={module} module={module} perms={perms} label={allModuleLabels[module] || module} even={i % 2 === 0} selectedPermissions={selectedPermissions} allActions={allActions} onToggleModule={toggleModule} onTogglePermission={togglePermission} />
+                  ))}
+                  {pageModuleEntries.length > 0 && (
+                    <tr className="bg-ink-100/50">
+                      <td colSpan={allActions.length + 1} className="px-3 py-2 sticky left-0 bg-ink-100/50">
+                        <span className="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Paginas CMS</span>
+                      </td>
+                    </tr>
+                  )}
+                  {pageModuleEntries.map(([module, perms], i) => (
+                    <ModuleRow key={module} module={module} perms={perms} label={allModuleLabels[module] || module} even={i % 2 === 0} selectedPermissions={selectedPermissions} allActions={allActions} onToggleModule={toggleModule} onTogglePermission={togglePermission} />
+                  ))}
                 </tbody>
               </table>
             </div>

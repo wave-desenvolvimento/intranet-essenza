@@ -40,10 +40,21 @@ export async function getPermissions() {
 
 async function ensureAllPermissions() {
   const supabase = await createClient();
+
+  // Fetch CMS page slugs to include as dynamic modules
+  const { data: cmsPages } = await supabase
+    .from("cms_pages")
+    .select("slug")
+    .eq("page_type", "cms")
+    .eq("is_group", false);
+
+  const dynamicModules = (cmsPages || []).map((p) => p.slug);
+  const allModules = [...new Set([...ALL_MODULES, ...dynamicModules])];
+
   const { data: existing } = await supabase.from("permissions").select("module, action");
   const existingSet = new Set((existing || []).map((p) => `${p.module}::${p.action}`));
 
-  const missing = ALL_MODULES.flatMap((module) =>
+  const missing = allModules.flatMap((module) =>
     ALL_ACTIONS.filter((action) => !existingSet.has(`${module}::${action}`))
       .map((action) => ({ module, action, description: `${module}.${action}` }))
   );
