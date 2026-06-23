@@ -11,6 +11,7 @@ import { InstallPrompt } from "@/components/layout/install-prompt";
 import { SwRegister } from "@/components/layout/sw-register";
 import { Toaster } from "sonner";
 import { SurveyWidget } from "@/components/layout/survey-widget";
+import { PageViewTracker } from "@/components/layout/page-view-tracker";
 
 export default async function DashboardLayout({
   children,
@@ -88,6 +89,7 @@ export default async function DashboardLayout({
       <TourAutoStart />
       <InstallPrompt />
       <SwRegister />
+      <PageViewTracker />
       <Toaster position="bottom-right" richColors />
     </div>
   );

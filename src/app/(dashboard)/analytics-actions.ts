@@ -238,3 +238,185 @@ export async function getOrdersAnalytics(from?: string, to?: string) {
     topProducts,
   };
 }
+
+// ===================================================
+// DETAILED FRANCHISE & USER ACTIVITY ANALYTICS
+// ===================================================
+
+const MODULE_LABELS: Record<string, string> = {
+  inicio: "Início", pedidos: "Pedidos", franquias: "Franquias", usuarios: "Usuários",
+  comunicados: "Comunicados", faq: "FAQ", pesquisas: "Pesquisas", relatorios: "Relatórios",
+  biblioteca: "Biblioteca", cms: "CMS", templates: "Templates", configuracoes: "Configurações",
+  "universo-da-marca": "Universo da Marca", "material-corporativo": "Material Corp.",
+  campanhas: "Campanhas", "redes-sociais": "Redes Sociais", videos: "Vídeos",
+  treinamento: "Treinamento", cigam: "CIGAM", outro: "Outro",
+};
+
+export async function getDetailedAnalytics(from?: string, to?: string) {
+  const p = await requirePermission("relatorios", "view"); if (p.error) return p;
+  const supabase = await createClient();
+
+  const dateFrom = from || new Date(Date.now() - 30 * 86400000).toISOString();
+  const dateTo = to || new Date().toISOString();
+
+  // 1. Page views by module (aggregated)
+  const { data: pageViewsRaw } = await supabase
+    .from("page_views")
+    .select("module, franchise_id, user_id, created_at, franchises(name)")
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo)
+    .order("created_at", { ascending: false })
+    .limit(10000);
+
+  const pvRows = pageViewsRaw || [];
+
+  // Module usage aggregation
+  const moduleMap = new Map<string, { module: string; label: string; views: number; uniqueUsers: Set<string>; uniqueFranchises: Set<string> }>();
+  for (const pv of pvRows) {
+    const m = pv.module;
+    const existing = moduleMap.get(m) || { module: m, label: MODULE_LABELS[m] || m, views: 0, uniqueUsers: new Set(), uniqueFranchises: new Set() };
+    existing.views++;
+    if (pv.user_id) existing.uniqueUsers.add(pv.user_id);
+    if (pv.franchise_id) existing.uniqueFranchises.add(pv.franchise_id);
+    moduleMap.set(m, existing);
+  }
+  const moduleUsage = [...moduleMap.values()]
+    .map((m) => ({ module: m.module, label: m.label, views: m.views, uniqueUsers: m.uniqueUsers.size, uniqueFranchises: m.uniqueFranchises.size }))
+    .sort((a, b) => b.views - a.views);
+
+  // 2. Franchise detailed breakdown (modules per franchise, active users, last activity)
+  const franchiseDetailMap = new Map<string, {
+    franchiseId: string; name: string;
+    totalPageViews: number;
+    modules: Map<string, number>;
+    users: Map<string, { name: string; pageViews: number; lastSeen: string }>;
+    lastActivity: string;
+  }>();
+
+  // Fetch user profiles in batch for name resolution
+  const userIds = [...new Set(pvRows.map((r) => r.user_id).filter(Boolean))];
+  const { data: profiles } = userIds.length > 0
+    ? await supabase.from("profiles").select("id, full_name, franchise_id").in("id", userIds)
+    : { data: [] };
+  const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
+
+  for (const pv of pvRows) {
+    if (!pv.franchise_id) continue;
+    const fName = (pv.franchises as unknown as { name: string })?.name || "—";
+    const existing = franchiseDetailMap.get(pv.franchise_id) || {
+      franchiseId: pv.franchise_id, name: fName,
+      totalPageViews: 0, modules: new Map(), users: new Map(), lastActivity: pv.created_at,
+    };
+    existing.totalPageViews++;
+
+    // Module count
+    existing.modules.set(pv.module, (existing.modules.get(pv.module) || 0) + 1);
+
+    // User activity
+    if (pv.user_id) {
+      const profile = profileMap.get(pv.user_id);
+      const userName = profile?.full_name || pv.user_id.slice(0, 8);
+      const userEntry = existing.users.get(pv.user_id) || { name: userName, pageViews: 0, lastSeen: pv.created_at };
+      userEntry.pageViews++;
+      if (pv.created_at > userEntry.lastSeen) userEntry.lastSeen = pv.created_at;
+      existing.users.set(pv.user_id, userEntry);
+    }
+
+    if (pv.created_at > existing.lastActivity) existing.lastActivity = pv.created_at;
+    franchiseDetailMap.set(pv.franchise_id, existing);
+  }
+
+  // Also include content engagement data (analytics_events) per franchise
+  const { data: contentEvents } = await supabase
+    .from("analytics_events")
+    .select("franchise_id, event_type, user_id")
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo)
+    .limit(5000);
+
+  const contentByFranchise = new Map<string, { views: number; downloads: number }>();
+  for (const e of contentEvents || []) {
+    if (!e.franchise_id) continue;
+    const existing = contentByFranchise.get(e.franchise_id) || { views: 0, downloads: 0 };
+    if (e.event_type === "view") existing.views++;
+    else if (e.event_type === "download") existing.downloads++;
+    contentByFranchise.set(e.franchise_id, existing);
+  }
+
+  // Also fetch all franchises to show ones with zero activity
+  const { data: allFranchises } = await supabase
+    .from("franchises")
+    .select("id, name")
+    .eq("active", true);
+
+  // Build final franchise detail array
+  const franchiseDetails = (allFranchises || []).map((f) => {
+    const detail = franchiseDetailMap.get(f.id);
+    const content = contentByFranchise.get(f.id);
+    const modulesArr = detail
+      ? [...detail.modules.entries()].map(([mod, count]) => ({ module: mod, label: MODULE_LABELS[mod] || mod, count })).sort((a, b) => b.count - a.count)
+      : [];
+    const usersArr = detail
+      ? [...detail.users.values()].sort((a, b) => b.pageViews - a.pageViews)
+      : [];
+    return {
+      franchiseId: f.id,
+      name: f.name,
+      totalPageViews: detail?.totalPageViews || 0,
+      contentViews: content?.views || 0,
+      contentDownloads: content?.downloads || 0,
+      activeUsers: usersArr.length,
+      lastActivity: detail?.lastActivity || null,
+      modules: modulesArr,
+      users: usersArr,
+    };
+  }).sort((a, b) => b.totalPageViews - a.totalPageViews);
+
+  // 3. Recent activity log (last 50 actions across audit + page views)
+  const { data: recentAudit } = await supabase
+    .from("audit_log")
+    .select("id, user_id, user_name, action, entity_type, description, created_at")
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  // Enrich audit with franchise info
+  const auditUserIds = [...new Set((recentAudit || []).map((a) => a.user_id).filter(Boolean))];
+  const { data: auditProfiles } = auditUserIds.length > 0
+    ? await supabase.from("profiles").select("id, franchise_id, franchises(name)").in("id", auditUserIds)
+    : { data: [] };
+  const auditProfileMap = new Map((auditProfiles || []).map((p) => [p.id, p]));
+
+  const activityLog = (recentAudit || []).map((a) => {
+    const profile = auditProfileMap.get(a.user_id);
+    const franchise = profile?.franchises as unknown as { name: string } | null;
+    return {
+      id: a.id,
+      userName: a.user_name,
+      action: a.action,
+      entityType: a.entity_type,
+      description: a.description,
+      franchiseName: franchise?.name || null,
+      createdAt: a.created_at,
+    };
+  });
+
+  // 4. Total page views count
+  const { count: totalPageViews } = await supabase
+    .from("page_views")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo);
+
+  // 5. Unique sessions
+  const sessionSet = new Set(pvRows.map((r) => r.user_id).filter(Boolean));
+
+  return {
+    totalPageViews: totalPageViews || 0,
+    totalSessions: sessionSet.size,
+    moduleUsage,
+    franchiseDetails,
+    activityLog,
+  };
+}
