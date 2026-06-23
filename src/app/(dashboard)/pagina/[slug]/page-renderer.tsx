@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import DOMPurify from "dompurify";
-import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ImageIcon } from "lucide-react";
+import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Sheet } from "@/components/ui/sheet";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { createItem, updateItem, deleteItem } from "@/app/(dashboard)/cms/actions";
+import { createFolder, updateFolder, deleteFolder, moveItemsToFolder, type Folder as FolderType } from "@/app/(dashboard)/cms/folder-actions";
 import { uploadToStorage } from "@/lib/upload";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -39,6 +40,7 @@ interface Item {
   status: string;
   sort_order: number;
   created_at: string;
+  folder_id?: string | null;
 }
 
 interface CollectionData {
@@ -48,6 +50,13 @@ interface CollectionData {
   role: string;
   fields: Field[];
   items: Item[];
+}
+
+interface CollectionMeta {
+  id: string;
+  name: string;
+  slug: string;
+  icon?: string;
 }
 
 interface Page {
@@ -60,9 +69,11 @@ interface Page {
 interface Props {
   page: Page;
   collections: CollectionData[];
+  folders: FolderType[];
+  allCollections: CollectionMeta[];
 }
 
-export function PageRenderer({ page, collections }: Props) {
+export function PageRenderer({ page, collections, folders: initialFolders, allCollections }: Props) {
   const mainCollection = collections.find((c) => c.role === "main");
   const filterCollections = collections.filter((c) => c.role === "filter");
   const { can } = usePermissions();
@@ -75,6 +86,19 @@ export function PageRenderer({ page, collections }: Props) {
   const { confirm, dialogProps } = useConfirm();
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
+  // Folder state
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([]);
+  const [folderSheet, setFolderSheet] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<FolderType | null>(null);
+  const [folderName, setFolderName] = useState("");
+  const [folderCollectionId, setFolderCollectionId] = useState("");
+  const [folderIcon, setFolderIcon] = useState("folder");
+  const [moveSheet, setMoveSheet] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  const folders = initialFolders;
+
   // Load favorite IDs
   useEffect(() => {
     getUserFavoriteIds().then((ids) => setFavoriteIds(new Set(ids)));
@@ -84,6 +108,121 @@ export function PageRenderer({ page, collections }: Props) {
   const moduleSlug = page.slug;
   const canCreate = can(`${moduleSlug}.create`) || can("cms.create");
   const canEdit = can(`${moduleSlug}.edit`) || can("cms.edit");
+
+  // Get subfolders for current location
+  const currentSubfolders = folders.filter((f) =>
+    currentFolderId ? f.parent_id === currentFolderId : !f.parent_id
+  );
+
+  // Get the active collection for current folder (may differ from main)
+  function getActiveCollection(): CollectionData | undefined {
+    if (!currentFolderId) return mainCollection;
+    // Walk up folders to find collection_id
+    let checkId: string | null = currentFolderId;
+    let depth = 0;
+    while (checkId && depth < 20) {
+      const folder = folders.find((f) => f.id === checkId);
+      if (!folder) break;
+      if (folder.collection_id) {
+        const col = collections.find((c) => c.id === folder.collection_id);
+        if (col) return col;
+      }
+      checkId = folder.parent_id;
+      depth++;
+    }
+    return mainCollection;
+  }
+
+  const activeCollection = getActiveCollection();
+
+  // Filter items for current folder
+  const folderItems = activeCollection
+    ? activeCollection.items.filter((item) => {
+        if (currentFolderId) return item.folder_id === currentFolderId;
+        // Root: items without folder_id
+        return !item.folder_id;
+      })
+    : [];
+
+  // Build a virtual collection with filtered items
+  const currentCollection = activeCollection
+    ? { ...activeCollection, items: folderItems }
+    : undefined;
+
+  // Navigate into folder
+  function enterFolder(folder: FolderType) {
+    setCurrentFolderId(folder.id);
+    setFolderPath((prev) => [...prev, { id: folder.id, name: folder.name }]);
+    setSelectedItemIds(new Set());
+  }
+
+  // Navigate to specific breadcrumb level
+  function navigateTo(index: number) {
+    if (index < 0) {
+      setCurrentFolderId(null);
+      setFolderPath([]);
+    } else {
+      const target = folderPath[index];
+      setCurrentFolderId(target.id);
+      setFolderPath((prev) => prev.slice(0, index + 1));
+    }
+    setSelectedItemIds(new Set());
+  }
+
+  function openFolderSheet(folder?: FolderType) {
+    setEditingFolder(folder || null);
+    setFolderName(folder?.name || "");
+    setFolderCollectionId(folder?.collection_id || "");
+    setFolderIcon(folder?.icon || "folder");
+    setFolderSheet(true);
+  }
+
+  function closeFolderSheet() { setFolderSheet(false); setEditingFolder(null); setFolderName(""); setFolderCollectionId(""); setFolderIcon("folder"); }
+
+  function saveFolder() {
+    if (!folderName.trim()) return;
+    const fd = new FormData();
+    fd.set("name", folderName.trim());
+    fd.set("icon", folderIcon);
+    if (folderCollectionId) fd.set("collectionId", folderCollectionId);
+
+    if (editingFolder) {
+      fd.set("id", editingFolder.id);
+      startTransition(async () => {
+        const r = await updateFolder(fd);
+        if (r?.error) toast.error(r.error);
+        else { closeFolderSheet(); toast.success("Pasta atualizada"); }
+      });
+    } else {
+      fd.set("pageId", page.id);
+      if (currentFolderId) fd.set("parentId", currentFolderId);
+      startTransition(async () => {
+        const r = await createFolder(fd);
+        if (r?.error) toast.error(r.error);
+        else { closeFolderSheet(); toast.success("Pasta criada"); }
+      });
+    }
+  }
+
+  async function removeFolder(id: string) {
+    const ok = await confirm({ title: "Remover pasta", message: "Todos os itens dentro desta pasta ficarão sem pasta. Deseja continuar?", confirmLabel: "Remover", destructive: true });
+    if (!ok) return;
+    startTransition(async () => {
+      const r = await deleteFolder(id);
+      if (r?.error) toast.error(r.error);
+      else toast.success("Pasta removida");
+    });
+  }
+
+  async function handleMoveItems(targetFolderId: string | null) {
+    const ids = Array.from(selectedItemIds);
+    if (ids.length === 0) return;
+    startTransition(async () => {
+      const r = await moveItemsToFolder(ids, targetFolderId);
+      if (r?.error) toast.error(r.error);
+      else { setSelectedItemIds(new Set()); setMoveSheet(false); toast.success(`${ids.length} ${ids.length === 1 ? "item movido" : "itens movidos"}`); }
+    });
+  }
 
   function openItemSheet(item?: Item) {
     setEditingItem(item || null);
@@ -96,7 +235,7 @@ export function PageRenderer({ page, collections }: Props) {
   function closeItemSheet() { setItemSheet(false); setEditingItem(null); }
 
   function saveItem() {
-    if (!mainCollection) return;
+    if (!activeCollection) return;
     const fd = new FormData();
     fd.set("data", JSON.stringify(itemData));
     fd.set("status", itemStatus);
@@ -106,7 +245,8 @@ export function PageRenderer({ page, collections }: Props) {
       fd.set("id", editingItem.id);
       startTransition(async () => { const r = await updateItem(fd); if (r?.error) setError(r.error); else { closeItemSheet(); toast.success("Item atualizado"); } });
     } else {
-      fd.set("collectionId", mainCollection.id);
+      fd.set("collectionId", activeCollection.id);
+      if (currentFolderId) fd.set("folderId", currentFolderId);
       startTransition(async () => { const r = await createItem(fd); if (r?.error) setError(r.error); else { closeItemSheet(); toast.success("Item criado"); } });
     }
   }
@@ -116,6 +256,9 @@ export function PageRenderer({ page, collections }: Props) {
     if (!ok) return;
     startTransition(async () => { await deleteItem(id); toast.success("Item removido"); });
   }
+
+  const hasFolders = folders.length > 0;
+  const showFolderUI = hasFolders || canCreate;
 
   if (!mainCollection) {
     return (
@@ -130,39 +273,212 @@ export function PageRenderer({ page, collections }: Props) {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold text-ink-900">{page.title}</h1>
           <span className="text-sm text-ink-400">
-            {mainCollection.items.length} {mainCollection.items.length === 1 ? "item" : "itens"}
+            {currentCollection ? currentCollection.items.length : 0} {(currentCollection?.items.length || 0) === 1 ? "item" : "itens"}
           </span>
         </div>
-        {canCreate && (
-          <button onClick={() => openItemSheet()} className="flex items-center gap-2 rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors">
-            <Plus size={16} /> Novo
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canCreate && (
+            <button onClick={() => openFolderSheet()} className="flex items-center gap-2 rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors">
+              <FolderPlus size={16} /> Pasta
+            </button>
+          )}
+          {selectedItemIds.size > 0 && canEdit && (
+            <button onClick={() => setMoveSheet(true)} className="flex items-center gap-2 rounded-lg border border-brand-olive px-3 py-2 text-sm font-medium text-brand-olive hover:bg-brand-olive-soft transition-colors">
+              <FolderInput size={16} /> Mover {selectedItemIds.size}
+            </button>
+          )}
+          {canCreate && (
+            <button onClick={() => openItemSheet()} className="flex items-center gap-2 rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors">
+              <Plus size={16} /> Novo
+            </button>
+          )}
+        </div>
       </div>
 
-      {page.view_type === "gallery" && (
-        <GalleryPageView collection={mainCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} />
+      {/* Breadcrumb */}
+      {folderPath.length > 0 && (
+        <div className="flex items-center gap-1 mb-4 text-sm">
+          <button
+            onClick={() => navigateTo(-1)}
+            className="flex items-center gap-1 text-ink-500 hover:text-ink-900 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            {page.title}
+          </button>
+          {folderPath.map((crumb, i) => (
+            <span key={crumb.id} className="flex items-center gap-1">
+              <ChevronRight size={12} className="text-ink-300" />
+              {i === folderPath.length - 1 ? (
+                <span className="font-medium text-ink-900">{crumb.name}</span>
+              ) : (
+                <button onClick={() => navigateTo(i)} className="text-ink-500 hover:text-ink-900 transition-colors">
+                  {crumb.name}
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
       )}
-      {page.view_type === "files" && (
-        <FilesPageView collection={mainCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} />
+
+      {/* Folders grid */}
+      {currentSubfolders.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-5">
+          {currentSubfolders.map((folder) => {
+            const childCount = folders.filter((f) => f.parent_id === folder.id).length;
+            const FolderIcon = folder.icon === "folder" ? Folder : (getIconByName(folder.icon) || Folder);
+            return (
+              <div
+                key={folder.id}
+                className="group flex items-center gap-3 rounded-xl border border-ink-100 bg-white px-4 py-3 cursor-pointer hover:border-brand-olive/30 hover:bg-brand-olive-soft/10 transition-colors"
+                onClick={() => enterFolder(folder)}
+              >
+                <FolderIcon size={20} className="text-brand-olive shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-ink-900 truncate">{folder.name}</p>
+                  {childCount > 0 && (
+                    <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
+                  )}
+                </div>
+                {canEdit && (
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }}
+                      className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"
+                      title="Editar pasta"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }}
+                      className="rounded-md p-1 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors"
+                      title="Remover pasta"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
-      {page.view_type === "table" && (
-        <TablePageView collection={mainCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} />
+
+      {/* Content views — using filtered items for current folder */}
+      {currentCollection && (
+        <>
+          {page.view_type === "gallery" && (
+            <GalleryPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} />
+          )}
+          {page.view_type === "files" && (
+            <FilesPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} />
+          )}
+          {page.view_type === "table" && (
+            <TablePageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} />
+          )}
+          {page.view_type === "course" && (
+            <CoursePageView collection={currentCollection} />
+          )}
+        </>
       )}
-      {page.view_type === "course" && (
-        <CoursePageView collection={mainCollection} />
+
+      {currentSubfolders.length === 0 && (!currentCollection || currentCollection.items.length === 0) && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 bg-ink-50/50 py-12">
+          <FolderOpen size={32} className="text-ink-300 mb-2" />
+          <p className="text-sm text-ink-400">Pasta vazia</p>
+          {canCreate && (
+            <div className="flex items-center gap-2 mt-3">
+              <button onClick={() => openFolderSheet()} className="flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-600 hover:bg-ink-50 transition-colors">
+                <FolderPlus size={13} /> Nova pasta
+              </button>
+              <button onClick={() => openItemSheet()} className="flex items-center gap-1.5 rounded-lg bg-brand-olive px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-olive-dark transition-colors">
+                <Plus size={13} /> Novo item
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       <ConfirmDialog {...dialogProps} />
 
+      {/* Folder sheet */}
+      <Sheet open={folderSheet} onClose={closeFolderSheet} onSubmit={saveFolder} title={editingFolder ? "Editar pasta" : "Nova pasta"}>
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="text-sm font-medium text-ink-700 mb-1.5 block">Nome</label>
+            <input
+              type="text"
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              placeholder="Nome da pasta"
+              className="h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-ink-700 mb-1.5 block">
+              Estrutura (collection)
+              <span className="text-ink-400 font-normal ml-1">opcional</span>
+            </label>
+            <select
+              value={folderCollectionId}
+              onChange={(e) => setFolderCollectionId(e.target.value)}
+              className="h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
+            >
+              <option value="">Herdar da pasta pai</option>
+              {allCollections.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-ink-400 mt-1">Define quais campos os itens nesta pasta terão. Se vazio, herda da pasta pai ou da página.</p>
+          </div>
+          <div className="flex gap-2 pt-2 border-t border-ink-100 mt-2">
+            <button onClick={saveFolder} disabled={isPending || !folderName.trim()} className="flex-1 rounded-lg bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-50 transition-colors">
+              {isPending ? "Salvando..." : editingFolder ? "Salvar" : "Criar pasta"}
+            </button>
+            <button onClick={closeFolderSheet} className="rounded-lg border border-ink-100 px-4 py-2.5 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors">Cancelar</button>
+          </div>
+        </div>
+      </Sheet>
+
+      {/* Move items sheet */}
+      <Sheet open={moveSheet} onClose={() => setMoveSheet(false)} title={`Mover ${selectedItemIds.size} ${selectedItemIds.size === 1 ? "item" : "itens"}`}>
+        <div className="flex flex-col gap-2">
+          {currentFolderId && (
+            <button
+              onClick={() => handleMoveItems(null)}
+              className="flex items-center gap-3 rounded-lg border border-ink-100 px-4 py-3 hover:bg-ink-50 transition-colors text-left"
+            >
+              <ArrowLeft size={16} className="text-ink-400" />
+              <span className="text-sm text-ink-700">Raiz da página</span>
+            </button>
+          )}
+          {folders
+            .filter((f) => f.id !== currentFolderId && !selectedItemIds.has(f.id))
+            .map((folder) => (
+              <button
+                key={folder.id}
+                onClick={() => handleMoveItems(folder.id)}
+                className="flex items-center gap-3 rounded-lg border border-ink-100 px-4 py-3 hover:bg-brand-olive-soft/20 hover:border-brand-olive/30 transition-colors text-left"
+              >
+                <Folder size={16} className="text-brand-olive" />
+                <span className="text-sm text-ink-900">{folder.name}</span>
+              </button>
+            ))}
+          {folders.length === 0 && !currentFolderId && (
+            <p className="text-sm text-ink-400 text-center py-4">Nenhuma pasta disponível</p>
+          )}
+        </div>
+      </Sheet>
+
       {/* Item edit sheet */}
       <Sheet open={itemSheet} onClose={closeItemSheet} onSubmit={saveItem} title={editingItem ? "Editar" : "Novo Item"} wide>
         <div className="flex flex-col gap-4">
-          {mainCollection.fields.map((f) => (
+          {(activeCollection || mainCollection)?.fields.map((f) => (
             <div key={f.id}>
               <label className="text-sm font-medium text-ink-700 mb-1.5 block">{f.name}</label>
               <PageDynamicField field={f} value={itemData[f.slug]} onChange={(val) => setItemData((prev) => ({ ...prev, [f.slug]: val }))} />

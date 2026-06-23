@@ -51,10 +51,27 @@ export default async function DynamicPage({
     };
   }).filter(Boolean);
 
+  // Fetch folders for this page
+  const { data: folders } = await supabase
+    .from("cms_folders")
+    .select("*")
+    .eq("page_id", page.id)
+    .order("sort_order")
+    .order("name");
+
+  // Fetch all collections (for folder collection picker)
+  const { data: allCollections } = await supabase
+    .from("cms_collections")
+    .select("id, name, slug, icon")
+    .eq("is_group", false)
+    .order("name");
+
   return (
     <PageRenderer
       page={page}
       collections={validCollections}
+      folders={folders || []}
+      allCollections={allCollections || []}
     />
   );
 }

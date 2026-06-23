@@ -8,7 +8,7 @@ import { submitResponse } from "@/app/(dashboard)/pesquisas/actions";
 interface Question {
   id: string;
   label: string;
-  type: "nps" | "rating" | "text" | "choice";
+  type: "nps" | "rating" | "text" | "choice" | "multiple_choice";
   options: string[] | null;
   required: boolean;
   sort_order: number;
@@ -90,7 +90,12 @@ export function SurveyWidget({ surveys }: Props) {
   function canAdvance(): boolean {
     if (!currentQuestion) return true;
     if (!currentQuestion.required) return true;
-    return !!answers[currentQuestion.id];
+    const val = answers[currentQuestion.id];
+    if (!val) return false;
+    if (currentQuestion.type === "multiple_choice") {
+      try { return (JSON.parse(val) as string[]).length > 0; } catch { return false; }
+    }
+    return true;
   }
 
   if (pending.length === 0) return null;
@@ -207,6 +212,32 @@ export function SurveyWidget({ surveys }: Props) {
                       ))}
                     </div>
                   )}
+
+                  {currentQuestion.type === "multiple_choice" && currentQuestion.options && (() => {
+                    const selected: string[] = (() => { try { return JSON.parse(answers[currentQuestion.id] || "[]"); } catch { return []; } })();
+                    function toggle(opt: string) {
+                      const next = selected.includes(opt) ? selected.filter((v) => v !== opt) : [...selected, opt];
+                      setAnswers((p) => ({ ...p, [currentQuestion.id]: JSON.stringify(next) }));
+                    }
+                    return (
+                      <div className="flex flex-col gap-2">
+                        {currentQuestion.options.map((opt) => {
+                          const checked = selected.includes(opt);
+                          return (
+                            <button key={opt} type="button" onClick={() => toggle(opt)} className={cn(
+                              "flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-left transition-all",
+                              checked ? "bg-brand-olive-soft text-brand-olive-dark font-medium ring-2 ring-brand-olive/20" : "border border-ink-100 text-ink-700 hover:bg-ink-50"
+                            )}>
+                              <div className={cn("h-5 w-5 rounded shrink-0 flex items-center justify-center border-2 transition-colors", checked ? "border-brand-olive bg-brand-olive" : "border-ink-300")}>
+                                {checked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                              </div>
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div>

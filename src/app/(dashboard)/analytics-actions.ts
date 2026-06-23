@@ -31,6 +31,32 @@ export async function trackEvent(
   });
 }
 
+export async function trackPageView(pagePath: string, module: string, pageTitle?: string, sessionId?: string) {
+  try {
+    await requireAuth();
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("franchise_id")
+      .eq("id", user.id)
+      .single();
+
+    await supabase.from("page_views").insert({
+      user_id: user.id,
+      franchise_id: profile?.franchise_id || null,
+      page_path: pagePath,
+      module,
+      page_title: pageTitle || null,
+      session_id: sessionId || null,
+    });
+  } catch {
+    // Page view tracking should never break navigation
+  }
+}
+
 export async function getAnalyticsDashboard(from?: string, to?: string) {
   const p = await requirePermission("relatorios", "view"); if (p.error) return p;
   const supabase = await createClient();

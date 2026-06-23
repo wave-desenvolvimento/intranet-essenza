@@ -10,7 +10,7 @@ export async function getSurveys() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("surveys")
-    .select("*, questions:survey_questions(id, label, type, options, required, sort_order), responses:survey_responses(id, score, comment, user_id, franchise_id, created_at, answers:survey_answers(question_id, value))")
+    .select("*, questions:survey_questions(id, label, type, options, required, sort_order), responses:survey_responses(id, score, comment, user_id, franchise_id, created_at, franchise:franchises(name), answers:survey_answers(question_id, value))")
     .order("created_at", { ascending: false });
 
   // Sort questions by sort_order
@@ -22,7 +22,7 @@ export async function getSurveys() {
 
 interface QuestionInput {
   label: string;
-  type: "nps" | "rating" | "text" | "choice";
+  type: "nps" | "rating" | "text" | "choice" | "multiple_choice";
   options?: string[];
   required: boolean;
 }
@@ -61,7 +61,7 @@ export async function createSurvey(formData: FormData) {
       survey_id: survey.id,
       label: q.label,
       type: q.type,
-      options: q.type === "choice" && q.options ? q.options : null,
+      options: (q.type === "choice" || q.type === "multiple_choice") && q.options ? q.options : null,
       required: q.required,
       sort_order: i,
     }))

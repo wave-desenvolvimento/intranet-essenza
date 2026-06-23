@@ -17,7 +17,7 @@ interface Survey { [key: string]: any; }
 
 interface QuestionInput {
   label: string;
-  type: "nps" | "rating" | "text" | "choice";
+  type: "nps" | "rating" | "text" | "choice" | "multiple_choice";
   options: string[];
   required: boolean;
 }
@@ -34,6 +34,7 @@ const QUESTION_TYPES = [
   { value: "rating", label: "Estrelas (1–5)" },
   { value: "text", label: "Texto livre" },
   { value: "choice", label: "Escolha única" },
+  { value: "multiple_choice", label: "Múltipla escolha" },
 ];
 
 function calcNps(responses: { score: number | null }[]) {
@@ -96,6 +97,31 @@ function ChoiceInput({ options, value, onChange }: { options: string[]; value: s
           {opt}
         </button>
       ))}
+    </div>
+  );
+}
+
+// --- Multiple Choice Input (checkboxes) ---
+function MultipleChoiceInput({ options, value, onChange }: { options: string[]; value: string[]; onChange: (v: string[]) => void }) {
+  function toggle(opt: string) {
+    onChange(value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt]);
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      {options.map((opt) => {
+        const checked = value.includes(opt);
+        return (
+          <button key={opt} type="button" onClick={() => toggle(opt)} className={cn(
+            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-left transition-colors",
+            checked ? "bg-brand-olive-soft text-brand-olive-dark font-medium" : "border border-ink-100 text-ink-700 hover:bg-ink-50"
+          )}>
+            <div className={cn("h-4 w-4 rounded shrink-0 flex items-center justify-center border-2", checked ? "border-brand-olive bg-brand-olive" : "border-ink-300")}>
+              {checked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            {opt}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -294,6 +320,13 @@ export function SurveysManager({ surveys, canManage, canViewAll, currentUserId }
                             <textarea value={responseAnswers[q.id] || ""} onChange={(e) => setResponseAnswers((p) => ({ ...p, [q.id]: e.target.value }))} rows={2} className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-olive focus:outline-none resize-none" placeholder="Sua resposta..." />
                           )}
                           {q.type === "choice" && q.options && <ChoiceInput options={q.options} value={responseAnswers[q.id] || null} onChange={(v) => setResponseAnswers((p) => ({ ...p, [q.id]: v }))} />}
+                          {q.type === "multiple_choice" && q.options && (
+                            <MultipleChoiceInput
+                              options={q.options}
+                              value={responseAnswers[q.id] ? JSON.parse(responseAnswers[q.id]) : []}
+                              onChange={(v) => setResponseAnswers((p) => ({ ...p, [q.id]: JSON.stringify(v) }))}
+                            />
+                          )}
                         </div>
                       ))}
                       <textarea value={responseComment} onChange={(e) => setResponseComment(e.target.value)} placeholder="Comentário geral (opcional)" rows={2} className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-olive focus:outline-none resize-none" />
@@ -313,13 +346,16 @@ export function SurveysManager({ surveys, canManage, canViewAll, currentUserId }
                     </button>
                     {isExpanded && (
                       <div className="border-t border-ink-100 divide-y divide-ink-50 max-h-80 overflow-y-auto">
-                        {(survey.responses as { score: number | null; comment: string | null; created_at: string; answers: { question_id: string; value: string }[] }[])
+                        {(survey.responses as { score: number | null; comment: string | null; created_at: string; franchise: { name: string } | null; answers: { question_id: string; value: string }[] }[])
                           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                           .map((r, i) => (
                           <div key={i} className="px-5 py-3">
                             <div className="flex items-center gap-2 mb-1.5">
                               {r.score !== null && (
                                 <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white", r.score <= 6 ? "bg-danger" : r.score <= 8 ? "bg-warning" : "bg-success")}>{r.score}</div>
+                              )}
+                              {r.franchise?.name && (
+                                <span className="rounded-md bg-ink-50 px-1.5 py-0.5 text-[10px] font-medium text-ink-600">{r.franchise.name}</span>
                               )}
                               <span className="text-[10px] text-ink-400">{new Date(r.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
                             </div>
@@ -413,7 +449,7 @@ export function SurveysManager({ surveys, canManage, canViewAll, currentUserId }
                           Obrigatória
                         </label>
                       </div>
-                      {q.type === "choice" && (
+                      {(q.type === "choice" || q.type === "multiple_choice") && (
                         <div className="flex flex-col gap-1.5 pl-1">
                           {q.options.map((opt, oi) => (
                             <div key={oi} className="flex items-center gap-2">

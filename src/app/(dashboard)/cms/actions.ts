@@ -217,6 +217,7 @@ export async function createItem(formData: FormData) {
   const status = formData.get("status") as string || "draft";
   const publishedAt = formData.get("publishedAt") as string;
   const expiresAt = formData.get("expiresAt") as string;
+  const folderId = formData.get("folderId") as string;
 
   if (!collectionId || !dataRaw) return { error: "Dados incompletos." };
 
@@ -233,6 +234,7 @@ export async function createItem(formData: FormData) {
     created_by: user?.id,
     published_at: publishedAt || null,
     expires_at: expiresAt || null,
+    folder_id: folderId || null,
   });
 
   if (error) return { error: "Erro ao criar item." };
@@ -347,6 +349,7 @@ export async function duplicateItem(id: string) {
     created_by: user?.id,
     published_at: null,
     expires_at: null,
+    folder_id: item.folder_id || null,
   });
 
   if (error) return { error: "Erro ao duplicar item." };
