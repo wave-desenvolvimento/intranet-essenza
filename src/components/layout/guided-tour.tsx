@@ -20,7 +20,7 @@ function isMobileView() {
 const UNIVERSAL_STEPS: TourStep[] = [
   {
     popover: {
-      title: "Bem-vindo ao Hub Essenza!",
+      title: "Bem-vindo ao Hub Empório Essenza!",
       description: "Este é seu centro de comando. Aqui você encontra materiais, campanhas, pedidos e muito mais. Vamos fazer um tour rápido!",
       side: "over",
       align: "center",
@@ -30,7 +30,7 @@ const UNIVERSAL_STEPS: TourStep[] = [
     element: "[data-tour='search']",
     popover: {
       title: "Busca Rápida",
-      description: "Toque aqui (ou ⌘K no desktop) para buscar qualquer conteúdo ou página.",
+      description: "Toque aqui (ou ⌘K no Mac / Ctrl+K no Windows) para buscar qualquer conteúdo ou página.",
       side: "bottom",
       align: "end",
     },

@@ -13,7 +13,7 @@ import type { Viewport } from "next";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-  title: "Essenza Hub — Gestão de Marca para Franqueados",
+  title: "Empório Essenza Hub — Gestão de Marca para Franqueados",
   description:
     "Plataforma centralizada da rede Empório Essenza Serra Gaúcha. Campanhas, materiais, treinamentos e assets organizados para fortalecer a marca em cada franquia.",
   icons: {
@@ -24,21 +24,21 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Essenza Hub",
+    title: "Empório Essenza Hub",
   },
   openGraph: {
-    title: "Essenza Hub — Gestão de Marca para Franqueados",
+    title: "Empório Essenza Hub — Gestão de Marca para Franqueados",
     description:
       "Plataforma centralizada da rede Empório Essenza Serra Gaúcha. Campanhas, materiais, treinamentos e assets organizados para fortalecer a marca em cada franquia.",
     url: "https://intranet-essenza.vercel.app",
-    siteName: "Essenza Hub",
+    siteName: "Empório Essenza Hub",
     images: [{ url: "/assets/og-image.png", width: 1200, height: 630 }],
     locale: "pt_BR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Essenza Hub — Gestão de Marca para Franqueados",
+    title: "Empório Essenza Hub — Gestão de Marca para Franqueados",
     description:
       "Plataforma centralizada da rede Empório Essenza Serra Gaúcha. Campanhas, materiais, treinamentos e assets organizados para fortalecer a marca em cada franquia.",
     images: ["/assets/og-image.png"],

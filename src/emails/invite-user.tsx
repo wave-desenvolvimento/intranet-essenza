@@ -28,7 +28,7 @@ export function InviteUserEmail({ userName, franchiseName, inviteUrl }: InviteUs
                 src={`${baseUrl}/logo.svg`}
                 width="80"
                 height="80"
-                alt="Essenza"
+                alt="Empório Essenza"
                 className="mx-auto mb-4"
               />
 

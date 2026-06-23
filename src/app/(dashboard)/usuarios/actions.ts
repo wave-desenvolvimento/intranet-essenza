@@ -88,7 +88,7 @@ export async function inviteUser(formData: FormData) {
 
   // Create welcome notification for the new user
   notifyUsers([userId], {
-    title: "Bem-vindo ao Hub Essenza!",
+    title: "Bem-vindo ao Hub Empório Essenza!",
     body: "Explore os conteúdos e materiais disponíveis para sua franquia",
     href: "/inicio",
     icon: "bell",

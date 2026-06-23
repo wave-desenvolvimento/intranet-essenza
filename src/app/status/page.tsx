@@ -4,8 +4,8 @@ import { StatusDashboard } from "./status-dashboard";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Status — Essenza Hub",
-  description: "Status dos serviços do Essenza Hub em tempo real.",
+  title: "Status — Empório Essenza Hub",
+  description: "Status dos serviços do Empório Essenza Hub em tempo real.",
 };
 
 export interface HealthCheck {

@@ -149,10 +149,10 @@ export async function importFranchisesFromXlsx(formData: FormData): Promise<Impo
         await resend.emails.send({
           from: FROM_EMAIL,
           to: email,
-          subject: "Você foi convidado para o Essenza Hub",
+          subject: "Você foi convidado para o Empório Essenza Hub",
           html: `
             <h2>Olá, ${fullName}!</h2>
-            <p>Você foi convidado para acessar o <strong>Essenza Hub</strong>.</p>
+            <p>Você foi convidado para acessar o <strong>Empório Essenza Hub</strong>.</p>
             <p>Clique no botão abaixo para criar sua senha e acessar a plataforma:</p>
             <p style="margin: 24px 0;">
               <a href="${confirmUrl}" style="background:#18181b;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">

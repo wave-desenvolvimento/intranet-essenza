@@ -182,7 +182,7 @@ export function HelpCenter() {
             <a href="mailto:suporte@emporioessenza.com.br" className="flex items-center gap-1.5 text-[10px] font-medium text-brand-olive hover:text-brand-olive-dark transition-colors">
               <MessageCircle size={11} /> Falar com suporte
             </a>
-            <span className="text-[9px] text-ink-300">Essenza Hub v1.0</span>
+            <span className="text-[9px] text-ink-300">Empório Essenza Hub v1.0</span>
           </div>
         </div>
       )}

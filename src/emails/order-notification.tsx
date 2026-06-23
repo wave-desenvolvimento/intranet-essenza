@@ -47,7 +47,7 @@ export function OrderNotificationEmail({ franchiseName, orderId, items, total, n
                 src={`${baseUrl}/logo.svg`}
                 width="80"
                 height="80"
-                alt="Essenza"
+                alt="Empório Essenza"
                 className="mx-auto mb-2"
               />
               <Text className="text-sm text-[#6b6b5e] text-center mb-4">
@@ -108,7 +108,7 @@ export function OrderNotificationEmail({ franchiseName, orderId, items, total, n
 
               <Hr className="border-[#e8e5df] my-4" />
               <Text className="text-[10px] text-[#9b9b8e] text-center">
-                Enviado automaticamente pelo Hub Essenza
+                Enviado automaticamente pelo Hub Empório Essenza
               </Text>
             </Section>
           </Container>

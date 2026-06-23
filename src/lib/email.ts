@@ -11,4 +11,4 @@ export function getResend() {
   return _resend;
 }
 
-export const FROM_EMAIL = process.env.EMAIL_FROM || "Essenza Hub <noreply@emporioessenza.com.br>";
+export const FROM_EMAIL = process.env.EMAIL_FROM || "Empório Essenza Hub <noreply@emporioessenza.com.br>";

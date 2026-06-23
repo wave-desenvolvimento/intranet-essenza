@@ -44,7 +44,7 @@ export async function createSurvey(formData: FormData) {
 
   // Default NPS question if none provided
   if (questions.length === 0) {
-    questions = [{ label: "De 0 a 10, o quanto você recomendaria a Essenza?", type: "nps", required: true }];
+    questions = [{ label: "De 0 a 10, o quanto você recomendaria a Empório Essenza?", type: "nps", required: true }];
   }
 
   const { data: survey, error } = await supabase.from("surveys").insert({

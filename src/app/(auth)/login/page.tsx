@@ -199,7 +199,7 @@ export default function LoginPage() {
 
         {/* Mobile footer */}
         <p className="mt-auto pt-8 text-xs text-ink-400 lg:hidden">
-          © {new Date().getFullYear()} Essenza Serra Gaúcha ·{" "}
+          © {new Date().getFullYear()} Empório Essenza Serra Gaúcha ·{" "}
           <a href="https://www.wavecommerce.com.br/?utm_source=rodape&utm_medium=sistema-essenza" target="_blank" rel="noopener noreferrer" className="hover:text-ink-600 transition-colors">
             construído por WaveCommerce
           </a>

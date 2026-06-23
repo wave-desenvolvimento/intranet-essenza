@@ -32,12 +32,14 @@ export async function createShareLink(
   const code = generateCode();
   const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 
-  await supabase.from("share_links").insert({
+  const { error: insertError } = await supabase.from("share_links").insert({
     code,
     signed_url: data.signedUrl,
     expires_at: expiresAt,
     created_by: user?.id || null,
   });
+
+  if (insertError) return { error: "Erro ao salvar link compartilhado" };
 
   // Return friendly URL
   const h = await headers();
@@ -71,12 +73,14 @@ export async function createBulkShareLink(
   const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 
   // Store as JSON in signed_url field
-  await supabase.from("share_links").insert({
+  const { error } = await supabase.from("share_links").insert({
     code,
     signed_url: JSON.stringify(signedItems),
     expires_at: expiresAt,
     created_by: user?.id || null,
   });
+
+  if (error) return { error: "Erro ao salvar link compartilhado" };
 
   const h = await headers();
   const host = h.get("host") || "localhost:3000";

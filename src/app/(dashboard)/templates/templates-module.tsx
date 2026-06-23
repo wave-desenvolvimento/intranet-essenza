@@ -168,19 +168,40 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
 
   async function renderTemplateToBlob(template: Template): Promise<Blob> {
     const bgUrl = template.background_image;
-    if (!bgUrl) throw new Error("Template sem imagem de fundo");
-
-    const bgImg = new Image();
-    bgImg.crossOrigin = "anonymous";
-    await new Promise<void>((res, rej) => { bgImg.onload = () => res(); bgImg.onerror = () => rej(); bgImg.src = bgUrl; });
-
-    const W = bgImg.naturalWidth;
-    const H = bgImg.naturalHeight;
     const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
+    let W: number, H: number;
+
+    if (bgUrl) {
+      const bgImg = new Image();
+      bgImg.crossOrigin = "anonymous";
+      await new Promise<void>((res, rej) => { bgImg.onload = () => res(); bgImg.onerror = () => rej(); bgImg.src = bgUrl; });
+      W = bgImg.naturalWidth;
+      H = bgImg.naturalHeight;
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(bgImg, 0, 0, W, H);
+    } else {
+      // Gradient-only: derive size from aspect ratio
+      const BASE = 1920;
+      const [aw, ah] = (template.aspect_ratio || "16/9").split("/").map(Number);
+      W = BASE;
+      H = Math.round(BASE * (ah / aw));
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d")!;
+      if (template.background_color_start && template.background_color_end) {
+        const grad = ctx.createLinearGradient(0, 0, W, H);
+        grad.addColorStop(0, template.background_color_start);
+        grad.addColorStop(1, template.background_color_end);
+        ctx.fillStyle = grad;
+      } else {
+        ctx.fillStyle = template.background_color_start || "#878a62";
+      }
+      ctx.fillRect(0, 0, W, H);
+    }
+
     const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(bgImg, 0, 0, W, H);
 
     const varMap: Record<string, string> = {
       nome: renderData.name || "",
@@ -286,7 +307,7 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
       ctx.restore();
     }
 
-    return new Promise<Blob>((res) => canvas.toBlob((b) => res(b!), "image/png"));
+    return new Promise<Blob>((res, rej) => canvas.toBlob((b) => b ? res(b) : rej(new Error("Falha ao exportar canvas")), "image/png"));
   }
 
   async function handleDownload(template: Template) {

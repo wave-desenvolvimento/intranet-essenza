@@ -82,7 +82,7 @@ export function InstallPrompt() {
               <Download size={18} className="text-brand-olive" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-ink-900">Instalar Essenza Hub</p>
+              <p className="text-sm font-semibold text-ink-900">Instalar Empório Essenza Hub</p>
               <p className="text-xs text-ink-500 mt-0.5">Adicione à tela inicial para acesso rápido, como um app nativo.</p>
             </div>
             <button onClick={handleDismiss} className="rounded-md p-1 text-ink-400 hover:text-ink-700 shrink-0">
@@ -118,7 +118,7 @@ export function InstallPrompt() {
               <Download size={18} className="text-brand-olive" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-ink-900">Instalar Essenza Hub</p>
+              <p className="text-sm font-semibold text-ink-900">Instalar Empório Essenza Hub</p>
               <p className="text-xs text-ink-500 mt-0.5">Adicione à tela inicial para acesso rápido.</p>
             </div>
             <button onClick={handleDismiss} className="rounded-md p-1 text-ink-400 hover:text-ink-700 shrink-0">

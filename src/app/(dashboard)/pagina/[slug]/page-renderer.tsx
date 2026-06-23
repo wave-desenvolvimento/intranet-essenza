@@ -564,12 +564,13 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
 
   const imageField = collection.fields.find((f) => f.field_type === "image");
   const variantsField = collection.fields.find((f) => f.field_type === "image_variants");
+  const imageArrayField = collection.fields.find((f) => f.field_type === "image_array");
   const titleField = collection.fields.find((f) => f.field_type === "text");
   const tagsField = collection.fields.find((f) => f.slug === "tags");
   const refField = collection.fields.find((f) => f.field_type === "collection_ref" || f.field_type === "collection_multi_ref");
   const fileField = collection.fields.find((f) => f.field_type === "file");
   const fileArrayField = collection.fields.find((f) => f.field_type === "file_array");
-  const hasImages = imageField || variantsField;
+  const hasImages = imageField || variantsField || imageArrayField;
   const hasFiles = fileField || fileArrayField;
 
   function getItemFiles(item: Item): { title: string; url: string }[] {
@@ -630,14 +631,28 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
   }
 
   async function handleDownloadSelected() {
-    if (!imageField) return;
+    if (!imageField && !imageArrayField) return;
     const items = filtered.filter((i) => selected.has(i.id));
-    const files = items.map((i) => {
-      const url = String(i.data[imageField.slug] || "");
+    const files: { url: string; filename: string; itemId: string }[] = [];
+    for (const i of items) {
       const title = titleField ? String(i.data[titleField.slug] || "") : "";
-      const ext = url.split(".").pop()?.split("?")[0] || "jpg";
-      return { url, filename: `${title || i.id}.${ext}`, itemId: i.id };
-    }).filter((f) => f.url);
+      if (imageField) {
+        const url = String(i.data[imageField.slug] || "");
+        if (url) {
+          const ext = url.split(".").pop()?.split("?")[0] || "jpg";
+          files.push({ url, filename: `${title || i.id}.${ext}`, itemId: i.id });
+        }
+      }
+      if (imageArrayField && Array.isArray(i.data[imageArrayField.slug])) {
+        const arr = i.data[imageArrayField.slug] as { url: string; title?: string }[];
+        arr.forEach((img, idx) => {
+          if (img.url) {
+            const ext = img.url.split(".").pop()?.split("?")[0] || "jpg";
+            files.push({ url: img.url, filename: `${title || i.id}_${img.title || idx + 1}.${ext}`, itemId: i.id });
+          }
+        });
+      }
+    }
 
     if (files.length === 0) return;
 
@@ -711,7 +726,8 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
           const itemVariants: ImageVariant[] = variantsData && typeof variantsData === "object" && !Array.isArray(variantsData)
             ? Object.entries(variantsData).filter(([, url]) => url).map(([label, url]) => ({ label, url }))
             : [];
-          const imgUrl = (imageField ? safeStr(item.data[imageField.slug]) : "") || itemVariants[0]?.url || "";
+          const imageArrayData = imageArrayField && Array.isArray(item.data[imageArrayField.slug]) ? (item.data[imageArrayField.slug] as { url: string; title?: string }[]) : [];
+          const imgUrl = (imageField ? safeStr(item.data[imageField.slug]) : "") || itemVariants[0]?.url || imageArrayData[0]?.url || "";
 
           const descFieldLocal = collection.fields.find((f) => f.field_type === "textarea" || f.field_type === "rich_text");
           const rawDesc = descFieldLocal ? safeStr(item.data[descFieldLocal.slug]) : "";
@@ -758,9 +774,9 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
                     {isSelected && <Check size={9} className="text-white" strokeWidth={3} />}
                   </button>
                 )}
-                {itemVariants.length > 0 && (
+                {(itemVariants.length > 0 || imageArrayData.length > 1) && (
                   <span className="absolute top-1.5 right-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[8px] font-medium text-white flex items-center gap-0.5">
-                    <Image size={8} /> {itemVariants.length}
+                    <Image size={8} /> {itemVariants.length || imageArrayData.length}
                   </span>
                 )}
               </div>
@@ -835,35 +851,136 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
 // === Files View ===
 // === Gallery Detail Modal ===
 function GalleryDetailModal({ item, collection, onClose }: { item: Item; collection: CollectionData; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
 
   const titleField = collection.fields.find((f) => f.field_type === "text");
-  const descField = collection.fields.find((f) => f.field_type === "textarea" || f.field_type === "rich_text");
-  const imageField = collection.fields.find((f) => f.field_type === "image");
-  const variantsField = collection.fields.find((f) => f.field_type === "image_variants");
-  const dateField = collection.fields.find((f) => f.field_type === "date");
-  const selectField = collection.fields.find((f) => f.field_type === "select");
-
   const safeStr = (v: unknown) => (v == null || typeof v === "object" ? "" : String(v));
   const title = titleField ? safeStr(item.data[titleField.slug]) : "";
-  const rawDesc = descField ? safeStr(item.data[descField.slug]) : "";
-  const descText = rawDesc.replace(/<[^>]*>/g, "").trim();
-  const mainImg = imageField ? safeStr(item.data[imageField.slug]) : "";
-  const variantsData = variantsField ? (item.data[variantsField.slug] as Record<string, string> | undefined) : undefined;
-  const variants = variantsData && typeof variantsData === "object" && !Array.isArray(variantsData)
-    ? Object.entries(variantsData).filter(([, url]) => url).map(([label, url]) => ({ label, url }))
-    : [];
-  const allImages = [...(mainImg ? [{ label: "Original", url: mainImg }] : []), ...variants];
-  const date = dateField ? String(item.data[dateField.slug] || "") : "";
-  const selectOpts = (selectField as unknown as { options?: { choices?: { value: string; label: string; icon?: string }[] } })?.options || null;
-  const selectValue = selectField ? String(item.data[selectField.slug] || "") : "";
-  const selectChoice = selectOpts?.choices?.find((c) => c.value === selectValue);
 
-  async function copyDesc() {
-    await navigator.clipboard.writeText(descText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  // Build sections in field order (skip title field used in header)
+  type Section =
+    | { kind: "images"; name: string; images: { label: string; url: string }[] }
+    | { kind: "files"; name: string; files: { title: string; url: string }[] }
+    | { kind: "detail"; name: string; raw: unknown; type: string; options?: unknown };
+
+  const sections: Section[] = [];
+  for (const f of collection.fields) {
+    if (f === titleField) continue;
+    const raw = item.data[f.slug];
+    if (raw == null || raw === "" || raw === false) continue;
+    if (Array.isArray(raw) && raw.length === 0) continue;
+
+    switch (f.field_type) {
+      case "image": {
+        const url = String(raw);
+        if (url) sections.push({ kind: "images", name: f.name, images: [{ label: f.name, url }] });
+        break;
+      }
+      case "image_variants": {
+        const data = raw as Record<string, string> | undefined;
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          const imgs = Object.entries(data).filter(([, url]) => url).map(([label, url]) => ({ label, url }));
+          if (imgs.length) sections.push({ kind: "images", name: f.name, images: imgs });
+        }
+        break;
+      }
+      case "image_array": {
+        const arr = Array.isArray(raw) ? (raw as { url: string; title?: string }[]) : [];
+        const imgs = arr.filter((a) => a.url).map((a, i) => ({ label: a.title || `${f.name} ${i + 1}`, url: a.url }));
+        if (imgs.length) sections.push({ kind: "images", name: f.name, images: imgs });
+        break;
+      }
+      case "file": {
+        const url = String(raw);
+        if (url) sections.push({ kind: "files", name: f.name, files: [{ title: f.name, url }] });
+        break;
+      }
+      case "file_array": {
+        const arr = Array.isArray(raw) ? (raw as { title?: string; url: string; filename?: string }[]) : [];
+        const fls = arr.filter((a) => a.url).map((a) => ({ title: a.title || a.filename || f.name, url: a.url }));
+        if (fls.length) sections.push({ kind: "files", name: f.name, files: fls });
+        break;
+      }
+      default:
+        sections.push({ kind: "detail", name: f.name, raw, type: f.field_type, options: (f as unknown as { options?: unknown }).options });
+        break;
+    }
+  }
+
+  // Collect all images for zip download
+  const allImages = sections.filter((s): s is Section & { kind: "images" } => s.kind === "images").flatMap((s) => s.images);
+
+  function formatDate(v: unknown, withTime: boolean) {
+    try {
+      return new Date(String(v)).toLocaleDateString("pt-BR", withTime ? { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit", year: "numeric" });
+    } catch { return String(v); }
+  }
+
+  function renderDetail(section: Section & { kind: "detail" }) {
+    const { raw, type, options } = section;
+    switch (type) {
+      case "rich_text": {
+        const html = String(raw);
+        return <div className="rounded-lg bg-ink-50 px-4 py-3 text-sm text-ink-700 leading-relaxed prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />;
+      }
+      case "textarea":
+        return <p className="text-sm text-ink-700 whitespace-pre-wrap rounded-lg bg-ink-50 px-4 py-3">{String(raw)}</p>;
+      case "number":
+        return <p className="text-sm text-ink-800 font-mono">{String(raw)}</p>;
+      case "boolean":
+        return <p className="text-sm text-ink-800">{raw ? "Sim" : "Não"}</p>;
+      case "date":
+        return <p className="text-sm text-ink-800">{formatDate(raw, false)}</p>;
+      case "datetime":
+        return <p className="text-sm text-ink-800">{formatDate(raw, true)}</p>;
+      case "duration":
+        return <div className="flex items-center gap-2"><Clock size={14} className="text-ink-400" /><p className="text-sm text-ink-800 font-mono">{String(raw)}</p></div>;
+      case "email": {
+        const email = String(raw);
+        return <a href={`mailto:${email}`} className="text-sm text-brand-olive hover:underline">{email}</a>;
+      }
+      case "url": {
+        const url = String(raw);
+        return <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-olive hover:underline break-all">{url}</a>;
+      }
+      case "color": {
+        const color = String(raw);
+        return <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-md border border-ink-100 shrink-0" style={{ background: color }} /><span className="text-sm text-ink-800 font-mono">{color}</span></div>;
+      }
+      case "select": {
+        const val = String(raw);
+        const choices = (options as { choices?: { value: string; label: string }[] })?.choices;
+        const choice = choices?.find((c) => c.value === val);
+        return <span className="inline-block rounded-full bg-ink-50 px-2.5 py-0.5 text-xs font-medium text-ink-700">{choice?.label || val}</span>;
+      }
+      case "multi_select": {
+        const items = Array.isArray(raw) ? raw.map(String) : [String(raw)];
+        const choices = (options as { choices?: { value: string; label: string }[] })?.choices;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {items.map((v, i) => {
+              const choice = choices?.find((c) => c.value === v);
+              return <span key={i} className="inline-block rounded-full bg-ink-50 px-2.5 py-0.5 text-xs font-medium text-ink-700">{choice?.label || v}</span>;
+            })}
+          </div>
+        );
+      }
+      case "icon_select": {
+        const iconName = String(raw);
+        const IconComp = getIconByName(iconName);
+        return <div className="flex items-center gap-2">{IconComp ? <IconComp size={18} className="text-ink-600" /> : null}<span className="text-sm text-ink-800">{iconName}</span></div>;
+      }
+      case "collection_ref":
+        return <p className="text-sm text-ink-500 font-mono truncate">{String(raw)}</p>;
+      case "collection_multi_ref": {
+        const refIds = Array.isArray(raw) ? raw.map(String) : [];
+        return <div className="flex flex-wrap gap-1">{refIds.map((id, i) => <span key={i} className="inline-block rounded bg-ink-50 px-2 py-0.5 text-[11px] font-mono text-ink-600">{String(id).slice(0, 8)}</span>)}</div>;
+      }
+      default: {
+        const fallback = typeof raw === "object" ? JSON.stringify(raw) : String(raw);
+        return <p className="text-sm text-ink-800 break-all">{fallback}</p>;
+      }
+    }
   }
 
   return (
@@ -872,113 +989,75 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
         <div className="w-full max-w-2xl max-h-[90vh] rounded-xl bg-white shadow-modal overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-ink-100 bg-white">
-            <div>
-              <h3 className="text-base font-semibold text-ink-900">{title}</h3>
-              <div className="flex items-center gap-2 mt-0.5">
-                {selectChoice && (
-                  <span className="text-xs text-ink-500">{selectChoice.label}</span>
-                )}
-                {date && <span className="text-xs text-ink-400">{new Date(date).toLocaleDateString("pt-BR")}</span>}
-              </div>
-            </div>
+            <h3 className="text-base font-semibold text-ink-900">{title || "Conteúdo"}</h3>
             <button onClick={onClose} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 transition-colors">
               <X size={18} />
             </button>
           </div>
 
-          {/* Images grid */}
-          {allImages.length > 0 && (
-            <div className="px-5 pt-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider">
-                  {allImages.length} {allImages.length === 1 ? "imagem" : "imagens"}
-                </p>
-                {allImages.length > 1 && (
-                  <button
-                    onClick={async () => {
-                      const JSZip = (await import("jszip")).default;
-                      const { saveAs } = await import("file-saver");
-                      const zip = new JSZip();
-                      await Promise.all(allImages.map(async (img) => {
-                        const res = await fetch(img.url);
-                        const blob = await res.blob();
-                        const ext = img.url.split(".").pop()?.split("?")[0] || "jpg";
-                        zip.file(`${title}_${img.label}`.replace(/\s+/g, "_") + `.${ext}`, blob);
-                      }));
-                      if (descText) zip.file("descricao.txt", descText);
-                      const content = await zip.generateAsync({ type: "blob" });
-                      saveAs(content, `${title || "imagens"}.zip`.replace(/\s+/g, "_"));
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-medium text-brand-olive hover:text-brand-olive-dark transition-colors"
-                  >
-                    <Download size={12} /> Baixar todas
-                  </button>
-                )}
-              </div>
-              <div className={cn("grid gap-3", allImages.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
-                {allImages.map((img) => (
-                  <div key={img.label} className="rounded-lg border border-ink-100 overflow-hidden">
-                    <div className="aspect-square bg-ink-50 cursor-pointer" onClick={() => setLightbox(img.url)}>
-                      <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex items-center justify-between px-3 py-2">
-                      <span className="text-xs font-medium text-ink-700">{img.label}</span>
-                      <div className="flex items-center gap-0.5">
-                        <ShareLink imageUrl={img.url} />
-                        <button
-                          onClick={() => window.open(img.url, "_blank")}
-                          className="rounded-md p-1 text-ink-400 hover:text-brand-olive transition-colors"
-                          title="Abrir em nova aba"
-                        >
-                          <Download size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Description */}
-          {descText && (
-            <div className="px-5 pt-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider">Descrição</p>
+          {/* Sections in field order */}
+          <div className="flex flex-col gap-4 px-5 py-4">
+            {/* Zip download for all images */}
+            {allImages.length > 1 && (
+              <div className="flex justify-end -mb-2">
                 <button
-                  onClick={copyDesc}
-                  className="flex items-center gap-1 text-xs text-ink-500 hover:text-brand-olive transition-colors"
+                  onClick={async () => {
+                    const JSZip = (await import("jszip")).default;
+                    const { saveAs } = await import("file-saver");
+                    const zip = new JSZip();
+                    await Promise.all(allImages.map(async (img) => {
+                      const res = await fetch(img.url);
+                      const blob = await res.blob();
+                      const ext = img.url.split(".").pop()?.split("?")[0] || "jpg";
+                      zip.file(`${title}_${img.label}`.replace(/\s+/g, "_") + `.${ext}`, blob);
+                    }));
+                    const content = await zip.generateAsync({ type: "blob" });
+                    saveAs(content, `${title || "imagens"}.zip`.replace(/\s+/g, "_"));
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-medium text-brand-olive hover:text-brand-olive-dark transition-colors"
                 >
-                  {copied ? <><Check size={11} /> Copiado</> : <><Copy size={11} /> Copiar</>}
+                  <Download size={12} /> Baixar todas ({allImages.length})
                 </button>
               </div>
-              <div className="rounded-lg bg-ink-50 px-4 py-3 text-sm text-ink-700 leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(rawDesc) }} />
-            </div>
-          )}
+            )}
 
-          {/* File array fields */}
-          {collection.fields
-            .filter((f) => f.field_type === "file_array" && Array.isArray(item.data[f.slug]) && (item.data[f.slug] as unknown[]).length > 0)
-            .map((f) => {
-              const files = item.data[f.slug] as { title?: string; url: string; filename?: string }[];
-              return (
-                <div key={f.id} className="px-5 pt-4">
-                  <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">{f.name}</p>
+            {sections.map((section, si) => {
+              if (section.kind === "images") return (
+                <div key={si}>
+                  <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">{section.name} ({section.images.length})</p>
+                  <div className={cn("grid gap-3", section.images.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
+                    {section.images.map((img, i) => (
+                      <div key={i} className="rounded-lg border border-ink-100 overflow-hidden">
+                        <div className="aspect-square bg-ink-50 cursor-pointer" onClick={() => setLightbox(img.url)}>
+                          <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2">
+                          <span className="text-xs font-medium text-ink-700">{img.label}</span>
+                          <div className="flex items-center gap-0.5">
+                            <ShareLink imageUrl={img.url} />
+                            <button onClick={() => window.open(img.url, "_blank")} className="rounded-md p-1 text-ink-400 hover:text-brand-olive transition-colors" title="Abrir em nova aba">
+                              <Download size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+
+              if (section.kind === "files") return (
+                <div key={si}>
+                  <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">{section.name} ({section.files.length})</p>
                   <div className="flex flex-col gap-1">
-                    {files.map((file, i) => {
+                    {section.files.map((file, i) => {
                       const ext = file.url.match(/\.(\w{2,5})(?:\?|$)/)?.[1]?.toUpperCase() || "FILE";
                       return (
-                        <a
-                          key={i}
-                          href={file.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 rounded-lg border border-ink-100 bg-ink-50/50 px-3 py-2.5 hover:bg-ink-50 transition-colors group"
-                        >
+                        <a key={i} href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border border-ink-100 bg-ink-50/50 px-3 py-2.5 hover:bg-ink-50 transition-colors group">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white border border-ink-100">
                             <span className="text-[8px] font-bold text-ink-500">{ext}</span>
                           </div>
-                          <span className="flex-1 text-sm text-ink-700 truncate">{file.title || file.filename || "Arquivo"}</span>
+                          <span className="flex-1 text-sm text-ink-700 truncate">{file.title}</span>
                           <Download size={14} className="text-ink-400 group-hover:text-brand-olive shrink-0 transition-colors" />
                         </a>
                       );
@@ -986,28 +1065,16 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
                   </div>
                 </div>
               );
-            })}
 
-          {/* Other fields */}
-          <div className="px-5 pt-4 pb-5">
-            {collection.fields
-              .filter((f) => !["text", "textarea", "rich_text", "image", "image_variants", "image_array", "file_array", "collection_ref", "collection_multi_ref"].includes(f.field_type) && item.data[f.slug])
-              .map((f) => {
-                const val = item.data[f.slug];
-                if (!val) return null;
-                let display = String(val);
-                if (f.field_type === "date") display = new Date(display).toLocaleDateString("pt-BR");
-                if (f.field_type === "select") {
-                  const o = ((f as unknown as { options?: { choices?: { value: string; label: string }[] } }).options)?.choices?.find((c) => c.value === String(val));
-                  display = o?.label || display;
-                }
-                return (
-                  <div key={f.id} className="flex items-center justify-between py-1.5 border-b border-ink-50 last:border-0">
-                    <span className="text-xs text-ink-400">{f.name}</span>
-                    <span className="text-xs text-ink-700">{display}</span>
-                  </div>
-                );
-              })}
+              if (section.kind === "detail") return (
+                <div key={si}>
+                  <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-1.5">{section.name}</p>
+                  {renderDetail(section)}
+                </div>
+              );
+
+              return null;
+            })}
           </div>
         </div>
       </div>

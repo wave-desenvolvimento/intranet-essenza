@@ -48,7 +48,7 @@ export function BrandLogo({
     >
       <Image
         src={logo}
-        alt="Essenza"
+        alt="Empório Essenza"
         width={w}
         height={h}
         className="h-auto w-auto max-h-full max-w-full object-contain"

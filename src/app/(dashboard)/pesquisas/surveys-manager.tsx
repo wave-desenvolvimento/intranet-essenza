@@ -107,7 +107,7 @@ export function SurveysManager({ surveys, canManage, canViewAll, currentUserId }
   const [description, setDescription] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [questions, setQuestions] = useState<QuestionInput[]>([
-    { label: "De 0 a 10, o quanto você recomendaria a Essenza?", type: "nps", options: [], required: true },
+    { label: "De 0 a 10, o quanto você recomendaria a Empório Essenza?", type: "nps", options: [], required: true },
   ]);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -145,7 +145,7 @@ export function SurveysManager({ surveys, canManage, canViewAll, currentUserId }
 
   function openCreate() {
     setTitle(""); setDescription(""); setEndsAt("");
-    setQuestions([{ label: "De 0 a 10, o quanto você recomendaria a Essenza?", type: "nps", options: [], required: true }]);
+    setQuestions([{ label: "De 0 a 10, o quanto você recomendaria a Empório Essenza?", type: "nps", options: [], required: true }]);
     setError(""); setShowSheet(true);
   }
 

@@ -327,15 +327,15 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Nome *</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} autoFocus className={inputCls} placeholder="Essenza Gramado" />
+                <input value={name} onChange={(e) => setName(e.target.value)} autoFocus className={inputCls} placeholder="Nome da franquia" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">CNPJ</label>
-                <input value={cnpj} onChange={(e) => setCnpj(e.target.value)} className={inputCls} placeholder="12.345.678/0001-90" />
+                <input value={cnpj} onChange={(e) => setCnpj(e.target.value)} className={inputCls} placeholder="00.000.000/0000-00" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Responsável</label>
-                <input value={managerName} onChange={(e) => setManagerName(e.target.value)} className={inputCls} placeholder="Nome do gerente" />
+                <input value={managerName} onChange={(e) => setManagerName(e.target.value)} className={inputCls} placeholder="Nome do responsável" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Vendedor</label>
@@ -363,15 +363,15 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">ID Externo (Allcance)</label>
-                <input type="number" value={externalId} onChange={(e) => setExternalId(e.target.value)} className={inputCls} placeholder="48330273" />
+                <input type="number" value={externalId} onChange={(e) => setExternalId(e.target.value)} className={inputCls} placeholder="ID no sistema externo" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Razão Social</label>
-                <input value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} className={inputCls} placeholder="Essenza Gramado LTDA" />
+                <input value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} className={inputCls} placeholder="Razão social da empresa" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Inscrição Estadual</label>
-                <input value={inscricaoEstadual} onChange={(e) => setInscricaoEstadual(e.target.value)} className={inputCls} placeholder="000/1234567" />
+                <input value={inscricaoEstadual} onChange={(e) => setInscricaoEstadual(e.target.value)} className={inputCls} placeholder="Inscrição estadual" />
               </div>
             </div>
           </fieldset>
@@ -401,31 +401,31 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Endereço</label>
-                <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} placeholder="Rua Marechal Deodoro" />
+                <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} placeholder="Rua, avenida, etc." />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Número</label>
-                <input value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} className={inputCls} placeholder="123" />
+                <input value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} className={inputCls} placeholder="Nº" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Complemento</label>
-                <input value={complemento} onChange={(e) => setComplemento(e.target.value)} className={inputCls} placeholder="Sala 2, Loja A" />
+                <input value={complemento} onChange={(e) => setComplemento(e.target.value)} className={inputCls} placeholder="Sala, bloco, loja..." />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Bairro</label>
-                <input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} className={inputCls} placeholder="Centro" />
+                <input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} className={inputCls} placeholder="Nome do bairro" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">CEP</label>
-                <input value={cep} onChange={(e) => setCep(e.target.value)} className={inputCls} placeholder="95700-000" />
+                <input value={cep} onChange={(e) => setCep(e.target.value)} className={inputCls} placeholder="00000-000" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Cidade</label>
-                <input value={city} onChange={(e) => setCity(e.target.value)} className={inputCls} placeholder="Bento Gonçalves" />
+                <input value={city} onChange={(e) => setCity(e.target.value)} className={inputCls} placeholder="Nome da cidade" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Estado</label>
-                <input value={state} onChange={(e) => setState(e.target.value)} className={inputCls} placeholder="RS" maxLength={2} />
+                <input value={state} onChange={(e) => setState(e.target.value)} className={inputCls} placeholder="UF" maxLength={2} />
               </div>
             </div>
           </fieldset>
@@ -436,19 +436,19 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Telefone</label>
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} placeholder="(54) 3333-4444" />
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} placeholder="(00) 0000-0000" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">WhatsApp</label>
-                <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className={inputCls} placeholder="5554999887766" />
+                <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className={inputCls} placeholder="5500000000000" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">E-mail</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="contato@essenza.com" />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="email@exemplo.com" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Horário de funcionamento</label>
-                <input value={openingHours} onChange={(e) => setOpeningHours(e.target.value)} className={inputCls} placeholder="Seg-Sáb 9h-19h" />
+                <input value={openingHours} onChange={(e) => setOpeningHours(e.target.value)} className={inputCls} placeholder="Ex: Seg-Sáb 9h às 19h" />
               </div>
             </div>
           </fieldset>
@@ -459,19 +459,19 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Instagram</label>
-                <input value={instagram} onChange={(e) => setInstagram(e.target.value)} className={inputCls} placeholder="@essenza.gramado" />
+                <input value={instagram} onChange={(e) => setInstagram(e.target.value)} className={inputCls} placeholder="@usuario" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Facebook</label>
-                <input value={facebook} onChange={(e) => setFacebook(e.target.value)} className={inputCls} placeholder="/essenzagramado" />
+                <input value={facebook} onChange={(e) => setFacebook(e.target.value)} className={inputCls} placeholder="/pagina" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">TikTok</label>
-                <input value={tiktok} onChange={(e) => setTiktok(e.target.value)} className={inputCls} placeholder="@essenza.gramado" />
+                <input value={tiktok} onChange={(e) => setTiktok(e.target.value)} className={inputCls} placeholder="@usuario" />
               </div>
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Website</label>
-                <input value={website} onChange={(e) => setWebsite(e.target.value)} className={inputCls} placeholder="essenzagramado.com.br" />
+                <input value={website} onChange={(e) => setWebsite(e.target.value)} className={inputCls} placeholder="www.exemplo.com.br" />
               </div>
             </div>
           </fieldset>

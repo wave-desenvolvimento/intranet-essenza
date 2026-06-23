@@ -96,7 +96,7 @@ function renderGalleryPage(items: { signedUrl: string; label: string; type: "ima
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Essenza — Arquivos compartilhados</title>
+  <title>Empório Essenza — Arquivos compartilhados</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
@@ -135,7 +135,7 @@ function renderGalleryPage(items: { signedUrl: string; label: string; type: "ima
 <body>
   <div class="container">
     <div class="header">
-      <h1>Essenza</h1>
+      <h1>Empório Essenza</h1>
       <p>Conteúdo compartilhado &middot; ${items.length} ${items.length === 1 ? "item" : "itens"}</p>
     </div>
 
