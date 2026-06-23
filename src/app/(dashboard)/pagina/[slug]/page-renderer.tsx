@@ -94,6 +94,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const [folderName, setFolderName] = useState("");
   const [folderCollectionId, setFolderCollectionId] = useState("");
   const [folderIcon, setFolderIcon] = useState("folder");
+  const [folderCover, setFolderCover] = useState("");
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [moveSheet, setMoveSheet] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
@@ -174,10 +176,11 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
     setFolderName(folder?.name || "");
     setFolderCollectionId(folder?.collection_id || "");
     setFolderIcon(folder?.icon || "folder");
+    setFolderCover(folder?.cover_url || "");
     setFolderSheet(true);
   }
 
-  function closeFolderSheet() { setFolderSheet(false); setEditingFolder(null); setFolderName(""); setFolderCollectionId(""); setFolderIcon("folder"); }
+  function closeFolderSheet() { setFolderSheet(false); setEditingFolder(null); setFolderName(""); setFolderCollectionId(""); setFolderIcon("folder"); setFolderCover(""); }
 
   function saveFolder() {
     if (!folderName.trim()) return;
@@ -185,6 +188,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
     fd.set("name", folderName.trim());
     fd.set("icon", folderIcon);
     if (folderCollectionId) fd.set("collectionId", folderCollectionId);
+    if (folderCover) fd.set("coverUrl", folderCover);
 
     if (editingFolder) {
       fd.set("id", editingFolder.id);
@@ -258,7 +262,58 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   }
 
   const hasFolders = folders.length > 0;
-  const showFolderUI = hasFolders || canCreate;
+
+  async function handleCoverUpload(file: File) {
+    setUploadingCover(true);
+    const r = await uploadToStorage(file, { bucket: "assets", folder: "folder-covers" });
+    setUploadingCover(false);
+    if ("url" in r) setFolderCover(r.url);
+  }
+
+  // Build folders grid node (passed into views to render below search bar)
+  const foldersGrid = currentSubfolders.length > 0 ? (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-4">
+      {currentSubfolders.map((folder) => {
+        const childCount = folders.filter((f) => f.parent_id === folder.id).length;
+        const FolderIconComp = folder.icon === "folder" ? Folder : (getIconByName(folder.icon) || Folder);
+        const hasCover = !!folder.cover_url;
+        return (
+          <div
+            key={folder.id}
+            className="group rounded-xl border border-ink-100 bg-white overflow-hidden cursor-pointer hover:border-brand-olive/30 hover:shadow-sm transition-all"
+            onClick={() => enterFolder(folder)}
+          >
+            {hasCover ? (
+              <div className="aspect-[16/9] bg-ink-50 relative">
+                <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" />
+                {canEdit && (
+                  <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors" title="Editar"><Pencil size={10} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-danger transition-colors" title="Remover"><Trash2 size={10} /></button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+            <div className={cn("flex items-center gap-3 px-3 py-2.5", !hasCover && "py-3 px-4")}>
+              <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-ink-900 truncate">{folder.name}</p>
+                {childCount > 0 && (
+                  <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
+                )}
+              </div>
+              {!hasCover && canEdit && (
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={12} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }} className="rounded-md p-1 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors" title="Remover"><Trash2 size={12} /></button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  ) : null;
 
   if (!mainCollection) {
     return (
@@ -325,60 +380,18 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
         </div>
       )}
 
-      {/* Folders grid */}
-      {currentSubfolders.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-5">
-          {currentSubfolders.map((folder) => {
-            const childCount = folders.filter((f) => f.parent_id === folder.id).length;
-            const FolderIcon = folder.icon === "folder" ? Folder : (getIconByName(folder.icon) || Folder);
-            return (
-              <div
-                key={folder.id}
-                className="group flex items-center gap-3 rounded-xl border border-ink-100 bg-white px-4 py-3 cursor-pointer hover:border-brand-olive/30 hover:bg-brand-olive-soft/10 transition-colors"
-                onClick={() => enterFolder(folder)}
-              >
-                <FolderIcon size={20} className="text-brand-olive shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-ink-900 truncate">{folder.name}</p>
-                  {childCount > 0 && (
-                    <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
-                  )}
-                </div>
-                {canEdit && (
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }}
-                      className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"
-                      title="Editar pasta"
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }}
-                      className="rounded-md p-1 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors"
-                      title="Remover pasta"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
+      {/* Folders grid — rendered as node passed into each view (below search) */}
       {/* Content views — using filtered items for current folder */}
       {currentCollection && (
         <>
           {page.view_type === "gallery" && (
-            <GalleryPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} />
+            <GalleryPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} foldersNode={foldersGrid} />
           )}
           {page.view_type === "files" && (
-            <FilesPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} />
+            <FilesPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} foldersNode={foldersGrid} />
           )}
           {page.view_type === "table" && (
-            <TablePageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} />
+            <TablePageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} foldersNode={foldersGrid} />
           )}
           {page.view_type === "course" && (
             <CoursePageView collection={currentCollection} />
@@ -418,6 +431,23 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
               className="h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10"
               autoFocus
             />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-ink-700 mb-1.5 block">
+              Foto de capa
+              <span className="text-ink-400 font-normal ml-1">opcional</span>
+            </label>
+            {folderCover ? (
+              <div className="relative rounded-lg border border-ink-100 overflow-hidden">
+                <img src={folderCover} alt="Capa" className="w-full h-32 object-cover" />
+                <button type="button" onClick={() => setFolderCover("")} className="absolute top-1.5 right-1.5 rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors"><X size={12} /></button>
+              </div>
+            ) : (
+              <label className={cn("flex items-center justify-center gap-2 rounded-lg border-2 border-dashed h-24 cursor-pointer transition-colors", uploadingCover ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30")}>
+                <input type="file" accept="image/*" className="sr-only" disabled={uploadingCover} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverUpload(f); }} />
+                {uploadingCover ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">Enviar imagem de capa</span></>}
+              </label>
+            )}
           </div>
           <div>
             <label className="text-sm font-medium text-ink-700 mb-1.5 block">
@@ -856,7 +886,7 @@ function PageCollectionMultiRefField({ field, value, onChange }: { field: Field;
 }
 
 // === Gallery View (read-only, pra franqueado) ===
-function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set() }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string> }) {
+function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set(), foldersNode }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string>; foldersNode?: React.ReactNode }) {
   const [lightbox, setLightbox] = useState<{ url: string; variants: ImageVariant[] } | null>(null);
   const [detailItem, setDetailItem] = useState<Item | null>(null);
   const [fileModal, setFileModal] = useState<{ title: string; files: { title: string; url: string }[] } | null>(null);
@@ -1030,6 +1060,8 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
           </>
         )}
       </div>
+
+      {foldersNode}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {paginatedItems.map((item) => {
@@ -1406,7 +1438,7 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
   );
 }
 
-function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set() }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string> }) {
+function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set(), foldersNode }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string>; foldersNode?: React.ReactNode }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const titleField = collection.fields.find((f) => f.field_type === "text");
@@ -1474,6 +1506,8 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar arquivos..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
       </div>
 
+      {foldersNode}
+
       <div className="rounded-xl border border-ink-100 bg-white overflow-hidden">
         {paginatedFiles.map((item, i) => {
           const title = titleField ? String(item.data[titleField.slug] || "") : "";
@@ -1517,7 +1551,7 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
 }
 
 // === Table View ===
-function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelete, isPending }: { collection: CollectionData; filterCollections: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean }) {
+function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelete, isPending, foldersNode }: { collection: CollectionData; filterCollections: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; foldersNode?: React.ReactNode }) {
   const [search, setSearch] = useState("");
   const titleField = collection.fields.find((f) => f.field_type === "text");
   const visibleFields = collection.fields.filter((f) => !["boolean", "image", "file", "file_array", "image_array"].includes(f.field_type)).slice(0, 4);
@@ -1534,6 +1568,8 @@ function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelet
         <Search size={14} className="text-ink-400" />
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
       </div>
+
+      {foldersNode}
 
       <div className="rounded-xl border border-ink-100 bg-white overflow-x-auto">
         <table className="w-full text-sm">

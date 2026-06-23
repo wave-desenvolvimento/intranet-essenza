@@ -10,6 +10,7 @@ export interface Folder {
   id: string;
   name: string;
   icon: string;
+  cover_url: string | null;
   page_id: string;
   parent_id: string | null;
   collection_id: string | null;
@@ -115,6 +116,7 @@ export async function createFolder(formData: FormData) {
   const collectionId = formData.get("collectionId") as string;
   const icon = (formData.get("icon") as string) || "folder";
   const viewType = formData.get("viewType") as string;
+  const coverUrl = formData.get("coverUrl") as string;
 
   if (!pageId || !name) return { error: "Nome e página são obrigatórios." };
 
@@ -128,6 +130,7 @@ export async function createFolder(formData: FormData) {
   const { error } = await supabase.from("cms_folders").insert({
     name,
     icon,
+    cover_url: coverUrl || null,
     page_id: pageId,
     parent_id: parentId || null,
     collection_id: collectionId || null,
@@ -152,6 +155,7 @@ export async function updateFolder(formData: FormData) {
   const icon = formData.get("icon") as string;
   const collectionId = formData.get("collectionId") as string;
   const viewType = formData.get("viewType") as string;
+  const coverUrl = formData.get("coverUrl") as string;
 
   if (!id || !name) return { error: "Dados inválidos." };
 
@@ -160,6 +164,7 @@ export async function updateFolder(formData: FormData) {
     .update({
       name,
       icon: icon || "folder",
+      cover_url: coverUrl || null,
       collection_id: collectionId || null,
       view_type: viewType || null,
     })
