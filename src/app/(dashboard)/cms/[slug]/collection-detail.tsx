@@ -1014,10 +1014,22 @@ function ImageVariantsField({ field, value, onChange }: { field: Field; value: u
 
 function FileUploadField({ field, value, onChange }: { field: Field; value: unknown; onChange: (val: unknown) => void }) {
   const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState("");
   const fileUrl = String(value || ""); const isImage = field.field_type === "image";
   const bucket = field.slug.includes("banner") || field.slug.includes("imagem") ? "banners" : "assets";
+  function getFileExt(url: string) {
+    const match = url.match(/\.(\w{2,5})(?:\?|$)/);
+    return match ? match[1].toUpperCase() : "FILE";
+  }
+  const EXT_COLORS: Record<string, string> = {
+    PDF: "bg-red-50 text-red-600", DOC: "bg-blue-50 text-blue-600", DOCX: "bg-blue-50 text-blue-600",
+    XLS: "bg-green-50 text-green-600", XLSX: "bg-green-50 text-green-600",
+    PPT: "bg-orange-50 text-orange-600", PPTX: "bg-orange-50 text-orange-600",
+    ZIP: "bg-yellow-50 text-yellow-700", MP4: "bg-purple-50 text-purple-600", MP3: "bg-purple-50 text-purple-600",
+  };
   async function handleUpload(file: File) {
     setUploading(true);
+    setFileName(file.name);
     const r = await uploadToStorage(file, { bucket, folder: field.slug });
     setUploading(false);
     if ("url" in r) onChange(r.url);
@@ -1025,6 +1037,20 @@ function FileUploadField({ field, value, onChange }: { field: Field; value: unkn
   return (
     <div className="flex flex-col gap-2">
       {fileUrl && isImage && <div className="relative w-full h-28 rounded-lg border border-ink-100 overflow-hidden bg-ink-50"><img src={fileUrl} alt="" className="w-full h-full object-cover" /><button type="button" onClick={() => onChange("")} className="absolute top-1.5 right-1.5 rounded-full bg-black/50 p-1 text-white hover:bg-black/70" title="Remover"><X size={10} /></button></div>}
+      {fileUrl && !isImage && (() => {
+        const ext = getFileExt(fileUrl);
+        const extColor = EXT_COLORS[ext] || "bg-ink-100 text-ink-600";
+        const displayName = fileName || fileUrl.split("/").pop()?.split("?")[0] || "arquivo";
+        return (
+          <div className="flex items-center gap-3 rounded-lg border border-ink-100 bg-white px-3 py-2.5">
+            <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", extColor)}>
+              <span className="text-[9px] font-bold">{ext}</span>
+            </div>
+            <p className="flex-1 min-w-0 text-sm text-ink-700 truncate">{displayName}</p>
+            <button type="button" onClick={() => { onChange(""); setFileName(""); }} className="rounded-md p-1 text-ink-400 hover:text-danger transition-colors shrink-0" title="Remover"><X size={14} /></button>
+          </div>
+        );
+      })()}
       <label className={cn("flex items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors", uploading ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30", fileUrl ? "h-10" : "h-20")}>
         <input type="file" accept={isImage ? "image/*" : "*"} className="sr-only" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
         {uploading ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">{fileUrl ? "Trocar" : isImage ? "Enviar imagem" : "Enviar arquivo"}</span></>}
