@@ -4,14 +4,29 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermission, getUserRoleLevel } from "@/lib/permissions";
 
-const ALL_MODULES = [
-  "dashboard", "usuarios", "franquias", "cms", "templates", "pedidos", "produtos",
-  "relatorios", "comunicados", "historico", "faq", "pesquisas", "leads",
-  "universo-da-marca", "material-corporativo", "campanhas",
-  "redes-sociais", "biblioteca", "videos", "treinamento", "cigam", "configuracoes",
-];
+// Ações pertinentes por módulo — só cria o que cada módulo realmente usa
+const MODULE_ACTIONS: Record<string, string[]> = {
+  dashboard:            ["view"],
+  usuarios:             ["view", "create", "edit", "delete", "manage"],
+  franquias:            ["view", "create", "edit", "delete"],
+  cms:                  ["view", "create", "edit", "delete"],
+  templates:            ["view", "create", "edit", "delete"],
+  pedidos:              ["view", "view_all", "create", "edit", "approve", "export", "manage"],
+  produtos:             ["view", "edit", "delete"],
+  relatorios:           ["view", "export"],
+  comunicados:          ["view", "create", "edit", "delete"],
+  historico:            ["view"],
+  faq:                  ["view", "create", "edit", "delete"],
+  pesquisas:            ["view", "create", "edit", "delete"],
+  leads:                ["view", "edit", "delete", "export"],
+  biblioteca:           ["view", "download"],
+  configuracoes:        ["view", "edit"],
+};
 
-const ALL_ACTIONS = ["approve", "create", "delete", "download", "edit", "export", "manage", "view", "view_all"];
+// Páginas CMS dinâmicas usam essas ações
+const CMS_PAGE_ACTIONS = ["view", "create", "edit", "download"];
+
+const ALL_MODULES = Object.keys(MODULE_ACTIONS);
 
 export async function getRoles() {
   await requireAuth();
@@ -49,13 +64,20 @@ async function ensureAllPermissions() {
     .eq("is_group", false);
 
   const dynamicModules = (cmsPages || []).map((p) => p.slug);
-  const allModules = [...new Set([...ALL_MODULES, ...dynamicModules])];
+
+  // Build full module→actions map (system modules + CMS pages)
+  const moduleActions: Record<string, string[]> = { ...MODULE_ACTIONS };
+  for (const slug of dynamicModules) {
+    if (!moduleActions[slug]) {
+      moduleActions[slug] = CMS_PAGE_ACTIONS;
+    }
+  }
 
   const { data: existing } = await supabase.from("permissions").select("module, action");
   const existingSet = new Set((existing || []).map((p) => `${p.module}::${p.action}`));
 
-  const missing = allModules.flatMap((module) =>
-    ALL_ACTIONS.filter((action) => !existingSet.has(`${module}::${action}`))
+  const missing = Object.entries(moduleActions).flatMap(([module, actions]) =>
+    actions.filter((action) => !existingSet.has(`${module}::${action}`))
       .map((action) => ({ module, action, description: `${module}.${action}` }))
   );
 

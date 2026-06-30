@@ -3,15 +3,17 @@
 import { useState, useTransition, useCallback } from "react";
 import {
   Search, Download, Trash2, ChevronDown, ChevronUp, MessageSquare,
-  Phone, Mail, MapPin, Calendar, X,
+  Phone, Mail, MapPin, Calendar, X, ChevronLeft, ChevronRight, Loader2,
 } from "lucide-react";
-import { updateLeadStatus, updateLeadNotes, deleteLead } from "./actions";
+import { getLeads, getLeadsForExport, updateLeadStatus, updateLeadNotes, deleteLead } from "./actions";
 import type { ResellerLead } from "./actions";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirm } from "@/hooks/use-confirm";
 import { CustomSelect } from "@/components/ui/custom-select";
 import * as XLSX from "xlsx";
+
+const PAGE_SIZE = 30;
 
 const STATUS_OPTIONS = [
   { value: "novo", label: "Novo", color: "bg-blue-100 text-blue-700" },
@@ -31,47 +33,83 @@ const TIPO_LABELS: Record<string, string> = {
 };
 
 interface Props {
-  leads: ResellerLead[];
+  initialData: ResellerLead[];
+  initialTotal: number;
+  initialCounts: Record<string, number>;
   canEdit: boolean;
   canDelete: boolean;
   canExport: boolean;
 }
 
-export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
+export function LeadsManager({ initialData, initialTotal, initialCounts, canEdit, canDelete, canExport }: Props) {
   const { confirm: confirmAction, dialogProps } = useConfirm();
+  const [leads, setLeads] = useState(initialData);
+  const [total, setTotal] = useState(initialTotal);
+  const [counts, setCounts] = useState(initialCounts);
+  const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState("novo");
   const [filterOrigem, setFilterOrigem] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [notesValue, setNotesValue] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const filtered = leads.filter((l) => {
-    if (filterStatus && l.status !== filterStatus) return false;
-    if (filterOrigem && l.origem !== filterOrigem) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        l.nome.toLowerCase().includes(q) ||
-        l.email.toLowerCase().includes(q) ||
-        l.telefone.includes(q) ||
-        l.cnpj?.includes(q) ||
-        l.cidade?.toLowerCase().includes(q) ||
-        l.estado?.toLowerCase().includes(q)
-      );
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const totalAll = Object.values(counts).reduce((a, b) => a + b, 0);
+
+  // Fetch with current filters
+  const fetchLeads = useCallback(async (params: { status?: string; origem?: string; search?: string; page?: number }) => {
+    setIsLoading(true);
+    try {
+      const result = await getLeads({
+        status: params.status || undefined,
+        origem: params.origem || undefined,
+        search: params.search || undefined,
+        page: params.page ?? 0,
+      });
+      setLeads(result.data);
+      setTotal(result.total);
+      setCounts(result.counts);
+      setExpandedId(null);
+    } finally {
+      setIsLoading(false);
     }
-    return true;
-  });
+  }, []);
 
-  const statusCounts = leads.reduce<Record<string, number>>((acc, l) => {
-    acc[l.status] = (acc[l.status] || 0) + 1;
-    return acc;
-  }, {});
+  function applyFilter(newStatus: string, newOrigem?: string, newSearch?: string) {
+    const s = newStatus;
+    const o = newOrigem ?? filterOrigem;
+    const q = newSearch ?? search;
+    setFilterStatus(s);
+    if (newOrigem !== undefined) setFilterOrigem(o);
+    if (newSearch !== undefined) setSearch(q);
+    setPage(0);
+    fetchLeads({ status: s, origem: o, search: q, page: 0 });
+  }
+
+  function goToPage(p: number) {
+    setPage(p);
+    fetchLeads({ status: filterStatus, origem: filterOrigem, search, page: p });
+  }
+
+  // Debounced search
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    if (searchTimeout) clearTimeout(searchTimeout);
+    const t = setTimeout(() => {
+      setPage(0);
+      fetchLeads({ status: filterStatus, origem: filterOrigem, search: value, page: 0 });
+    }, 400);
+    setSearchTimeout(t);
+  }
 
   function handleStatusChange(id: string, status: string) {
     startTransition(async () => {
       await updateLeadStatus(id, status);
+      fetchLeads({ status: filterStatus, origem: filterOrigem, search, page });
     });
   }
 
@@ -79,6 +117,7 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
     startTransition(async () => {
       await updateLeadNotes(id, notesValue);
       setEditingNotes(null);
+      fetchLeads({ status: filterStatus, origem: filterOrigem, search, page });
     });
   }
 
@@ -92,14 +131,20 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
     if (!ok) return;
     startTransition(async () => {
       await deleteLead(id);
+      fetchLeads({ status: filterStatus, origem: filterOrigem, search, page });
     });
   }
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
+    const data = await getLeadsForExport({
+      status: filterStatus || undefined,
+      origem: filterOrigem || undefined,
+      search: search || undefined,
+    });
     const wb = XLSX.utils.book_new();
     const rows = [
       ["Nome", "CNPJ", "Email", "Telefone", "Cidade", "Estado", "Tipo", "Origem", "Status", "Notas", "Data"],
-      ...filtered.map((l) => [
+      ...data.map((l) => [
         l.nome,
         l.cnpj || "",
         l.email,
@@ -121,7 +166,7 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
     ];
     XLSX.utils.book_append_sheet(wb, ws, "Leads");
     XLSX.writeFile(wb, `leads-${new Date().toISOString().slice(0, 10)}.xlsx`);
-  }, [filtered]);
+  }, [filterStatus, filterOrigem, search]);
 
   const statusOpts = [{ value: "", label: "Todos status" }, ...STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))];
   const origemOpts = [
@@ -130,15 +175,13 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
     { value: "primeiro-pedido", label: "Primeiro Pedido" },
   ];
 
-  const activeFilters = [filterStatus, filterOrigem].filter(Boolean).length;
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-ink-900">Leads de Revenda</h1>
-          <p className="text-sm text-ink-500 mt-0.5">{leads.length} leads no total</p>
+          <p className="text-sm text-ink-500 mt-0.5">{totalAll} leads no total</p>
         </div>
         {canExport && (
           <button
@@ -156,7 +199,7 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
         {STATUS_OPTIONS.map((s) => (
           <button
             key={s.value}
-            onClick={() => setFilterStatus(filterStatus === s.value ? "" : s.value)}
+            onClick={() => applyFilter(filterStatus === s.value ? "" : s.value)}
             className={cn(
               "rounded-xl border p-3 text-left transition-all",
               filterStatus === s.value
@@ -164,7 +207,7 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
                 : "border-ink-100 bg-white hover:border-ink-200"
             )}
           >
-            <p className="text-2xl font-semibold text-ink-900">{statusCounts[s.value] || 0}</p>
+            <p className="text-2xl font-semibold text-ink-900">{counts[s.value] || 0}</p>
             <p className="text-xs text-ink-500 mt-0.5">{s.label}</p>
           </button>
         ))}
@@ -177,21 +220,21 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Buscar por nome, email, telefone, CNPJ, cidade..."
             className="w-full rounded-lg border border-ink-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-olive focus:ring-1 focus:ring-brand-olive"
           />
         </div>
         <div className="flex gap-2">
           <div className="w-40">
-            <CustomSelect options={statusOpts} value={filterStatus} onChange={setFilterStatus} placeholder="Status" />
+            <CustomSelect options={statusOpts} value={filterStatus} onChange={(v) => applyFilter(v)} placeholder="Status" />
           </div>
           <div className="w-40">
-            <CustomSelect options={origemOpts} value={filterOrigem} onChange={setFilterOrigem} placeholder="Origem" />
+            <CustomSelect options={origemOpts} value={filterOrigem} onChange={(v) => applyFilter(filterStatus, v)} placeholder="Origem" />
           </div>
-          {activeFilters > 0 && (
+          {(filterStatus || filterOrigem) && (
             <button
-              onClick={() => { setFilterStatus(""); setFilterOrigem(""); }}
+              onClick={() => applyFilter("", "")}
               className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-3 py-2 text-xs text-ink-500 hover:bg-ink-50"
             >
               <X size={12} />
@@ -201,12 +244,27 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
         </div>
       </div>
 
-      {/* Results */}
-      <p className="text-xs text-ink-400">{filtered.length} resultado{filtered.length !== 1 ? "s" : ""}</p>
+      {/* Results count */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-ink-400">
+          {total} resultado{total !== 1 ? "s" : ""}
+          {filterStatus && ` — filtro: ${STATUS_OPTIONS.find((s) => s.value === filterStatus)?.label}`}
+        </p>
+        {isLoading && <Loader2 size={14} className="animate-spin text-ink-400" />}
+      </div>
 
       {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-ink-100 bg-white">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col className="w-[22%]" />
+            <col className="w-[22%]" />
+            <col className="w-[14%]" />
+            <col className="w-[12%]" />
+            <col className="w-[10%]" />
+            <col className="w-[12%]" />
+            <col className="w-[8%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-ink-100 bg-ink-50/50">
               <th className="px-4 py-3 text-left font-medium text-ink-500">Nome</th>
@@ -215,67 +273,69 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
               <th className="px-4 py-3 text-left font-medium text-ink-500 hidden sm:table-cell">Origem</th>
               <th className="px-4 py-3 text-left font-medium text-ink-500">Status</th>
               <th className="px-4 py-3 text-left font-medium text-ink-500 hidden sm:table-cell">Data</th>
-              <th className="px-4 py-3 w-10" />
+              <th className="px-2 py-3" />
             </tr>
           </thead>
-          <tbody>
-            {filtered.length === 0 && (
+          <tbody className="divide-y divide-ink-50">
+            {leads.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-ink-400">
                   Nenhum lead encontrado.
                 </td>
               </tr>
             )}
-            {filtered.map((lead) => {
+            {leads.map((lead) => {
               const isExpanded = expandedId === lead.id;
               const statusInfo = STATUS_OPTIONS.find((s) => s.value === lead.status);
               return (
                 <tr key={lead.id} className="group">
                   <td colSpan={7} className="p-0">
                     {/* Main row */}
-                    <div
+                    <button
+                      type="button"
                       className={cn(
-                        "grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_auto_auto_auto_auto_auto_auto] items-center cursor-pointer hover:bg-ink-50/50 transition-colors",
+                        "w-full text-left grid items-center cursor-pointer hover:bg-ink-50/50 transition-colors",
+                        "grid-cols-[1fr_auto_32px] sm:grid-cols-[22%_22%_14%_12%_10%_12%_8%]",
                         isExpanded && "bg-ink-50/30"
                       )}
                       onClick={() => setExpandedId(isExpanded ? null : lead.id)}
                     >
-                      <div className="px-4 py-3">
-                        <p className="font-medium text-ink-900">{lead.nome}</p>
+                      <div className="px-4 py-3 min-w-0">
+                        <p className="font-medium text-ink-900 truncate">{lead.nome}</p>
                         {lead.tipo_cadastro && (
                           <p className="text-xs text-ink-400 mt-0.5">{TIPO_LABELS[lead.tipo_cadastro]}</p>
                         )}
-                        {lead.cnpj && <p className="text-xs text-ink-400">{lead.cnpj}</p>}
+                        {lead.cnpj && <p className="text-xs text-ink-400 truncate">{lead.cnpj}</p>}
                       </div>
-                      <div className="px-4 py-3 hidden md:block">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="inline-flex items-center gap-1 text-ink-600"><Mail size={12} />{lead.email}</span>
-                          <span className="inline-flex items-center gap-1 text-ink-600"><Phone size={12} />{lead.telefone}</span>
-                        </div>
+                      <div className="px-4 py-3 hidden md:block min-w-0">
+                        <p className="text-ink-600 truncate flex items-center gap-1"><Mail size={12} className="shrink-0" />{lead.email}</p>
+                        <p className="text-ink-600 truncate flex items-center gap-1 mt-0.5"><Phone size={12} className="shrink-0" />{lead.telefone}</p>
                       </div>
-                      <div className="px-4 py-3 hidden lg:block">
-                        {(lead.cidade || lead.estado) && (
-                          <span className="inline-flex items-center gap-1 text-ink-600">
-                            <MapPin size={12} />
+                      <div className="px-4 py-3 hidden lg:block min-w-0">
+                        {(lead.cidade || lead.estado) ? (
+                          <span className="inline-flex items-center gap-1 text-ink-600 truncate">
+                            <MapPin size={12} className="shrink-0" />
                             {[lead.cidade, lead.estado].filter(Boolean).join(" - ")}
                           </span>
+                        ) : (
+                          <span className="text-ink-300">—</span>
                         )}
                       </div>
                       <div className="px-4 py-3 hidden sm:block">
                         <span className="text-xs text-ink-500">{ORIGEM_LABELS[lead.origem]}</span>
                       </div>
                       <div className="px-4 py-3">
-                        <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-xs font-medium", statusInfo?.color)}>
+                        <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap", statusInfo?.color)}>
                           {statusInfo?.label}
                         </span>
                       </div>
                       <div className="px-4 py-3 hidden sm:block">
                         <span className="text-xs text-ink-500">{new Date(lead.created_at).toLocaleDateString("pt-BR")}</span>
                       </div>
-                      <div className="px-4 py-3">
+                      <div className="px-2 py-3 flex justify-center">
                         {isExpanded ? <ChevronUp size={16} className="text-ink-400" /> : <ChevronDown size={16} className="text-ink-400" />}
                       </div>
-                    </div>
+                    </button>
 
                     {/* Expanded details */}
                     {isExpanded && (
@@ -318,7 +378,7 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
                                 <button
                                   key={s.value}
                                   disabled={lead.status === s.value || isPending}
-                                  onClick={() => handleStatusChange(lead.id, s.value)}
+                                  onClick={(e) => { e.stopPropagation(); handleStatusChange(lead.id, s.value); }}
                                   className={cn(
                                     "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
                                     lead.status === s.value
@@ -407,6 +467,58 @@ export function LeadsManager({ leads, canEdit, canDelete, canExport }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-ink-400">
+            Página {page + 1} de {totalPages}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => goToPage(page - 1)}
+              disabled={page === 0 || isLoading}
+              className="rounded-lg border border-ink-200 p-2 text-ink-500 hover:bg-ink-50 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i;
+              } else if (page < 3) {
+                pageNum = i;
+              } else if (page > totalPages - 4) {
+                pageNum = totalPages - 5 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => goToPage(pageNum)}
+                  disabled={isLoading}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                    pageNum === page
+                      ? "bg-brand-olive text-white"
+                      : "border border-ink-200 text-ink-600 hover:bg-ink-50"
+                  )}
+                >
+                  {pageNum + 1}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => goToPage(page + 1)}
+              disabled={page >= totalPages - 1 || isLoading}
+              className="rounded-lg border border-ink-200 p-2 text-ink-500 hover:bg-ink-50 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog {...dialogProps} />
     </div>

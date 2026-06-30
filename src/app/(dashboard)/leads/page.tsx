@@ -6,32 +6,23 @@ export default async function LeadsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const leads = await getLeads();
+  // Initial load: filter by "novo" (default)
+  const result = await getLeads({ status: "novo" });
 
-  const { data: canEdit } = await supabase.rpc("has_permission", {
-    _user_id: user?.id || "",
-    _module: "leads",
-    _action: "edit",
-  });
-
-  const { data: canDelete } = await supabase.rpc("has_permission", {
-    _user_id: user?.id || "",
-    _module: "leads",
-    _action: "delete",
-  });
-
-  const { data: canExport } = await supabase.rpc("has_permission", {
-    _user_id: user?.id || "",
-    _module: "leads",
-    _action: "export",
-  });
+  const [canEditRes, canDeleteRes, canExportRes] = await Promise.all([
+    supabase.rpc("has_permission", { _user_id: user?.id || "", _module: "leads", _action: "edit" }),
+    supabase.rpc("has_permission", { _user_id: user?.id || "", _module: "leads", _action: "delete" }),
+    supabase.rpc("has_permission", { _user_id: user?.id || "", _module: "leads", _action: "export" }),
+  ]);
 
   return (
     <LeadsManager
-      leads={leads}
-      canEdit={!!canEdit}
-      canDelete={!!canDelete}
-      canExport={!!canExport}
+      initialData={result.data}
+      initialTotal={result.total}
+      initialCounts={result.counts}
+      canEdit={!!canEditRes.data}
+      canDelete={!!canDeleteRes.data}
+      canExport={!!canExportRes.data}
     />
   );
 }

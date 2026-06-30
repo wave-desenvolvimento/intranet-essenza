@@ -21,13 +21,82 @@ export interface ResellerLead {
   updated_at: string;
 }
 
-export async function getLeads() {
+export interface LeadsResult {
+  data: ResellerLead[];
+  total: number;
+  counts: Record<string, number>;
+}
+
+const PAGE_SIZE = 30;
+
+export async function getLeads(params?: {
+  status?: string;
+  origem?: string;
+  search?: string;
+  page?: number;
+}): Promise<LeadsResult> {
   await requireAuth();
   const supabase = await createClient();
-  const { data } = await supabase
+  const { status, origem, search, page = 0 } = params || {};
+
+  // Counts per status (always unfiltered for the cards)
+  const { data: allLeads } = await supabase
     .from("reseller_leads")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select("status");
+  const counts: Record<string, number> = {};
+  for (const l of allLeads || []) {
+    counts[l.status] = (counts[l.status] || 0) + 1;
+  }
+
+  // Filtered query
+  let query = supabase
+    .from("reseller_leads")
+    .select("*", { count: "exact" });
+
+  if (status) query = query.eq("status", status);
+  if (origem) query = query.eq("origem", origem);
+  if (search) {
+    query = query.or(
+      `nome.ilike.%${search}%,email.ilike.%${search}%,telefone.ilike.%${search}%,cnpj.ilike.%${search}%,cidade.ilike.%${search}%`
+    );
+  }
+
+  query = query
+    .order("created_at", { ascending: false })
+    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+  const { data, count } = await query;
+
+  return {
+    data: (data || []) as ResellerLead[],
+    total: count || 0,
+    counts,
+  };
+}
+
+export async function getLeadsForExport(params?: {
+  status?: string;
+  origem?: string;
+  search?: string;
+}): Promise<ResellerLead[]> {
+  const p = await requirePermission("leads", "export");
+  if (p.error) return [];
+  const supabase = await createClient();
+  const { status, origem, search } = params || {};
+
+  let query = supabase
+    .from("reseller_leads")
+    .select("*");
+
+  if (status) query = query.eq("status", status);
+  if (origem) query = query.eq("origem", origem);
+  if (search) {
+    query = query.or(
+      `nome.ilike.%${search}%,email.ilike.%${search}%,telefone.ilike.%${search}%,cnpj.ilike.%${search}%,cidade.ilike.%${search}%`
+    );
+  }
+
+  const { data } = await query.order("created_at", { ascending: false });
   return (data || []) as ResellerLead[];
 }
 

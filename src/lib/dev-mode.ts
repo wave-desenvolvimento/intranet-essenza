@@ -8,21 +8,44 @@ export interface DevPermission {
   action: string;
 }
 
-const ALL_MODULES = [
-  "dashboard", "usuarios", "franquias", "cms", "configuracoes",
-  "templates", "pedidos", "produtos", "relatorios", "comunicados", "historico", "faq", "pesquisas", "leads",
-  "universo-da-marca", "material-corporativo", "campanhas",
-  "redes-sociais", "biblioteca", "videos", "treinamento", "cigam",
-];
-
-const ALL_ACTIONS = ["view", "create", "edit", "delete", "download", "manage"];
+const MODULE_ACTIONS: Record<string, string[]> = {
+  dashboard:            ["view"],
+  usuarios:             ["view", "create", "edit", "delete", "manage"],
+  franquias:            ["view", "create", "edit", "delete"],
+  cms:                  ["view", "create", "edit", "delete"],
+  templates:            ["view", "create", "edit", "delete"],
+  pedidos:              ["view", "view_all", "create", "edit", "approve", "export", "manage"],
+  produtos:             ["view", "edit", "delete"],
+  relatorios:           ["view", "export"],
+  comunicados:          ["view", "create", "edit", "delete"],
+  historico:            ["view"],
+  faq:                  ["view", "create", "edit", "delete"],
+  pesquisas:            ["view", "create", "edit", "delete"],
+  leads:                ["view", "edit", "delete", "export"],
+  biblioteca:           ["view", "download"],
+  configuracoes:        ["view", "edit"],
+  "universo-da-marca":  ["view", "create", "edit", "download"],
+  "material-corporativo": ["view", "create", "edit", "download"],
+  campanhas:            ["view", "create", "edit", "download"],
+  "redes-sociais":      ["view", "create", "edit", "download"],
+  videos:               ["view", "create", "edit", "download"],
+  treinamento:          ["view", "create", "edit", "download"],
+  cigam:                ["view", "create", "edit", "download"],
+  fotos:                ["view", "create", "edit", "download"],
+};
 
 function allPerms(modules: string[], actions: string[]): DevPermission[] {
   return modules.flatMap((m) => actions.map((a) => ({ module: m, action: a })));
 }
 
+function allModulePerms(): DevPermission[] {
+  return Object.entries(MODULE_ACTIONS).flatMap(([m, actions]) =>
+    actions.map((a) => ({ module: m, action: a }))
+  );
+}
+
 export const DEV_PRESETS: Record<string, DevPermission[]> = {
-  admin: allPerms(ALL_MODULES, ALL_ACTIONS),
+  admin: allModulePerms(),
   franchise_owner: [
     ...allPerms(["dashboard", "universo-da-marca", "material-corporativo", "campanhas", "redes-sociais", "biblioteca", "videos", "treinamento"], ["view", "download"]),
     ...allPerms(["templates"], ["view", "download"]),
