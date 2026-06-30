@@ -6,7 +6,7 @@ import { requireAuth, requirePermission, getUserRoleLevel } from "@/lib/permissi
 
 const ALL_MODULES = [
   "dashboard", "usuarios", "franquias", "cms", "templates", "pedidos", "produtos",
-  "relatorios", "comunicados", "historico", "faq", "pesquisas",
+  "relatorios", "comunicados", "historico", "faq", "pesquisas", "leads",
   "universo-da-marca", "material-corporativo", "campanhas",
   "redes-sociais", "biblioteca", "videos", "treinamento", "cigam", "configuracoes",
 ];

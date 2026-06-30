@@ -28,7 +28,7 @@ const MODULE_LABELS: Record<string, string> = {
   "universo-da-marca": "Universo da Marca",
   "material-corporativo": "Material Corp.", campanhas: "Campanhas",
   "redes-sociais": "Redes Sociais", biblioteca: "Biblioteca", videos: "Vídeos",
-  treinamento: "Treinamento", cigam: "CIGAM", configuracoes: "Configurações",
+  treinamento: "Treinamento", cigam: "CIGAM", leads: "Leads Revenda", configuracoes: "Configurações",
 };
 
 function groupByModule(permissions: Permission[]) {
