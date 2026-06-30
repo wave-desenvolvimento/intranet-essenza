@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useModKey } from "@/hooks/use-platform";
 
 interface SheetProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface SheetProps {
 }
 
 export function Sheet({ open, onClose, onSubmit, title, wide, children }: SheetProps) {
+  const mod = useModKey();
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") {
       onClose();
@@ -93,8 +95,8 @@ export function Sheet({ open, onClose, onSubmit, title, wide, children }: SheetP
           <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">Esc</kbd> fechar</span>
           {onSubmit && (
             <>
-              <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">⌘S</kbd> salvar</span>
-              <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">⌘↵</kbd> salvar</span>
+              <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">{mod}S</kbd> salvar</span>
+              <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">{mod}↵</kbd> salvar</span>
             </>
           )}
         </div>

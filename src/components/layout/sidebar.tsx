@@ -199,12 +199,12 @@ export function Sidebar({ cmsPages = [] }: SidebarProps) {
           className="flex flex-col items-center gap-1.5 py-4 border-b border-ink-50 hover:bg-ink-50 transition-colors"
           title="Expandir menu"
         >
-          <BrandLogo width={28} height={28} />
+          <Link href="/"><BrandLogo width={28} height={28} /></Link>
           <PanelLeftOpen size={12} className="text-ink-300" />
         </button>
       ) : (
         <div className="flex items-center justify-between px-5 py-4 border-b border-ink-50">
-          <BrandLogo width={120} height={56} />
+          <Link href="/"><BrandLogo width={120} height={56} /></Link>
           <button
             onClick={toggleCollapsed}
             className="rounded-lg p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors"

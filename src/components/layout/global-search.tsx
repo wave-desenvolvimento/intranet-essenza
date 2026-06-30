@@ -9,14 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { getIconComponent } from "@/components/ui/icon-picker";
 import { useRouter } from "next/navigation";
-
-function useIsMac() {
-  const [isMac, setIsMac] = useState(true);
-  useEffect(() => {
-    setIsMac(navigator.platform?.toUpperCase().includes("MAC") || navigator.userAgent?.includes("Mac"));
-  }, []);
-  return isMac;
-}
+import { useIsMac } from "@/hooks/use-platform";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -258,7 +251,7 @@ export function GlobalSearch() {
           "flex items-center gap-2 rounded-[9px] h-9 text-sm text-ink-400 hover:bg-ink-100 transition-colors",
           isMobile ? "w-9 justify-center bg-transparent" : "bg-ink-50 px-3 w-64"
         )}
-        title="Buscar (⌘K)"
+        title={`Buscar (${isMac ? "⌘" : "Ctrl+"}K)`}
       >
         <Search size={isMobile ? 18 : 14} />
         {!isMobile && <span className="flex-1 text-left">Buscar...</span>}

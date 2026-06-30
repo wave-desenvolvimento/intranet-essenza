@@ -12,6 +12,7 @@ import { Tooltip, TooltipProvider } from "@/components/ui/tooltip";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useModKey } from "@/hooks/use-platform";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   folder: Folder, image: Image, megaphone: Megaphone, file: FileText, layers: Layers, database: Database,
@@ -36,6 +37,7 @@ interface Collection {
 
 export function CmsOverview({ collections }: { collections: Collection[] }) {
   const { confirm: confirmAction, dialogProps } = useConfirm();
+  const mod = useModKey();
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Collection | null>(null);
   const [name, setName] = useState("");
@@ -263,7 +265,7 @@ export function CmsOverview({ collections }: { collections: Collection[] }) {
               </div>
               <div className="flex items-center gap-3 pt-2 text-[10px] text-ink-400">
                 <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">Esc</kbd> fechar</span>
-                <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">⌘S</kbd> salvar</span>
+                <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">{mod}S</kbd> salvar</span>
                 <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">Enter</kbd> salvar</span>
               </div>
             </div>

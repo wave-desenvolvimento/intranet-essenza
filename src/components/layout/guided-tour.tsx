@@ -17,7 +17,9 @@ function isMobileView() {
 }
 
 // Steps that work on both mobile and desktop
-const UNIVERSAL_STEPS: TourStep[] = [
+function getUniversalSteps(isMac: boolean): TourStep[] {
+  const shortcut = isMac ? "⌘K" : "Ctrl+K";
+  return [
   {
     popover: {
       title: "Bem-vindo ao Hub Empório Essenza!",
@@ -30,7 +32,7 @@ const UNIVERSAL_STEPS: TourStep[] = [
     element: "[data-tour='search']",
     popover: {
       title: "Busca Rápida",
-      description: "Toque aqui (ou ⌘K no Mac / Ctrl+K no Windows) para buscar qualquer conteúdo ou página.",
+      description: `Toque aqui (ou ${shortcut}) para buscar qualquer conteúdo ou página.`,
       side: "bottom",
       align: "end",
     },
@@ -45,6 +47,7 @@ const UNIVERSAL_STEPS: TourStep[] = [
     },
   },
 ];
+}
 
 // Desktop: points to sidebar items
 const DESKTOP_NAV_STEPS: TourStep[] = [
@@ -239,8 +242,9 @@ export function useGuidedTour() {
     }
 
     // Build steps based on device
+    const isMac = navigator.platform?.toUpperCase().includes("MAC") || navigator.userAgent?.includes("Mac");
     const allSteps: TourStep[] = [
-      ...UNIVERSAL_STEPS,
+      ...getUniversalSteps(isMac),
       ...(mobile ? MOBILE_NAV_STEPS : DESKTOP_NAV_STEPS),
       FINAL_STEP,
     ];

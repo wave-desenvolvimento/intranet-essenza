@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useModKey } from "@/hooks/use-platform";
 import {
   HelpCircle, BookOpen, PlayCircle, MessageCircle, X,
   ShoppingCart, Image, FileText, GraduationCap, Palette,
@@ -76,18 +77,22 @@ const HELP_TOPICS: HelpTopic[] = [
   },
 ];
 
-const SHORTCUTS = [
-  { keys: "⌘K", label: "Buscar" },
-  { keys: "⌘S", label: "Salvar formulário" },
-  { keys: "⌘↵", label: "Salvar (textarea)" },
-  { keys: "Esc", label: "Fechar modal/sheet" },
-];
+function getShortcuts(mod: string) {
+  return [
+    { keys: `${mod}K`, label: "Buscar" },
+    { keys: `${mod}S`, label: "Salvar formulário" },
+    { keys: `${mod}↵`, label: "Salvar (textarea)" },
+    { keys: "Esc", label: "Fechar modal/sheet" },
+  ];
+}
 
 export function HelpCenter() {
   const [open, setOpen] = useState(false);
   const { canModule } = usePermissions();
   const { startTour } = useGuidedTour();
   const panelRef = useRef<HTMLDivElement>(null);
+  const mod = useModKey();
+  const SHORTCUTS = getShortcuts(mod);
 
   const visibleTopics = HELP_TOPICS.filter((t) => !t.module || canModule(t.module));
 
