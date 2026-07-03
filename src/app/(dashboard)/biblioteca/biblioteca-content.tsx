@@ -22,6 +22,7 @@ interface Asset {
   type: "image" | "file";
   url: string;
   label: string;
+  tags: string[];
   createdAt: string;
   publishedAt: string | null;
   expiresAt: string | null;
@@ -55,21 +56,25 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "image" | "file">("all");
   const [collectionFilter, setCollectionFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [lightbox, setLightbox] = useState<{ url: string } | null>(null);
 
   const collections = [...new Set(assets.map((a) => a.collection))].sort();
+  const allTags = [...new Set(assets.flatMap((a) => a.tags))].sort();
   const now = new Date();
 
   const filtered = assets.filter((a) => {
     if (typeFilter !== "all" && a.type !== typeFilter) return false;
     if (collectionFilter && a.collection !== collectionFilter) return false;
+    if (tagFilter && !a.tags.includes(tagFilter)) return false;
     if (statusFilter === "active" && a.expiresAt && new Date(a.expiresAt) < now) return false;
     if (statusFilter === "expired" && (!a.expiresAt || new Date(a.expiresAt) >= now)) return false;
     if (search) {
       const q = search.toLowerCase();
-      return a.title.toLowerCase().includes(q) || a.collection.toLowerCase().includes(q) || a.label.toLowerCase().includes(q);
+      const ext = a.url.split("?")[0].split(".").pop()?.toLowerCase() || "";
+      return a.title.toLowerCase().includes(q) || a.collection.toLowerCase().includes(q) || a.label.toLowerCase().includes(q) || a.tags.some((t) => t.toLowerCase().includes(q)) || ext.includes(q);
     }
     return true;
   });
@@ -165,6 +170,18 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
             {collections.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
 
+          {/* Tag filter */}
+          {allTags.length > 0 && (
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="h-9 rounded-lg border border-ink-100 bg-white px-3 pr-8 text-sm text-ink-700 focus:border-brand-olive focus:outline-none"
+            >
+              <option value="">Todas as tags</option>
+              {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
+
           {/* View toggle */}
           <div className="flex items-center rounded-lg border border-ink-100 bg-white overflow-hidden">
             <button onClick={() => setView("grid")} className={cn("p-1.5 transition-colors", view === "grid" ? "bg-ink-100 text-ink-700" : "text-ink-400 hover:bg-ink-50")}>
@@ -178,7 +195,7 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
       </div>
 
       {/* Results info */}
-      {search || typeFilter !== "all" || collectionFilter ? (
+      {search || typeFilter !== "all" || collectionFilter || tagFilter ? (
         <p className="text-xs text-ink-400">{total} resultado{total !== 1 ? "s" : ""}</p>
       ) : null}
 
@@ -233,6 +250,16 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
                     {a.collection}
                     {a.expiresAt && !isExpired && <> · Expira {new Date(a.expiresAt).toLocaleDateString("pt-BR")}</>}
                   </p>
+                  {a.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-0.5 mt-1">
+                      {a.tags.slice(0, 3).map((tag) => (
+                        <button key={tag} onClick={(e) => { e.stopPropagation(); setTagFilter(tag); }} className="rounded bg-brand-olive-soft px-1.5 py-0.5 text-[8px] font-medium text-brand-olive-dark hover:bg-brand-olive/20 transition-colors">
+                          {tag}
+                        </button>
+                      ))}
+                      {a.tags.length > 3 && <span className="text-[8px] text-ink-400">+{a.tags.length - 3}</span>}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -286,10 +313,17 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
                     <p className="text-sm font-medium text-ink-900 truncate">{a.title}</p>
                     {isExpired && <span className="shrink-0 rounded-full bg-danger-soft px-1.5 py-0.5 text-[8px] font-medium text-danger">Expirado</span>}
                   </div>
-                  <p className="text-[10px] text-ink-400">
-                    {a.collection} · {ext} · {new Date(a.createdAt).toLocaleDateString("pt-BR")}
-                    {a.expiresAt && !isExpired && <> · Expira {new Date(a.expiresAt).toLocaleDateString("pt-BR")}</>}
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="text-[10px] text-ink-400">
+                      {a.collection} · {ext} · {new Date(a.createdAt).toLocaleDateString("pt-BR")}
+                      {a.expiresAt && !isExpired && <> · Expira {new Date(a.expiresAt).toLocaleDateString("pt-BR")}</>}
+                    </p>
+                    {a.tags.map((tag) => (
+                      <button key={tag} onClick={(e) => { e.stopPropagation(); setTagFilter(tag); }} className="rounded bg-brand-olive-soft px-1.5 py-0.5 text-[8px] font-medium text-brand-olive-dark hover:bg-brand-olive/20 transition-colors">
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Actions */}

@@ -388,23 +388,103 @@ export function SurveysManager({ surveys, canManage, canViewAll, currentUserId }
           })}
 
           {inactiveSurveys.length > 0 && canManage && (
-            <details className="mt-2">
-              <summary className="text-xs font-medium text-ink-400 cursor-pointer hover:text-ink-600">{inactiveSurveys.length} inativa{inactiveSurveys.length > 1 ? "s" : ""}</summary>
-              <div className="flex flex-col gap-2 mt-2">
-                {inactiveSurveys.map((s) => {
-                  const nps = calcNps(s.responses || []);
+            <div className="mt-4">
+              <p className="text-xs font-medium text-ink-400 mb-2">{inactiveSurveys.length} inativa{inactiveSurveys.length > 1 ? "s" : ""}</p>
+              <div className="flex flex-col gap-4">
+                {inactiveSurveys.map((survey) => {
+                  const npsData = calcNps(survey.responses || []);
+                  const isExpanded = expandedId === survey.id;
+                  const surveyQuestions = survey.questions || [];
+                  const hasNps = surveyQuestions.some((q: { type: string }) => q.type === "nps");
+                  const expired = isExpired(survey);
+
                   return (
-                    <div key={s.id} className="flex items-center gap-3 rounded-lg border border-ink-100 bg-white px-4 py-3 opacity-60">
-                      <div className={cn("flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold", npsBg(nps.nps), npsColor(nps.nps))}>{nps.nps}</div>
-                      <p className="text-sm text-ink-700 flex-1">{s.title}</p>
-                      <span className="text-[10px] text-ink-400">{nps.total} respostas</span>
-                      <button onClick={() => handleToggle(s.id, true)} className="text-ink-400 hover:text-success"><Power size={13} /></button>
-                      <button onClick={() => handleDelete(s.id)} disabled={isPending} className="text-ink-400 hover:text-danger"><Trash2 size={13} /></button>
+                    <div key={survey.id} className="rounded-xl border border-ink-200 border-dashed bg-white overflow-hidden">
+                      <div className="px-5 py-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="text-sm font-semibold text-ink-500">{survey.title}</h3>
+                              <span className="rounded-md bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium text-ink-500">
+                                {expired ? "Expirada" : "Inativa"}
+                              </span>
+                              {survey.ends_at && (
+                                <span className="flex items-center gap-1 text-[10px] text-ink-400"><Clock size={9} /> até {new Date(survey.ends_at).toLocaleDateString("pt-BR")}</span>
+                              )}
+                            </div>
+                            {survey.description && <p className="text-xs text-ink-400 mb-3">{survey.description}</p>}
+
+                            <div className="flex items-center gap-4">
+                              {hasNps && (
+                                <div className={cn("flex items-center gap-1.5 rounded-lg px-3 py-1.5", npsBg(npsData.nps))}>
+                                  <span className={cn("text-lg font-bold", npsColor(npsData.nps))}>{npsData.nps}</span>
+                                  <span className="text-[10px] text-ink-500">NPS</span>
+                                </div>
+                              )}
+                              <span className="text-[11px] text-ink-400">{npsData.total} resposta{npsData.total !== 1 ? "s" : ""}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => handleToggle(survey.id, true)} disabled={isPending} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-success-soft text-success hover:bg-success/10 transition-colors" title="Ativar pesquisa">
+                              <span className="flex items-center gap-1.5"><Power size={13} /> Ativar</span>
+                            </button>
+                            <button onClick={() => handleDelete(survey.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors" title="Remover"><Trash2 size={13} /></button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expandable responses */}
+                      {canViewAll && npsData.total > 0 && (
+                        <>
+                          <button onClick={() => setExpandedId(isExpanded ? null : survey.id)} className="flex items-center gap-2 w-full px-5 py-2.5 border-t border-ink-100 text-xs font-medium text-ink-500 hover:bg-ink-50 transition-colors">
+                            <MessageSquare size={12} /> Ver respostas ({npsData.total})
+                            <ChevronDown size={12} className={cn("ml-auto transition-transform", isExpanded && "rotate-180")} />
+                          </button>
+                          {isExpanded && (
+                            <div className="border-t border-ink-100 divide-y divide-ink-50 max-h-80 overflow-y-auto">
+                              {(survey.responses as { score: number | null; comment: string | null; created_at: string; franchise: { name: string } | null; answers: { question_id: string; value: string }[] }[])
+                                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                                .map((r, i) => (
+                                <div key={i} className="px-5 py-3">
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    {r.score !== null && (
+                                      <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white", r.score <= 6 ? "bg-danger" : r.score <= 8 ? "bg-warning" : "bg-success")}>{r.score}</div>
+                                    )}
+                                    {r.franchise?.name && (
+                                      <span className="rounded-md bg-ink-50 px-1.5 py-0.5 text-[10px] font-medium text-ink-600">{r.franchise.name}</span>
+                                    )}
+                                    <span className="text-[10px] text-ink-400">{new Date(r.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
+                                  </div>
+                                  {(r.answers || []).length > 0 && (
+                                    <div className="flex flex-col gap-1 mb-1">
+                                      {(r.answers || []).map((a, j) => {
+                                        const q = surveyQuestions.find((sq: { id: string }) => sq.id === a.question_id);
+                                        if (!q) return null;
+                                        return (
+                                          <div key={j} className="text-xs">
+                                            <span className="text-ink-400">{q.label}:</span>{" "}
+                                            <span className="text-ink-700 font-medium">
+                                              {q.type === "rating" ? "★".repeat(Number(a.value)) : a.value}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  {r.comment && <p className="text-sm text-ink-600">{r.comment}</p>}
+                                  {!r.comment && (r.answers || []).length === 0 && <p className="text-xs text-ink-400 italic">Sem detalhes</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   );
                 })}
               </div>
-            </details>
+            </div>
           )}
         </div>
       )}

@@ -52,7 +52,7 @@ export default async function BibliotecaPage() {
   // Get all published items from these collections
   const { data: items } = await supabase
     .from("cms_items")
-    .select("id, data, collection_id, created_at, published_at, expires_at")
+    .select("id, data, collection_id, created_at, published_at, expires_at, tags")
     .in("collection_id", collectionIds)
     .eq("status", "published")
     .order("created_at", { ascending: false })
@@ -81,6 +81,7 @@ export default async function BibliotecaPage() {
     type: "image" | "file";
     url: string;
     label: string;
+    tags: string[];
     createdAt: string;
     publishedAt: string | null;
     expiresAt: string | null;
@@ -101,6 +102,7 @@ export default async function BibliotecaPage() {
     const d = item.data as Record<string, unknown>;
     const itemTitle = String(d[titleSlug] || d.titulo || d.title || d.nome || "").trim();
     const pageSlug = pageMap.get(item.collection_id) || "";
+    const itemTags = (item.tags as string[]) || [];
 
     for (const f of fields) {
       const raw = d[f.slug];
@@ -112,7 +114,7 @@ export default async function BibliotecaPage() {
         assets.push({
           id: `${item.id}-${f.slug}`, itemId: item.id, title: itemTitle || f.name,
           collection: col?.name || "", collectionSlug: col?.slug || "", pageSlug,
-          type: "image", url: raw, label: f.name, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
+          type: "image", url: raw, label: f.name, tags: itemTags, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
         });
       } else if (f.field_type === "image_variants" && typeof raw === "object" && !Array.isArray(raw)) {
         for (const [variant, url] of Object.entries(raw as Record<string, string>)) {
@@ -120,7 +122,7 @@ export default async function BibliotecaPage() {
           assets.push({
             id: `${item.id}-${f.slug}-${variant}`, itemId: item.id, title: itemTitle || variant,
             collection: col?.name || "", collectionSlug: col?.slug || "", pageSlug,
-            type: "image", url, label: variant, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
+            type: "image", url, label: variant, tags: itemTags, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
           });
         }
       } else if (f.field_type === "image_array" && Array.isArray(raw)) {
@@ -129,14 +131,14 @@ export default async function BibliotecaPage() {
           assets.push({
             id: `${item.id}-${f.slug}-${i}`, itemId: item.id, title: itemTitle || img.title || `${f.name} ${i + 1}`,
             collection: col?.name || "", collectionSlug: col?.slug || "", pageSlug,
-            type: "image", url: img.url, label: img.title || `${f.name} ${i + 1}`, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
+            type: "image", url: img.url, label: img.title || `${f.name} ${i + 1}`, tags: itemTags, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
           });
         }
       } else if (f.field_type === "file" && typeof raw === "string" && raw) {
         assets.push({
           id: `${item.id}-${f.slug}`, itemId: item.id, title: itemTitle || f.name,
           collection: col?.name || "", collectionSlug: col?.slug || "", pageSlug,
-          type: "file", url: raw, label: f.name, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
+          type: "file", url: raw, label: f.name, tags: itemTags, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
         });
       } else if (f.field_type === "file_array" && Array.isArray(raw)) {
         for (const [i, file] of (raw as { url: string; title?: string }[]).entries()) {
@@ -144,7 +146,7 @@ export default async function BibliotecaPage() {
           assets.push({
             id: `${item.id}-${f.slug}-${i}`, itemId: item.id, title: file.title || itemTitle || `${f.name} ${i + 1}`,
             collection: col?.name || "", collectionSlug: col?.slug || "", pageSlug,
-            type: isImageType ? "image" : "file", url: file.url, label: file.title || `${f.name} ${i + 1}`, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
+            type: isImageType ? "image" : "file", url: file.url, label: file.title || `${f.name} ${i + 1}`, tags: itemTags, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
           });
         }
       }

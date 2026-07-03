@@ -5,7 +5,7 @@ import DOMPurify from "dompurify";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
-  ArrowLeft, Plus, Pencil, Trash2, X, Settings, Check, Upload, GripVertical, ChevronRight, Copy, History, RotateCcw,
+  ArrowLeft, Plus, Pencil, Trash2, X, Settings, Check, Upload, GripVertical, ChevronRight, Copy, History, RotateCcw, Search,
 } from "lucide-react";
 import { createField, updateField, deleteField, createItem, updateItem, deleteItem, reorderItems, reorderFields, updateCollection, bulkUpdateStatus, bulkDeleteItems, duplicateItem } from "../actions";
 import { getItemHistory, revertToVersion } from "@/app/(dashboard)/history-actions";
@@ -24,7 +24,7 @@ import { FilesView } from "./files-view";
 
 // === Types ===
 interface Field { id: string; name: string; slug: string; field_type: string; required: boolean; placeholder: string | null; options: unknown; sort_order: number; }
-interface Item { id: string; data: Record<string, unknown>; status: string; sort_order: number; created_at: string; published_at: string | null; expires_at: string | null; }
+interface Item { id: string; data: Record<string, unknown>; status: string; sort_order: number; created_at: string; published_at: string | null; expires_at: string | null; tags: string[]; }
 interface Collection { id: string; name: string; slug: string; description: string | null; view_type: string; }
 interface Props { collection: Collection; fields: Field[]; items: Item[]; }
 
@@ -51,14 +51,15 @@ export function CollectionDetail({ collection, fields, items }: Props) {
   const [error, setError] = useState("");
   const { confirm: confirmAction, dialogProps } = useConfirm();
   const isBanner = collection.slug === "banners";
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   function toggleSelect(id: string) {
     setSelected((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   }
   function toggleAll() {
-    if (selected.size === items.length) setSelected(new Set());
-    else setSelected(new Set(items.map((i) => i.id)));
+    if (selected.size === filteredItems.length) setSelected(new Set());
+    else setSelected(new Set(filteredItems.map((i) => i.id)));
   }
   async function bulkStatus(status: string) {
     const ids = [...selected];
@@ -104,6 +105,7 @@ export function CollectionDetail({ collection, fields, items }: Props) {
   const [itemStatus, setItemStatus] = useState("draft");
   const [publishedAt, setPublishedAt] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [itemTags, setItemTags] = useState<string[]>([]);
 
   // History
   const [historySheet, setHistorySheet] = useState(false);
@@ -160,6 +162,17 @@ export function CollectionDetail({ collection, fields, items }: Props) {
   // Visible columns (first 4 text-ish fields)
   const visibleFields = fields.filter((f) => !["boolean", "image", "file", "file_array", "image_array", "image_variants"].includes(f.field_type)).slice(0, 4);
 
+  // Filtered items by search
+  const filteredItems = useMemo(() => {
+    if (!search) return items;
+    const q = search.toLowerCase();
+    return items.filter((item) => {
+      if (JSON.stringify(item.data).replace(/<[^>]*>/g, "").toLowerCase().includes(q)) return true;
+      if (item.tags?.some((t) => t.toLowerCase().includes(q))) return true;
+      return false;
+    });
+  }, [items, search]);
+
   // === Item handlers ===
   function openItem(item?: Item) {
     setEditingItem(item || null);
@@ -167,13 +180,14 @@ export function CollectionDetail({ collection, fields, items }: Props) {
     setItemStatus(item?.status || "draft");
     setPublishedAt(item?.published_at ? item.published_at.slice(0, 16) : "");
     setExpiresAt(item?.expires_at ? item.expires_at.slice(0, 16) : "");
+    setItemTags(item?.tags || []);
     setError("");
     setItemSheet(true);
   }
   function closeItem() { setItemSheet(false); setEditingItem(null); }
   function saveItem() {
     const fd = new FormData(); fd.set("data", JSON.stringify(itemData)); fd.set("status", itemStatus);
-    fd.set("publishedAt", publishedAt); fd.set("expiresAt", expiresAt);
+    fd.set("publishedAt", publishedAt); fd.set("expiresAt", expiresAt); fd.set("tags", JSON.stringify(itemTags));
     if (editingItem) {
       fd.set("id", editingItem.id);
       startTransition(async () => { const r = await updateItem(fd); r?.error ? setError(r.error) : closeItem(); });
@@ -273,6 +287,15 @@ export function CollectionDetail({ collection, fields, items }: Props) {
 
       {error && !itemSheet && !fieldSheet && <p className="mb-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
+      {/* Search */}
+      {fields.length > 0 && items.length > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-white px-3 h-9 max-w-xs mb-4">
+          <Search size={14} className="text-ink-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar itens..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
+          {search && <button onClick={() => setSearch("")} className="text-ink-400 hover:text-ink-700"><X size={12} /></button>}
+        </div>
+      )}
+
       {/* Items — spreadsheet-style table */}
       {fields.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 bg-ink-50/50 py-16">
@@ -289,9 +312,9 @@ export function CollectionDetail({ collection, fields, items }: Props) {
           </button>
         </div>
       ) : collection.view_type === "gallery" ? (
-        <GalleryView items={items} fields={fields} onEdit={(item) => openItem(item)} onDelete={removeItem} onDuplicate={handleDuplicateItem} isPending={isPending} />
+        <GalleryView items={filteredItems} fields={fields} onEdit={(item) => openItem(item)} onDelete={removeItem} onDuplicate={handleDuplicateItem} isPending={isPending} />
       ) : collection.view_type === "files" ? (
-        <FilesView items={items} fields={fields} onEdit={(item) => openItem(item)} onDelete={removeItem} onDuplicate={handleDuplicateItem} isPending={isPending} />
+        <FilesView items={filteredItems} fields={fields} onEdit={(item) => openItem(item)} onDelete={removeItem} onDuplicate={handleDuplicateItem} isPending={isPending} />
       ) : (
         /* Table view (default) */
         <>
@@ -322,8 +345,8 @@ export function CollectionDetail({ collection, fields, items }: Props) {
             <thead>
               <tr className="border-b border-ink-100 bg-ink-50/30">
                 <th className="w-10 px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                  <button type="button" onClick={toggleAll} className={cn("flex h-4 w-4 items-center justify-center rounded border-[1.5px] transition-colors", selected.size === items.length && items.length > 0 ? "border-brand-olive bg-brand-olive" : "border-ink-300")}>
-                    {selected.size === items.length && items.length > 0 && <Check size={9} className="text-white" strokeWidth={3} />}
+                  <button type="button" onClick={toggleAll} className={cn("flex h-4 w-4 items-center justify-center rounded border-[1.5px] transition-colors", selected.size === filteredItems.length && filteredItems.length > 0 ? "border-brand-olive bg-brand-olive" : "border-ink-300")}>
+                    {selected.size === filteredItems.length && filteredItems.length > 0 && <Check size={9} className="text-white" strokeWidth={3} />}
                   </button>
                 </th>
                 <th className="w-8 px-2 py-2.5" />
@@ -338,7 +361,7 @@ export function CollectionDetail({ collection, fields, items }: Props) {
               </tr>
             </thead>
             <tbody>
-              {items.map((item, idx) => {
+              {filteredItems.map((item, idx) => {
                 const isChecked = selected.has(item.id);
                 return (
                 <tr
@@ -406,6 +429,12 @@ export function CollectionDetail({ collection, fields, items }: Props) {
                 {IMAGE_HINTS[f.slug] && <p className="text-[10px] text-ink-400 mt-1">{IMAGE_HINTS[f.slug]}</p>}
               </div>
             ))}
+            {/* Tags */}
+            <div className="border-t border-ink-100 pt-4 mt-2">
+              <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-3">Tags</p>
+              <TagsInput value={itemTags.join(", ")} onChange={(v) => setItemTags(v ? v.split(",").map((t) => t.trim()).filter(Boolean) : [])} placeholder="Digite e pressione vírgula..." />
+            </div>
+
             {/* Publicação */}
             <div className="border-t border-ink-100 pt-4 mt-2">
               <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-3">Publicação</p>

@@ -84,9 +84,11 @@ export function ProductsManager({ products, categories }: { products: Product[];
   const [csvRows, setCsvRows] = useState<{ name: string; sku: string; category: string; unit: string; minQty: number; priceFranquia: number; pricePdv: number; stockStatus: string }[]>([]);
   const [importError, setImportError] = useState("");
 
-  const filtered = products.filter((p) =>
-    !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku?.includes(search)
-  );
+  const filtered = products.filter((p) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return p.name.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q) || p.product_category?.name.toLowerCase().includes(q) || p.category?.toLowerCase().includes(q);
+  });
 
   const { paginated: paginatedProducts, hasMore, loadMore, showing, total: totalFiltered } = usePagination(filtered, { pageSize: 15 });
 

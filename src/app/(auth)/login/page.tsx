@@ -52,7 +52,7 @@ export default function LoginPage() {
             </h1>
             <p className="text-center text-base leading-relaxed text-ink-600">
               Campanhas, materiais e conteúdo organizados para
-              fortalecer à Empório Essenza Serra Gaúcha.
+              fortalecer a marca.
             </p>
           </div>
         </div>

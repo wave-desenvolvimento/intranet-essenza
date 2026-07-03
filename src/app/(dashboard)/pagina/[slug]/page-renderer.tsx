@@ -41,6 +41,7 @@ interface Item {
   sort_order: number;
   created_at: string;
   folder_id?: string | null;
+  tags?: string[];
 }
 
 interface CollectionData {
@@ -82,6 +83,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [itemData, setItemData] = useState<Record<string, unknown>>({});
   const [itemStatus, setItemStatus] = useState("published");
+  const [itemTags, setItemTags] = useState<string[]>([]);
   const [error, setError] = useState("");
   const { confirm, dialogProps } = useConfirm();
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -232,6 +234,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
     setEditingItem(item || null);
     setItemData(item?.data || {});
     setItemStatus(item?.status || "published");
+    setItemTags(item?.tags || []);
     setError("");
     setItemSheet(true);
   }
@@ -245,6 +248,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
     fd.set("status", itemStatus);
     fd.set("publishedAt", "");
     fd.set("expiresAt", "");
+    fd.set("tags", JSON.stringify(itemTags));
     if (editingItem) {
       fd.set("id", editingItem.id);
       startTransition(async () => { const r = await updateItem(fd); if (r?.error) setError(r.error); else { closeItemSheet(); toast.success("Item atualizado"); } });
@@ -514,6 +518,11 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
               <PageDynamicField field={f} value={itemData[f.slug]} onChange={(val) => setItemData((prev) => ({ ...prev, [f.slug]: val }))} />
             </div>
           ))}
+          {/* Tags */}
+          <div className="border-t border-ink-100 pt-4 mt-2">
+            <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-3">Tags</p>
+            <TagsInput value={itemTags.join(", ")} onChange={(v) => setItemTags(v ? v.split(",").map((t) => t.trim()).filter(Boolean) : [])} placeholder="Digite e pressione vírgula..." />
+          </div>
           {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
           <div className="flex gap-2 pt-2 border-t border-ink-100 mt-2">
             <button onClick={saveItem} disabled={isPending} className="flex-1 rounded-lg bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-50 transition-colors">
@@ -952,9 +961,10 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
 
   const filtered = collection.items.filter((item) => {
     const matchSearch = !search || (() => {
-      const title = titleField ? String(item.data[titleField.slug] || "").toLowerCase() : "";
-      const tags = tagsField ? String(item.data[tagsField.slug] || "").toLowerCase() : "";
-      return title.includes(search.toLowerCase()) || tags.includes(search.toLowerCase());
+      const q = search.toLowerCase();
+      if (JSON.stringify(item.data).replace(/<[^>]*>/g, "").toLowerCase().includes(q)) return true;
+      if (item.tags?.some((t) => t.toLowerCase().includes(q))) return true;
+      return false;
     })();
     const matchFilter = !activeFilter || (() => {
       if (!refField) return true;
@@ -1458,7 +1468,12 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
   })) || [];
 
   const filtered = collection.items.filter((item) => {
-    const matchSearch = !search || (titleField ? String(item.data[titleField.slug] || "").toLowerCase().includes(search.toLowerCase()) : true);
+    const matchSearch = !search || (() => {
+      const q = search.toLowerCase();
+      if (JSON.stringify(item.data).replace(/<[^>]*>/g, "").toLowerCase().includes(q)) return true;
+      if (item.tags?.some((t) => t.toLowerCase().includes(q))) return true;
+      return false;
+    })();
     const matchFilter = !activeFilter || (() => {
       if (!refField) return true;
       const val = item.data[refField.slug];
@@ -1558,8 +1573,10 @@ function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelet
 
   const filtered = collection.items.filter((item) => {
     if (!search) return true;
-    const title = titleField ? String(item.data[titleField.slug] || "").toLowerCase() : "";
-    return title.includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    if (JSON.stringify(item.data).replace(/<[^>]*>/g, "").toLowerCase().includes(q)) return true;
+    if (item.tags?.some((t: string) => t.toLowerCase().includes(q))) return true;
+    return false;
   });
 
   return (

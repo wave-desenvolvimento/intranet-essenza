@@ -18,6 +18,7 @@ interface Item {
   created_at: string;
   published_at: string | null;
   expires_at: string | null;
+  tags: string[];
 }
 
 interface Field {

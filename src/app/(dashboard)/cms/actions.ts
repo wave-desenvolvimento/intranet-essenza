@@ -218,8 +218,11 @@ export async function createItem(formData: FormData) {
   const publishedAt = formData.get("publishedAt") as string;
   const expiresAt = formData.get("expiresAt") as string;
   const folderId = formData.get("folderId") as string;
+  const tagsRaw = formData.get("tags") as string;
 
   if (!collectionId || !dataRaw) return { error: "Dados incompletos." };
+
+  const tags = tagsRaw ? (safeJsonParse(tagsRaw, []) as string[]) : [];
 
   const { count } = await supabase
     .from("cms_items")
@@ -235,6 +238,7 @@ export async function createItem(formData: FormData) {
     published_at: publishedAt || null,
     expires_at: expiresAt || null,
     folder_id: folderId || null,
+    tags,
   });
 
   if (error) return { error: "Erro ao criar item." };
@@ -251,8 +255,11 @@ export async function updateItem(formData: FormData) {
   const status = formData.get("status") as string;
   const publishedAt = formData.get("publishedAt") as string;
   const expiresAt = formData.get("expiresAt") as string;
+  const tagsRaw = formData.get("tags") as string;
 
   if (!id || !dataRaw) return { error: "Dados inválidos." };
+
+  const tags = tagsRaw ? (safeJsonParse(tagsRaw, []) as string[]) : [];
 
   const { error } = await supabase
     .from("cms_items")
@@ -261,6 +268,7 @@ export async function updateItem(formData: FormData) {
       status,
       published_at: publishedAt || null,
       expires_at: expiresAt || null,
+      tags,
     })
     .eq("id", id);
 
@@ -350,6 +358,7 @@ export async function duplicateItem(id: string) {
     published_at: null,
     expires_at: null,
     folder_id: item.folder_id || null,
+    tags: item.tags || [],
   });
 
   if (error) return { error: "Erro ao duplicar item." };

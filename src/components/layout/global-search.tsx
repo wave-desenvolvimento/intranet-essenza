@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Search, X, Command, FileText, Image, Megaphone, Layers, Folder, ArrowRight,
   Building2, Package, ShoppingCart, Users, MessageSquare, HelpCircle, BarChart3,
+  Film,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ function useIsMobile() {
 
 interface SearchResult {
   id: string;
-  type: "page" | "item" | "franchise" | "product" | "order" | "user" | "announcement" | "faq" | "survey";
+  type: "page" | "item" | "franchise" | "product" | "order" | "user" | "announcement" | "faq" | "survey" | "asset";
   title: string;
   subtitle: string;
   icon: string;
@@ -41,6 +42,7 @@ const TYPE_CONFIG: Record<SearchResult["type"], { label: string; icon: React.Ele
   announcement: { label: "Comunicados", icon: MessageSquare, bg: "bg-info-soft", color: "text-info" },
   faq: { label: "FAQ", icon: HelpCircle, bg: "bg-success-soft", color: "text-success" },
   survey: { label: "Pesquisas", icon: BarChart3, bg: "bg-warning-soft", color: "text-warning" },
+  asset: { label: "Arquivos e Mídias", icon: Image, bg: "bg-purple-50", color: "text-purple-600" },
 };
 
 export function GlobalSearch() {
@@ -81,7 +83,7 @@ export function GlobalSearch() {
     const all: SearchResult[] = [];
 
     // Run all searches in parallel
-    const [pages, items, franchises, products, orders, profiles, announcements, faqItems, surveys] = await Promise.all([
+    const [pages, items, franchises, products, orders, profiles, announcements, faqItems, surveys, mediaFields, matchingFolders, matchingCollections] = await Promise.all([
       // Pages
       supabase.from("cms_pages").select("id, title, slug, icon, is_group").ilike("title", `%${q}%`).limit(5),
       // CMS Items
@@ -100,6 +102,12 @@ export function GlobalSearch() {
       supabase.from("faq_items").select("id, question, faq_categories(name)").ilike("question", `%${q}%`).limit(5),
       // Surveys
       supabase.from("surveys").select("id, title, active").ilike("title", `%${q}%`).limit(5),
+      // Media fields for asset extraction
+      supabase.from("cms_fields").select("collection_id, slug, name, field_type").in("field_type", ["image", "image_array", "image_variants", "file", "file_array"]),
+      // Folders matching search term (to find items inside)
+      supabase.from("cms_folders").select("id, name").ilike("name", `%${q}%`).limit(10),
+      // Collections matching search term
+      supabase.from("cms_collections").select("id, name, slug").ilike("name", `%${q}%`).limit(10),
     ]);
 
     // Pages
@@ -111,9 +119,40 @@ export function GlobalSearch() {
       });
     }
 
-    // CMS Items
-    if (items.data && items.data.length > 0) {
-      const collectionIds = [...new Set(items.data.map((i) => i.collection_id))];
+    // CMS Items — merge text-matched + folder/collection name-matched items
+    const allCmsItems: { id: string; data: unknown; collection_id: string; status: string }[] = [...(items.data || [])];
+    const seenItemIds = new Set(allCmsItems.map((i) => i.id));
+
+    // Add items from folders whose name matches the query
+    if (matchingFolders.data && matchingFolders.data.length > 0) {
+      const folderIds = matchingFolders.data.map((f: { id: string }) => f.id);
+      const { data: folderItems } = await supabase
+        .from("cms_items")
+        .select("id, data, collection_id, status")
+        .in("folder_id", folderIds)
+        .eq("status", "published")
+        .limit(15);
+      for (const fi of folderItems || []) {
+        if (!seenItemIds.has(fi.id)) { allCmsItems.push(fi); seenItemIds.add(fi.id); }
+      }
+    }
+
+    // Add items from collections whose name matches the query
+    if (matchingCollections.data && matchingCollections.data.length > 0) {
+      const colIds = matchingCollections.data.map((c: { id: string }) => c.id);
+      const { data: colItems } = await supabase
+        .from("cms_items")
+        .select("id, data, collection_id, status")
+        .in("collection_id", colIds)
+        .eq("status", "published")
+        .limit(15);
+      for (const ci of colItems || []) {
+        if (!seenItemIds.has(ci.id)) { allCmsItems.push(ci); seenItemIds.add(ci.id); }
+      }
+    }
+
+    if (allCmsItems.length > 0) {
+      const collectionIds = [...new Set(allCmsItems.map((i) => i.collection_id))];
       const [cols, pageLinks] = await Promise.all([
         supabase.from("cms_collections").select("id, name, slug").in("id", collectionIds),
         supabase.from("cms_page_collections").select("collection_id, page:cms_pages(slug)").in("collection_id", collectionIds).eq("role", "main"),
@@ -124,7 +163,7 @@ export function GlobalSearch() {
         return [pl.collection_id, page?.slug || ""];
       }));
 
-      for (const item of items.data) {
+      for (const item of allCmsItems) {
         const d = item.data as Record<string, unknown>;
         let title = String(d.titulo || d.title || d.nome || "").trim();
         if (!title) {
@@ -139,6 +178,64 @@ export function GlobalSearch() {
           subtitle: (col?.name || "") + (item.status === "draft" ? " · Rascunho" : ""),
           icon: "file", href: pageSlug ? `/pagina/${pageSlug}` : `/cms/${col?.slug || ""}`,
         });
+      }
+
+      // Extract assets (images, files, videos) from matching CMS items
+      if (mediaFields.data && mediaFields.data.length > 0) {
+        const mediaByCol = new Map<string, typeof mediaFields.data>();
+        for (const mf of mediaFields.data) {
+          const arr = mediaByCol.get(mf.collection_id) || [];
+          arr.push(mf);
+          mediaByCol.set(mf.collection_id, arr);
+        }
+
+        let assetCount = 0;
+        for (const item of allCmsItems) {
+          if (assetCount >= 8) break;
+          const mf = mediaByCol.get(item.collection_id);
+          if (!mf) continue;
+
+          const d = item.data as Record<string, unknown>;
+          const itemTitle = String(d.titulo || d.title || d.nome || "").trim();
+          if (!itemTitle) continue;
+
+          const col = colMap.get(item.collection_id);
+          const ps = pageMap.get(item.collection_id);
+
+          for (const field of mf) {
+            if (assetCount >= 8) break;
+            const raw = d[field.slug];
+            if (!raw) continue;
+
+            const addAsset = (url: string, label: string) => {
+              if (assetCount >= 8) return;
+              const ext = url.split("?")[0].split(".").pop()?.toLowerCase() || "";
+              const isImg = ["jpg", "jpeg", "png", "webp", "gif", "avif", "svg"].includes(ext);
+              const isVid = ["mp4", "webm", "mov", "avi"].includes(ext);
+              all.push({
+                id: `asset-${item.id}-${field.slug}-${assetCount}`,
+                type: "asset",
+                title: `${itemTitle} — ${label}`,
+                subtitle: `${isImg ? "Imagem" : isVid ? "Vídeo" : ext.toUpperCase()} · ${col?.name || ""}`,
+                icon: isImg ? "image" : isVid ? "video" : "file",
+                href: ps ? `/pagina/${ps}` : "/biblioteca",
+              });
+              assetCount++;
+            };
+
+            if ((field.field_type === "image" || field.field_type === "file") && typeof raw === "string") {
+              addAsset(raw, field.name);
+            } else if (field.field_type === "image_variants" && typeof raw === "object" && !Array.isArray(raw)) {
+              for (const [variant, url] of Object.entries(raw as Record<string, string>)) {
+                if (url) addAsset(url, variant);
+              }
+            } else if (Array.isArray(raw)) {
+              for (const entry of raw as { url: string; title?: string }[]) {
+                if (entry.url) addAsset(entry.url, entry.title || field.name);
+              }
+            }
+          }
+        }
       }
     }
 
@@ -226,7 +323,7 @@ export function GlobalSearch() {
   }
 
   const ICON_MAP: Record<string, React.ElementType> = {
-    folder: Folder, image: Image, megaphone: Megaphone, file: FileText, layers: Layers,
+    folder: Folder, image: Image, megaphone: Megaphone, file: FileText, layers: Layers, video: Film,
   };
 
   function resolveIcon(icon: string): React.ElementType {
@@ -240,7 +337,7 @@ export function GlobalSearch() {
     return acc;
   }, {});
 
-  const typeOrder: SearchResult["type"][] = ["page", "item", "franchise", "product", "order", "user", "announcement", "faq", "survey"];
+  const typeOrder: SearchResult["type"][] = ["page", "item", "asset", "franchise", "product", "order", "user", "announcement", "faq", "survey"];
 
   return (
     <>
@@ -280,7 +377,7 @@ export function GlobalSearch() {
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar páginas, produtos, pedidos, franquias..."
+                placeholder="Buscar páginas, arquivos, produtos, pedidos..."
                 className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none"
               />
               {query && (
@@ -318,7 +415,7 @@ export function GlobalSearch() {
                       <div key={type}>
                         <p className="px-4 py-1.5 text-[10px] font-semibold text-ink-400 uppercase tracking-wider">{config.label}</p>
                         {items.map((r) => {
-                          const Icon = r.type === "page" ? resolveIcon(r.icon) : config.icon;
+                          const Icon = (r.type === "page" || r.type === "asset") ? resolveIcon(r.icon) : config.icon;
                           return (
                             <button
                               key={r.id}
