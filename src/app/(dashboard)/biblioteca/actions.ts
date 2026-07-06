@@ -27,7 +27,7 @@ export async function getLibraryAssets(): Promise<LibraryAsset[]> {
   const [{ data: collections }, { data: titleFields }, { data: items }] = await Promise.all([
     supabase.from("cms_collections").select("id, name").in("id", collectionIds),
     supabase.from("cms_fields").select("collection_id, slug").in("collection_id", collectionIds).eq("field_type", "text").order("sort_order"),
-    supabase.from("cms_items").select("id, data, collection_id").in("collection_id", collectionIds).eq("status", "published").order("created_at", { ascending: false }).limit(500),
+    supabase.from("cms_items").select("id, data, collection_id").in("collection_id", collectionIds).eq("status", "published").or(`expires_at.is.null,expires_at.gte.${new Date().toISOString()}`).order("created_at", { ascending: false }).limit(500),
   ]);
 
   const colMap = new Map((collections || []).map((c) => [c.id, c.name]));

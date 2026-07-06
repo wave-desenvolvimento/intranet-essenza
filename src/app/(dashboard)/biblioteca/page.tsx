@@ -49,12 +49,15 @@ export default async function BibliotecaPage() {
     if (!titleFieldMap.has(tf.collection_id)) titleFieldMap.set(tf.collection_id, tf.slug);
   }
 
-  // Get all published items from these collections
+  // Get all published and active items from these collections
+  const now = new Date().toISOString();
   const { data: items } = await supabase
     .from("cms_items")
     .select("id, data, collection_id, created_at, published_at, expires_at, tags")
     .in("collection_id", collectionIds)
     .eq("status", "published")
+    .or(`expires_at.is.null,expires_at.gte.${now}`)
+    .or(`published_at.is.null,published_at.lte.${now}`)
     .order("created_at", { ascending: false })
     .limit(500);
 

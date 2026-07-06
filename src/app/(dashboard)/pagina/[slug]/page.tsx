@@ -50,7 +50,13 @@ export default async function DynamicPage({
       ...col,
       role: pc.role,
       fields: col.fields || [],
-      items: (col.items || []).filter((i: { status: string }) => i.status === "published"),
+      items: (col.items || []).filter((i: { status: string; published_at?: string | null; expires_at?: string | null }) => {
+        if (i.status !== "published") return false;
+        const now = new Date();
+        if (i.published_at && new Date(i.published_at) > now) return false;
+        if (i.expires_at && new Date(i.expires_at) < now) return false;
+        return true;
+      }),
     };
   }).filter(Boolean);
 
