@@ -409,7 +409,7 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
   const { data: allFranchises } = await supabase
     .from("franchises")
     .select("id, name")
-    .eq("active", true);
+    .eq("status", "active");
 
   // Build final franchise detail array
   const franchiseDetails = (allFranchises || []).map((f) => {
