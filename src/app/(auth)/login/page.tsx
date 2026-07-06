@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Eye, EyeOff, ArrowRight, Check, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Check, Loader2, X, Headset } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { login, resetPassword } from "./actions";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,6 +12,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportStatus, setSupportStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [supportError, setSupportError] = useState("");
 
   function handleLogin(formData: FormData) {
     setError("");
@@ -19,6 +23,26 @@ export default function LoginPage() {
       const result = await login(formData);
       if (result?.error) setError(result.error);
     });
+  }
+
+  async function handleSupportSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSupportStatus("sending");
+    setSupportError("");
+    const fd = new FormData(e.currentTarget);
+    const supabase = createClient();
+    const { error: err } = await supabase.from("support_tickets").insert({
+      nome: fd.get("nome") as string,
+      email: fd.get("email") as string,
+      tipo: fd.get("tipo") as string,
+      descricao: fd.get("descricao") as string,
+    });
+    if (err) {
+      setSupportStatus("error");
+      setSupportError("Erro ao enviar. Tente novamente.");
+    } else {
+      setSupportStatus("sent");
+    }
   }
 
   function handleForgotPassword(email: string) {
@@ -188,12 +212,13 @@ export default function LoginPage() {
           {/* Support */}
           <p className="mt-8 text-center text-sm text-ink-400">
             Problemas para acessar?{" "}
-            <a
-              href="mailto:suporte@emporioessenza.com.br"
+            <button
+              type="button"
+              onClick={() => { setSupportOpen(true); setSupportStatus("idle"); setSupportError(""); }}
               className="font-medium text-brand-olive hover:text-brand-olive-dark transition-colors"
             >
               Falar com suporte
-            </a>
+            </button>
           </p>
         </div>
 
@@ -205,6 +230,107 @@ export default function LoginPage() {
           </a>
         </p>
       </div>
+
+      {/* Support modal */}
+      {supportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setSupportOpen(false)} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <button
+              onClick={() => setSupportOpen(false)}
+              className="absolute top-4 right-4 rounded-lg p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-olive-soft text-brand-olive">
+                <Headset size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-ink-900">Suporte</h3>
+                <p className="text-xs text-ink-500">Descreva seu problema de acesso</p>
+              </div>
+            </div>
+
+            {supportStatus === "sent" ? (
+              <div className="text-center py-8">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success mx-auto mb-3">
+                  <Check size={24} />
+                </div>
+                <p className="text-sm font-medium text-ink-900 mb-1">Ticket enviado</p>
+                <p className="text-xs text-ink-500">Entraremos em contato pelo email informado.</p>
+                <button
+                  onClick={() => setSupportOpen(false)}
+                  className="mt-5 rounded-xl bg-ink-100 px-6 py-2.5 text-sm font-medium text-ink-700 hover:bg-ink-200 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSupportSubmit} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-ink-700">Nome</label>
+                  <input
+                    name="nome"
+                    required
+                    placeholder="Seu nome completo"
+                    className="h-10 rounded-xl border border-ink-200 bg-white px-3.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/15"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-ink-700">E-mail</label>
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="seu@email.com"
+                    className="h-10 rounded-xl border border-ink-200 bg-white px-3.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/15"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-ink-700">Tipo do problema</label>
+                  <select
+                    name="tipo"
+                    required
+                    className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/15"
+                  >
+                    <option value="acesso">Nao consigo acessar</option>
+                    <option value="senha">Esqueci minha senha</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-ink-700">Descricao</label>
+                  <textarea
+                    name="descricao"
+                    required
+                    rows={3}
+                    placeholder="Descreva o problema que esta enfrentando..."
+                    className="rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/15 resize-none"
+                  />
+                </div>
+
+                {supportError && (
+                  <p className="rounded-xl bg-danger-soft px-4 py-2 text-sm text-danger">{supportError}</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={supportStatus === "sending"}
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-olive text-white text-sm font-medium hover:bg-brand-olive-dark disabled:opacity-60 transition-colors"
+                >
+                  {supportStatus === "sending" ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    "Enviar ticket"
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
