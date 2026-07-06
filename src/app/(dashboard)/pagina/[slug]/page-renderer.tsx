@@ -96,9 +96,22 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
 
-  // Folder state
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([]);
+  // Folder state - initialize from URL params to survive revalidation
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialFolderId || null);
+  const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>(() => {
+    if (!initialFolderId) return [];
+    const path: { id: string; name: string }[] = [];
+    let walkId: string | null = initialFolderId;
+    let depth = 0;
+    while (walkId && depth < 20) {
+      const f = initialFolders.find((fo) => fo.id === walkId);
+      if (!f) break;
+      path.unshift({ id: f.id, name: f.name });
+      walkId = f.parent_id;
+      depth++;
+    }
+    return path;
+  });
   const [folderSheet, setFolderSheet] = useState(false);
   const [editingFolder, setEditingFolder] = useState<FolderType | null>(null);
   const [folderName, setFolderName] = useState("");
@@ -111,33 +124,14 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 
   const folders = initialFolders;
 
-  // Deep-link: navigate to folder and highlight item from search
+  // Deep-link: highlight item from search
   useEffect(() => {
-    if (initialFolderId) {
-      // Build folder path from root to target
-      const path: { id: string; name: string }[] = [];
-      let walkId: string | null = initialFolderId;
-      let depth = 0;
-      while (walkId && depth < 20) {
-        const f = folders.find((fo) => fo.id === walkId);
-        if (!f) break;
-        path.unshift({ id: f.id, name: f.name });
-        walkId = f.parent_id;
-        depth++;
-      }
-      if (path.length > 0) {
-        setCurrentFolderId(initialFolderId);
-        setFolderPath(path);
-      }
-    }
     if (initialItemId) {
       setHighlightedItemId(initialItemId);
-      // Scroll to item after render
       setTimeout(() => {
         const el = document.querySelector(`[data-item-id="${initialItemId}"]`);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 300);
-      // Remove highlight after 3s
       setTimeout(() => setHighlightedItemId(null), 3500);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,6 +146,18 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const moduleSlug = page.slug;
   const canCreate = can(`${moduleSlug}.create`) || can("cms.create");
   const canEdit = can(`${moduleSlug}.edit`) || can("cms.edit");
+
+  // Sync folder state to URL so it survives revalidation/reload
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (currentFolderId) {
+      url.searchParams.set("folder", currentFolderId);
+    } else {
+      url.searchParams.delete("folder");
+    }
+    url.searchParams.delete("item");
+    window.history.replaceState({}, "", url.toString());
+  }, [currentFolderId]);
 
   // Get subfolders for current location
   const currentSubfolders = folders.filter((f) =>
