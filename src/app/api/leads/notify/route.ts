@@ -10,8 +10,9 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://intranet.emporioess
 
 export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  const token = authHeader?.replace("Bearer ", "");
+  const allowed = [process.env.CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY].filter(Boolean);
+  if (!token || !allowed.includes(token)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -11,8 +11,9 @@ const REMINDER_AFTER_DAYS = 3;
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  const token = authHeader?.replace("Bearer ", "");
+  const allowed = [process.env.CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY].filter(Boolean);
+  if (!token || !allowed.includes(token)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
