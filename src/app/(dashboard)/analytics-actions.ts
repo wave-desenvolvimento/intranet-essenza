@@ -343,6 +343,68 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
     contentByFranchise.set(e.franchise_id, existing);
   }
 
+  // Total registered users per franchise (active only)
+  const { data: allActiveProfiles } = await supabase
+    .from("profiles")
+    .select("id, franchise_id")
+    .eq("status", "active");
+
+  const totalUsersByFranchise = new Map<string, number>();
+  for (const p of allActiveProfiles || []) {
+    if (!p.franchise_id) continue;
+    totalUsersByFranchise.set(p.franchise_id, (totalUsersByFranchise.get(p.franchise_id) || 0) + 1);
+  }
+
+  // Orders per franchise in the period
+  const { data: ordersInPeriod } = await supabase
+    .from("orders")
+    .select("franchise_id, total")
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo);
+
+  const ordersByFranchise = new Map<string, { count: number; revenue: number }>();
+  for (const o of ordersInPeriod || []) {
+    if (!o.franchise_id) continue;
+    const existing = ordersByFranchise.get(o.franchise_id) || { count: 0, revenue: 0 };
+    existing.count++;
+    existing.revenue += Number(o.total);
+    ordersByFranchise.set(o.franchise_id, existing);
+  }
+
+  // Survey responses per franchise in the period
+  const { data: surveyResponsesInPeriod } = await supabase
+    .from("survey_responses")
+    .select("user_id, franchise_id")
+    .gte("created_at", dateFrom)
+    .lte("created_at", dateTo);
+
+  const surveysByFranchise = new Map<string, number>();
+  for (const sr of surveyResponsesInPeriod || []) {
+    const fId = sr.franchise_id;
+    if (!fId) continue;
+    surveysByFranchise.set(fId, (surveysByFranchise.get(fId) || 0) + 1);
+  }
+
+  // Announcement reads per franchise in the period (join via profiles since announcement_reads has no franchise_id)
+  const { data: announcementReadsInPeriod } = await supabase
+    .from("announcement_reads")
+    .select("user_id")
+    .gte("read_at", dateFrom)
+    .lte("read_at", dateTo);
+
+  // Build a user->franchise map from all active profiles already fetched
+  const userFranchiseMap = new Map<string, string>();
+  for (const p of allActiveProfiles || []) {
+    if (p.franchise_id) userFranchiseMap.set(p.id, p.franchise_id);
+  }
+
+  const announcementsByFranchise = new Map<string, number>();
+  for (const ar of announcementReadsInPeriod || []) {
+    const fId = userFranchiseMap.get(ar.user_id);
+    if (!fId) continue;
+    announcementsByFranchise.set(fId, (announcementsByFranchise.get(fId) || 0) + 1);
+  }
+
   // Also fetch all franchises to show ones with zero activity
   const { data: allFranchises } = await supabase
     .from("franchises")
@@ -353,6 +415,7 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
   const franchiseDetails = (allFranchises || []).map((f) => {
     const detail = franchiseDetailMap.get(f.id);
     const content = contentByFranchise.get(f.id);
+    const orders = ordersByFranchise.get(f.id);
     const modulesArr = detail
       ? [...detail.modules.entries()].map(([mod, count]) => ({ module: mod, label: MODULE_LABELS[mod] || mod, count })).sort((a, b) => b.count - a.count)
       : [];
@@ -369,6 +432,11 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
       lastActivity: detail?.lastActivity || null,
       modules: modulesArr,
       users: usersArr,
+      totalUsers: totalUsersByFranchise.get(f.id) || 0,
+      ordersCount: orders?.count || 0,
+      ordersRevenue: orders?.revenue || 0,
+      surveysResponded: surveysByFranchise.get(f.id) || 0,
+      announcementsRead: announcementsByFranchise.get(f.id) || 0,
     };
   }).sort((a, b) => b.totalPageViews - a.totalPageViews);
 

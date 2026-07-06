@@ -6,6 +6,7 @@ import {
   ShoppingCart, DollarSign, Package, ArrowUpRight, ArrowDownRight,
   FileSpreadsheet, Check, CalendarDays, Loader2, Activity,
   ChevronDown, ChevronRight, Clock, MousePointerClick, UserCheck,
+  ClipboardList, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -80,6 +81,11 @@ interface FranchiseDetail {
   lastActivity: string | null;
   modules: FranchiseModuleItem[];
   users: FranchiseUser[];
+  totalUsers: number;
+  ordersCount: number;
+  ordersRevenue: number;
+  surveysResponded: number;
+  announcementsRead: number;
 }
 
 interface ActivityLogEntry {
@@ -723,7 +729,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
       {tab === "franchises" && (
         <div className="flex flex-col gap-5">
           {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
               <p className="text-[11px] text-ink-500 mb-1">Franquias ativas</p>
               <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.filter((f) => f.totalPageViews > 0).length}</p>
@@ -733,13 +739,20 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
               <p className="text-lg font-semibold text-danger">{inactiveFranchises.length}</p>
             </div>
             <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
-              <p className="text-[11px] text-ink-500 mb-1">Mais engajada</p>
-              <p className="text-sm font-semibold text-ink-900 truncate">{topFranchise?.name || "-"}</p>
-              {topFranchise && <p className="text-[10px] text-ink-400">{topFranchise.totalPageViews} page views</p>}
+              <p className="text-[11px] text-ink-500 mb-1">Total usuarios</p>
+              <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.totalUsers, 0)}</p>
             </div>
             <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
-              <p className="text-[11px] text-ink-500 mb-1">Módulos acessados</p>
-              <p className="text-lg font-semibold text-ink-900">{detailedData.moduleUsage.length}</p>
+              <p className="text-[11px] text-ink-500 mb-1">Total pedidos</p>
+              <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.ordersCount, 0)}</p>
+            </div>
+            <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
+              <p className="text-[11px] text-ink-500 mb-1">Pesquisas respondidas</p>
+              <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.surveysResponded, 0)}</p>
+            </div>
+            <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
+              <p className="text-[11px] text-ink-500 mb-1">Comunicados lidos</p>
+              <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.announcementsRead, 0)}</p>
             </div>
           </div>
 
@@ -759,12 +772,13 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                     <tr className="border-b border-ink-100 bg-ink-50/30">
                       <th className="px-5 py-2.5 text-left text-xs font-medium text-ink-400 uppercase w-8"></th>
                       <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-400 uppercase">Franquia</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Usuarios</th>
                       <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Page Views</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Views</th>
                       <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Downloads</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Usuários</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Última atividade</th>
-                      <th className="px-3 py-2.5 text-xs font-medium text-ink-400 w-28">Engajamento</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Pedidos</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Pesquisas</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Ultima ativ.</th>
+                      <th className="px-3 py-2.5 text-xs font-medium text-ink-400 w-24">Engajamento</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -791,15 +805,18 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                                 <span className="font-medium text-ink-900">{f.name}</span>
                               </div>
                             </td>
+                            <td className="px-3 py-3 text-right">
+                              <span className="text-ink-900 font-medium">{f.activeUsers}</span>
+                              <span className="text-ink-400 text-[10px]">/{f.totalUsers}</span>
+                            </td>
                             <td className="px-3 py-3 text-right font-medium text-ink-900">{f.totalPageViews}</td>
-                            <td className="px-3 py-3 text-right text-ink-600">{f.contentViews}</td>
                             <td className="px-3 py-3 text-right text-ink-600">{f.contentDownloads}</td>
                             <td className="px-3 py-3 text-right">
-                              <span className={cn("inline-flex items-center gap-1", f.activeUsers > 0 ? "text-ink-900" : "text-ink-400")}>
-                                <UserCheck size={12} />
-                                {f.activeUsers}
-                              </span>
+                              {f.ordersCount > 0 ? (
+                                <span className="text-ink-900">{f.ordersCount} <span className="text-[10px] text-ink-400">({formatPrice(f.ordersRevenue)})</span></span>
+                              ) : <span className="text-ink-400">-</span>}
                             </td>
+                            <td className="px-3 py-3 text-right text-ink-600">{f.surveysResponded || "-"}</td>
                             <td className="px-3 py-3 text-right text-ink-500 text-xs">
                               {f.lastActivity ? (
                                 <span className="flex items-center gap-1 justify-end">
@@ -817,7 +834,35 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                           {/* Expanded detail */}
                           {isExpanded && (
                             <tr>
-                              <td colSpan={8} className="bg-ink-50/40 px-5 py-4">
+                              <td colSpan={9} className="bg-ink-50/40 px-5 py-4">
+                                {/* KPI cards */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
+                                  <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
+                                    <p className="text-[10px] text-ink-400">Views conteudo</p>
+                                    <p className="text-sm font-semibold text-ink-900">{f.contentViews}</p>
+                                  </div>
+                                  <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
+                                    <p className="text-[10px] text-ink-400">Downloads</p>
+                                    <p className="text-sm font-semibold text-ink-900">{f.contentDownloads}</p>
+                                  </div>
+                                  <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
+                                    <p className="text-[10px] text-ink-400">Pedidos</p>
+                                    <p className="text-sm font-semibold text-ink-900">{f.ordersCount}</p>
+                                  </div>
+                                  <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
+                                    <p className="text-[10px] text-ink-400">Receita pedidos</p>
+                                    <p className="text-sm font-semibold text-ink-900">{formatPrice(f.ordersRevenue)}</p>
+                                  </div>
+                                  <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
+                                    <p className="text-[10px] text-ink-400">Pesquisas resp.</p>
+                                    <p className="text-sm font-semibold text-ink-900">{f.surveysResponded}</p>
+                                  </div>
+                                  <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
+                                    <p className="text-[10px] text-ink-400">Comunicados lidos</p>
+                                    <p className="text-sm font-semibold text-ink-900">{f.announcementsRead}</p>
+                                  </div>
+                                </div>
+
                                 <div className="grid gap-4 lg:grid-cols-2">
                                   {/* Modules accessed */}
                                   <div>
