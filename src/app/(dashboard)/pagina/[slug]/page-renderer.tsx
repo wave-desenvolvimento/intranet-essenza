@@ -43,6 +43,8 @@ interface Item {
   created_at: string;
   folder_id?: string | null;
   tags?: string[];
+  published_at?: string | null;
+  expires_at?: string | null;
 }
 
 interface CollectionData {
@@ -87,6 +89,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const [itemData, setItemData] = useState<Record<string, unknown>>({});
   const [itemStatus, setItemStatus] = useState("published");
   const [itemTags, setItemTags] = useState<string[]>([]);
+  const [itemPublishedAt, setItemPublishedAt] = useState("");
+  const [itemExpiresAt, setItemExpiresAt] = useState("");
   const [error, setError] = useState("");
   const { confirm, dialogProps } = useConfirm();
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -271,6 +275,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
     setItemData(item?.data || {});
     setItemStatus(item?.status || "published");
     setItemTags(item?.tags || []);
+    setItemPublishedAt(item?.published_at ? item.published_at.slice(0, 16) : "");
+    setItemExpiresAt(item?.expires_at ? item.expires_at.slice(0, 16) : "");
     setError("");
     setItemSheet(true);
   }
@@ -279,11 +285,14 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 
   function saveItem() {
     if (!activeCollection) return;
+    if (!itemPublishedAt) { setError("Data de inicio e obrigatoria."); return; }
+    if (!itemExpiresAt) { setError("Data de expiracao e obrigatoria."); return; }
+    if (new Date(itemExpiresAt) <= new Date(itemPublishedAt)) { setError("Data de expiracao deve ser posterior ao inicio."); return; }
     const fd = new FormData();
     fd.set("data", JSON.stringify(itemData));
     fd.set("status", itemStatus);
-    fd.set("publishedAt", "");
-    fd.set("expiresAt", "");
+    fd.set("publishedAt", new Date(itemPublishedAt).toISOString());
+    fd.set("expiresAt", new Date(itemExpiresAt).toISOString());
     fd.set("tags", JSON.stringify(itemTags));
     if (editingItem) {
       fd.set("id", editingItem.id);
@@ -554,10 +563,21 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
               <PageDynamicField field={f} value={itemData[f.slug]} onChange={(val) => setItemData((prev) => ({ ...prev, [f.slug]: val }))} />
             </div>
           ))}
-          {/* Tags */}
+          {/* Vigencia + Tags */}
           <div className="border-t border-ink-100 pt-4 mt-2">
+            <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-3">Vigencia</p>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Inicio <span className="text-danger">*</span></label>
+                <input type="datetime-local" value={itemPublishedAt} onChange={(e) => setItemPublishedAt(e.target.value)} className="h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Expiracao <span className="text-danger">*</span></label>
+                <input type="datetime-local" value={itemExpiresAt} onChange={(e) => setItemExpiresAt(e.target.value)} className="h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
+              </div>
+            </div>
             <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-3">Tags</p>
-            <TagsInput value={itemTags.join(", ")} onChange={(v) => setItemTags(v ? v.split(",").map((t) => t.trim()).filter(Boolean) : [])} placeholder="Digite e pressione vírgula..." />
+            <TagsInput value={itemTags.join(", ")} onChange={(v) => setItemTags(v ? v.split(",").map((t) => t.trim()).filter(Boolean) : [])} placeholder="Digite e pressione virgula..." />
           </div>
           {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
           <div className="flex gap-2 pt-2 border-t border-ink-100 mt-2">
