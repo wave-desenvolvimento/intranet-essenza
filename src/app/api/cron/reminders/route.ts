@@ -83,7 +83,7 @@ export async function GET(request: Request) {
     if (emails.length > 0) {
       const html = await render(
         NotificationEmail({
-          title: `Lembrete — ${survey.title}`,
+          title: `Lembrete -${survey.title}`,
           body: `A pesquisa "${survey.title}" ainda aguarda sua resposta.${survey.description ? `\n\n${survey.description}` : ""}\n\nSua opinião é muito importante para a melhoria contínua da rede.`,
           ctaLabel: "Responder agora",
           ctaUrl: `${baseUrl}/inicio`,
@@ -159,7 +159,7 @@ export async function GET(request: Request) {
       const plainBody = ann.body.replace(/<[^>]+>/g, "").slice(0, 300);
       const html = await render(
         NotificationEmail({
-          title: `Lembrete — ${ann.title}`,
+          title: `Lembrete -${ann.title}`,
           body: `O comunicado "${ann.title}" ainda não foi lido.\n\n${plainBody}`,
           ctaLabel: "Ler comunicado",
           ctaUrl: `${baseUrl}/comunicados`,

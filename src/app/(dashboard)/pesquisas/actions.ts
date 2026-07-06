@@ -79,7 +79,7 @@ export async function createSurvey(formData: FormData) {
       icon: "clipboard-list",
     },
     email: {
-      subject: `Nova pesquisa — ${title}`,
+      subject: `Nova pesquisa -${title}`,
       emailBody: `A pesquisa "${title}" está aguardando sua resposta.${description ? `\n\n${description}` : ""}\n\nSua opinião é muito importante para a melhoria contínua da rede.`,
       ctaLabel: "Responder pesquisa",
       ctaUrl: "/inicio",
