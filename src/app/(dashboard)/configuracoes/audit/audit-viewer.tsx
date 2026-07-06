@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import {
   Search, History, Plus, Pencil, Trash2, CheckCheck, UserPlus, LogIn,
   Package, ShoppingCart, Building2, Users, Megaphone, FileText, Settings,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, HelpCircle, BarChart3, UserCheck, Timer,
+  HeadphonesIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -38,6 +39,27 @@ const ENTITY_ICONS: Record<string, typeof Package> = {
   cms_item: FileText,
   stock: Package,
   permission: Settings,
+  faq: HelpCircle,
+  survey: BarChart3,
+  leads: UserCheck,
+  cleanup: Timer,
+  support_ticket: HeadphonesIcon,
+};
+
+const ENTITY_LABELS: Record<string, string> = {
+  order: "Pedidos",
+  product: "Produtos",
+  franchise: "Franquias",
+  user: "Usuarios",
+  announcement: "Comunicados",
+  cms_item: "Conteudo",
+  stock: "Estoque",
+  permission: "Permissoes",
+  faq: "FAQ",
+  survey: "Pesquisas",
+  leads: "Leads",
+  cleanup: "Limpeza automatica",
+  support_ticket: "Suporte",
 };
 
 const ENTITY_OPTIONS = [
@@ -45,10 +67,15 @@ const ENTITY_OPTIONS = [
   { value: "order", label: "Pedidos" },
   { value: "product", label: "Produtos" },
   { value: "franchise", label: "Franquias" },
-  { value: "user", label: "Usuários" },
+  { value: "user", label: "Usuarios" },
   { value: "announcement", label: "Comunicados" },
+  { value: "cms_item", label: "Conteudo" },
+  { value: "faq", label: "FAQ" },
+  { value: "survey", label: "Pesquisas" },
+  { value: "leads", label: "Leads" },
+  { value: "support_ticket", label: "Suporte" },
   { value: "stock", label: "Estoque" },
-  { value: "cms_item", label: "Conteúdo" },
+  { value: "cleanup", label: "Limpeza automatica" },
 ];
 
 const ACTION_OPTIONS = [
@@ -162,7 +189,7 @@ export function AuditViewer({ entries: initialEntries, total: initialTotal }: Pr
                       <span className="font-medium text-ink-600">{e.user_name || "Sistema"}</span>
                       <span className="flex items-center gap-1">
                         <EntityIcon size={10} />
-                        {ENTITY_OPTIONS.find((o) => o.value === e.entity_type)?.label || e.entity_type}
+                        {ENTITY_LABELS[e.entity_type] || e.entity_type}
                       </span>
                       <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-medium", actionCfg.bg, actionCfg.color)}>{actionCfg.label}</span>
                       <span>{formatDate(e.created_at)}</span>

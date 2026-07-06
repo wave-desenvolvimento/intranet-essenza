@@ -1273,7 +1273,7 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
         </div>
       )}
 
-      {filtered.length === 0 && <p className="text-center text-sm text-ink-400 py-8">{hasImages ? "Nenhuma imagem encontrada" : "Nenhum item encontrado"}</p>}
+      {filtered.length === 0 && !foldersNode && <p className="text-center text-sm text-ink-400 py-8">{hasImages ? "Nenhuma imagem encontrada" : "Nenhum item encontrado"}</p>}
 
       {/* Detail modal (images) */}
       {detailItem && (
@@ -1641,7 +1641,7 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
             </div>
           );
         })}
-        {filtered.length === 0 && <p className="text-center text-sm text-ink-400 py-8">Nenhum arquivo encontrado</p>}
+        {filtered.length === 0 && !foldersNode && <p className="text-center text-sm text-ink-400 py-8">Nenhum arquivo encontrado</p>}
       </div>
       {hasMoreFiles && (
         <div className="flex flex-col items-center gap-1 mt-4">
@@ -1716,7 +1716,7 @@ function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelet
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={visibleFields.length + 1} className="text-center text-sm text-ink-400 py-8">Nenhum item encontrado</td></tr>}
+            {filtered.length === 0 && !foldersNode && <tr><td colSpan={visibleFields.length + 1} className="text-center text-sm text-ink-400 py-8">Nenhum item encontrado</td></tr>}
           </tbody>
         </table>
       </div>
