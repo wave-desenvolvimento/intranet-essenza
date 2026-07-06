@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUsers } from "@/lib/push";
 import { getResend, FROM_EMAIL } from "@/lib/email";
@@ -31,7 +30,7 @@ interface NotifyUsersOptions {
 export async function notifyUsers({ userIds, notification, email }: NotifyUsersOptions) {
   if (userIds.length === 0) return;
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // 1. In-app notifications
   const rows = userIds.map((uid) => ({
@@ -67,7 +66,7 @@ interface NotifyByPermissionOptions {
 }
 
 export async function notifyByPermission({ module, action, notification, email, excludeUserId }: NotifyByPermissionOptions) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: users } = await supabase
     .from("profiles")
@@ -92,7 +91,7 @@ interface NotifyAllOptions {
 }
 
 export async function notifyAllActive({ notification, email, excludeUserId }: NotifyAllOptions) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: users } = await supabase
     .from("profiles")
@@ -116,7 +115,7 @@ interface NotifyFranchiseOptions {
 }
 
 export async function notifyFranchise({ franchiseId, notification, email, excludeUserId }: NotifyFranchiseOptions) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: users } = await supabase
     .from("profiles")
