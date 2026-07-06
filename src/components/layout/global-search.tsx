@@ -175,6 +175,16 @@ export function GlobalSearch() {
         return [pl.collection_id, page?.slug || ""];
       }));
 
+      // Build media fields map (used for item thumbnails + asset extraction)
+      const mediaByCol = new Map<string, NonNullable<typeof mediaFields.data>>();
+      if (mediaFields.data) {
+        for (const mf of mediaFields.data) {
+          const arr = mediaByCol.get(mf.collection_id) || [];
+          arr.push(mf);
+          mediaByCol.set(mf.collection_id, arr);
+        }
+      }
+
       for (const item of allCmsItems) {
         const d = item.data as Record<string, unknown>;
         let title = String(d.titulo || d.title || d.nome || "").trim();
@@ -189,21 +199,35 @@ export function GlobalSearch() {
         if (item.folder_id) itemParams.set("folder", item.folder_id);
         itemParams.set("item", item.id);
         const itemQs = itemParams.toString();
+
+        // Extract first image as thumbnail
+        let thumb: string | undefined;
+        const imgFields = mediaByCol.get(item.collection_id);
+        if (imgFields) {
+          for (const f of imgFields) {
+            if (thumb) break;
+            const raw = d[f.slug];
+            if (!raw) continue;
+            if ((f.field_type === "image") && typeof raw === "string") {
+              thumb = raw;
+            } else if (f.field_type === "image_variants" && typeof raw === "object" && !Array.isArray(raw)) {
+              thumb = Object.values(raw as Record<string, string>).find((u) => u) || undefined;
+            } else if (f.field_type === "image_array" && Array.isArray(raw)) {
+              thumb = (raw as { url: string }[])[0]?.url || undefined;
+            }
+          }
+        }
+
         all.push({
           id: `item-${item.id}`, type: "item", title,
           subtitle: (col?.name || "") + (item.status === "draft" ? " · Rascunho" : ""),
           icon: "file", href: pageSlug ? `/pagina/${pageSlug}?${itemQs}` : `/cms/${col?.slug || ""}`,
+          thumbnail: thumb,
         });
       }
 
       // Extract assets (images, files, videos) from matching CMS items
       if (mediaFields.data && mediaFields.data.length > 0) {
-        const mediaByCol = new Map<string, typeof mediaFields.data>();
-        for (const mf of mediaFields.data) {
-          const arr = mediaByCol.get(mf.collection_id) || [];
-          arr.push(mf);
-          mediaByCol.set(mf.collection_id, arr);
-        }
 
         let assetCount = 0;
         for (const item of allCmsItems) {
