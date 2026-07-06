@@ -32,7 +32,7 @@ insert into public.monitors (name, group_name, description, url, method, headers
   (
     'Banco de Dados',
     'Supabase',
-    'PostgreSQL — armazenamento principal de dados',
+    'PostgreSQL - armazenamento principal de dados',
     'https://vahjdglapjrjkgncbkze.supabase.co/rest/v1/?select=1',
     'GET', '{"apikey": "SUBSTITUIR_PELA_ANON_KEY"}', 200, 5, 20
   ),

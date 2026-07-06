@@ -1,10 +1,10 @@
 -- =============================================
--- RLS Security Hardening — corrige brechas identificadas na auditoria
+-- RLS Security Hardening - corrige brechas identificadas na auditoria
 -- Prioridade: C (crítico) > M (médio) > B (baixo)
 -- =============================================
 
 -- ===========================================
--- C1 — permissions: adicionar policies de escrita (faltavam completamente)
+-- C1 - permissions: adicionar policies de escrita (faltavam completamente)
 -- ===========================================
 do $$ begin
   create policy "permissions_insert" on public.permissions for insert to authenticated
@@ -25,7 +25,7 @@ exception when duplicate_object then null;
 end $$;
 
 -- ===========================================
--- C2 — audit_log: restringir INSERT (só próprio user_id ou null pra cron)
+-- C2 - audit_log: restringir INSERT (só próprio user_id ou null pra cron)
 -- ===========================================
 drop policy if exists "audit_insert" on public.audit_log;
 
@@ -36,7 +36,7 @@ exception when duplicate_object then null;
 end $$;
 
 -- ===========================================
--- C3 — order_items: SELECT restrito por franchise (igual orders)
+-- C3 - order_items: SELECT restrito por franchise (igual orders)
 -- ===========================================
 drop policy if exists "order_items_select" on public.order_items;
 
@@ -53,7 +53,7 @@ exception when duplicate_object then null;
 end $$;
 
 -- ===========================================
--- C4 — health_checks: restringir INSERT a authenticated apenas
+-- C4 - health_checks: restringir INSERT a authenticated apenas
 -- ===========================================
 drop policy if exists "System inserts health_checks" on public.health_checks;
 
@@ -64,7 +64,7 @@ exception when duplicate_object then null;
 end $$;
 
 -- ===========================================
--- M1 — announcement_reads: SELECT restrito (só próprio ou view_all)
+-- M1 - announcement_reads: SELECT restrito (só próprio ou view_all)
 -- ===========================================
 drop policy if exists "reads_select" on public.announcement_reads;
 
@@ -78,7 +78,7 @@ exception when duplicate_object then null;
 end $$;
 
 -- ===========================================
--- M5 — orders UPDATE: manter pedidos.approve mas documentar que é intencional (Matriz)
+-- M5 - orders UPDATE: manter pedidos.approve mas documentar que é intencional (Matriz)
 -- Adicionando WITH CHECK pra garantir consistência
 -- ===========================================
 drop policy if exists "orders_update" on public.orders;
@@ -96,7 +96,7 @@ exception when duplicate_object then null;
 end $$;
 
 -- ===========================================
--- M6 — payment_plans, shipping_types, webhook_config, webhook_queue:
+-- M6 - payment_plans, shipping_types, webhook_config, webhook_queue:
 -- trocar is_system=true por is_system_admin() (checa level >= 80)
 -- ===========================================
 
@@ -137,7 +137,7 @@ exception when duplicate_object then null;
 end $$;
 
 -- ===========================================
--- B1 — share_links: SELECT filtra por expiração
+-- B1 - share_links: SELECT filtra por expiração
 -- ===========================================
 drop policy if exists "share_links_select_public" on public.share_links;
 
@@ -148,7 +148,7 @@ exception when duplicate_object then null;
 end $$;
 
 -- ===========================================
--- B3 — Storage: UPDATE restrito por permissão cms.edit
+-- B3 - Storage: UPDATE restrito por permissão cms.edit
 -- ===========================================
 drop policy if exists "banners_auth_update" on storage.objects;
 drop policy if exists "assets_auth_update" on storage.objects;
@@ -166,8 +166,8 @@ exception when duplicate_object then null;
 end $$;
 
 -- ===========================================
--- B5 — profiles: remover INSERT aberto, trigger SECURITY DEFINER cuida
+-- B5 - profiles: remover INSERT aberto, trigger SECURITY DEFINER cuida
 -- ===========================================
 drop policy if exists "profiles_insert" on public.profiles;
 
--- Sem policy de INSERT para authenticated — handle_new_user trigger é SECURITY DEFINER
+-- Sem policy de INSERT para authenticated - handle_new_user trigger é SECURITY DEFINER

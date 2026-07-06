@@ -156,15 +156,15 @@ export function OrdersAdmin({ orders, stats, franchises, permissions: perms, pay
     const pp = paymentPlans.find((p) => p.id === editPaymentPlanId) || o.payment_plan;
     const st = shippingTypes.find((s) => s.id === editShippingTypeId) || o.shipping_type;
     let t = `ORDEM DE COMPRA: ${ocLabel(o)}\n`;
-    t += `Franquia: ${o.franchise?.name || "—"}\n`;
-    t += `Vendedor: ${o.seller_name || "—"}\n`;
-    t += `Solicitante: ${o.creator_name || "—"}\n`;
+    t += `Franquia: ${o.franchise?.name || "-"}\n`;
+    t += `Vendedor: ${o.seller_name || "-"}\n`;
+    t += `Solicitante: ${o.creator_name || "-"}\n`;
     t += `Data: ${formatDateTime(o.created_at)}\n`;
     t += `Status: ${STATUS_CONFIG[o.status]?.label || o.status}\n`;
     if (pp) t += `Pagamento: ${(pp as PaymentPlan).name}\n`;
     if (st) t += `Frete: ${(st as ShippingType).name}\n`;
     t += `\nITENS:\n`;
-    o.items.forEach((item) => { t += `  ${item.product_name} — ${item.quantity}x ${formatPrice(item.unit_price)} = ${formatPrice(item.subtotal)}\n`; });
+    o.items.forEach((item) => { t += `  ${item.product_name} - ${item.quantity}x ${formatPrice(item.unit_price)} = ${formatPrice(item.subtotal)}\n`; });
     t += `\nSubtotal: ${formatPrice(o.total)}\nRoyalties (30%): ${formatPrice(o.total * 0.3)}\nTOTAL: ${formatPrice(o.total * 1.3)}`;
     if (o.notes) t += `\n\nObs. cliente: ${o.notes}`;
     if (o.admin_notes) t += `\nObs. comercial: ${o.admin_notes}`;
@@ -216,12 +216,12 @@ thead th:nth-child(2){text-align:center}thead th:nth-child(3),thead th:nth-child
   <div class="oc"><div class="id">Ordem de Compra</div><div class="num">${ocLabel(o)}</div><div class="date">${formatDateTime(o.created_at)}</div></div>
 </div>
 <div class="info-grid">
-  <div class="info-box"><label>Franquia</label><p>${o.franchise?.name || "—"}</p></div>
-  <div class="info-box"><label>Vendedor</label><p>${o.seller_name || "—"}</p></div>
-  <div class="info-box"><label>Solicitante</label><p>${o.creator_name || "—"}</p></div>
+  <div class="info-box"><label>Franquia</label><p>${o.franchise?.name || "-"}</p></div>
+  <div class="info-box"><label>Vendedor</label><p>${o.seller_name || "-"}</p></div>
+  <div class="info-box"><label>Solicitante</label><p>${o.creator_name || "-"}</p></div>
   <div class="info-box"><label>Status</label><p><span class="badge" style="background:${o.status === "pendente" ? "#fef3c7;color:#92400e" : o.status === "aprovado" ? "#dbeafe;color:#1e40af" : o.status === "confirmado" ? "#dcfce7;color:#166534" : o.status === "faturado" || o.status === "entregue" ? "#f0e8d6;color:#5a5735" : o.status === "separacao" ? "#fef3c7;color:#92400e" : o.status === "cancelado" ? "#fef2f2;color:#991b1b" : "#dbeafe;color:#1e40af"}">${STATUS_CONFIG[o.status]?.label || o.status}</span></p></div>
-  <div class="info-box"><label>Pagamento</label><p>${(pp as PaymentPlan | null)?.name || "—"}</p></div>
-  <div class="info-box"><label>Frete</label><p>${(st as ShippingType | null)?.name || "—"}</p></div>
+  <div class="info-box"><label>Pagamento</label><p>${(pp as PaymentPlan | null)?.name || "-"}</p></div>
+  <div class="info-box"><label>Frete</label><p>${(st as ShippingType | null)?.name || "-"}</p></div>
 </div>
 <table><thead><tr><th>Produto</th><th>Qtd</th><th>Unitário</th><th>Subtotal</th></tr></thead><tbody>${itemsRows}</tbody></table>
 <div class="total-section">Subtotal produtos: ${formatPrice(o.total)}</div>
@@ -229,7 +229,7 @@ thead th:nth-child(2){text-align:center}thead th:nth-child(3),thead th:nth-child
 <div class="total-section grand">Total com Royalties: ${formatPrice(o.total * 1.3)}</div>
 ${o.notes ? `<div class="notes"><strong>Obs. do cliente</strong>${o.notes}</div>` : ""}
 ${o.admin_notes ? `<div class="notes" style="margin-top:8px"><strong>Obs. do comercial</strong>${o.admin_notes}</div>` : ""}
-<div class="footer">Emitido em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} — Empório Essenza Brand Hub</div>
+<div class="footer">Emitido em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} - Empório Essenza Brand Hub</div>
 </body></html>`;
 
     printWindow.document.write(html);
@@ -243,7 +243,7 @@ ${o.admin_notes ? `<div class="notes" style="margin-top:8px"><strong>Obs. do com
     const header = ["OC", "Franquia", "Vendedor", "Segmento", "Status", "Data", "Solicitante", "Pagamento", "Frete", "Produto", "Qtd", "Unitário", "Subtotal", "Total Produtos", "Royalties", "Total c/ Royalties", "Obs Cliente", "Obs Comercial"].join(sep);
     const rows: string[] = [];
     filtered.forEach((o) => {
-      const base = [ocLabel(o), o.franchise?.name || "—", o.seller_name || "—", o.franchise?.segment === "multimarca_pdv" ? "Multimarca" : "Franquia", STATUS_CONFIG[o.status]?.label || o.status, formatDate(o.created_at), o.creator_name || "—", (o.payment_plan as PaymentPlan | null)?.name || "—", (o.shipping_type as ShippingType | null)?.name || "—"];
+      const base = [ocLabel(o), o.franchise?.name || "-", o.seller_name || "-", o.franchise?.segment === "multimarca_pdv" ? "Multimarca" : "Franquia", STATUS_CONFIG[o.status]?.label || o.status, formatDate(o.created_at), o.creator_name || "-", (o.payment_plan as PaymentPlan | null)?.name || "-", (o.shipping_type as ShippingType | null)?.name || "-"];
       if (o.items.length === 0) {
         rows.push([...base, "", "", "", "", formatPrice(o.total), formatPrice(o.total * 0.3), formatPrice(o.total * 1.3), (o.notes || "").replace(/;/g, ","), (o.admin_notes || "").replace(/;/g, ",")].join(sep));
       } else {
@@ -359,13 +359,13 @@ ${o.admin_notes ? `<div class="notes" style="margin-top:8px"><strong>Obs. do com
                 <tr key={o.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/50 transition-colors cursor-pointer" onClick={() => openDetail(o)}>
                   <td className="px-3 md:px-4 py-3">
                     <p className="font-mono text-[11px] font-medium text-ink-900">{ocLabel(o)}</p>
-                    <p className="text-[10px] text-ink-400">{o.creator_name || "—"}</p>
+                    <p className="text-[10px] text-ink-400">{o.creator_name || "-"}</p>
                   </td>
                   <td className="px-3 md:px-4 py-3">
-                    <p className="font-medium text-ink-900 text-xs truncate">{o.franchise?.name || "—"}</p>
+                    <p className="font-medium text-ink-900 text-xs truncate">{o.franchise?.name || "-"}</p>
                   </td>
                   <td className="px-3 md:px-4 py-3 hidden lg:table-cell">
-                    <p className="text-xs text-ink-600">{o.seller_name || "—"}</p>
+                    <p className="text-xs text-ink-600">{o.seller_name || "-"}</p>
                   </td>
                   <td className="px-3 md:px-4 py-3">
                     <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium", cfg.bg, cfg.color)}>
@@ -404,15 +404,15 @@ ${o.admin_notes ? `<div class="notes" style="margin-top:8px"><strong>Obs. do com
               <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
                 <div className="rounded-lg bg-ink-50/50 px-3 py-2.5">
                   <p className="text-[10px] text-ink-400 uppercase">Franquia</p>
-                  <p className="text-sm font-medium text-ink-900 mt-0.5">{o.franchise?.name || "—"}</p>
+                  <p className="text-sm font-medium text-ink-900 mt-0.5">{o.franchise?.name || "-"}</p>
                 </div>
                 <div className="rounded-lg bg-ink-50/50 px-3 py-2.5">
                   <p className="text-[10px] text-ink-400 uppercase">Vendedor</p>
-                  <p className="text-sm font-medium text-ink-900 mt-0.5">{o.seller_name || "—"}</p>
+                  <p className="text-sm font-medium text-ink-900 mt-0.5">{o.seller_name || "-"}</p>
                 </div>
                 <div className="rounded-lg bg-ink-50/50 px-3 py-2.5">
                   <p className="text-[10px] text-ink-400 uppercase">Solicitante</p>
-                  <p className="text-sm font-medium text-ink-900 mt-0.5">{o.creator_name || "—"}</p>
+                  <p className="text-sm font-medium text-ink-900 mt-0.5">{o.creator_name || "-"}</p>
                 </div>
               </div>
 
@@ -532,19 +532,19 @@ ${o.admin_notes ? `<div class="notes" style="margin-top:8px"><strong>Obs. do com
                   <label className="text-[10px] text-ink-400 uppercase mb-1 block">Pagamento</label>
                   {perms.canEdit ? (
                     <select value={editPaymentPlanId} onChange={(e) => setEditPaymentPlanId(e.target.value)} className="h-9 w-full rounded-lg border border-ink-100 bg-white px-2 text-sm text-ink-900 focus:border-brand-olive focus:outline-none">
-                      <option value="">—</option>
+                      <option value="">-</option>
                       {paymentPlans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
-                  ) : <p className="text-sm text-ink-900 h-9 flex items-center">{(o.payment_plan as PaymentPlan | null)?.name || "—"}</p>}
+                  ) : <p className="text-sm text-ink-900 h-9 flex items-center">{(o.payment_plan as PaymentPlan | null)?.name || "-"}</p>}
                 </div>
                 <div>
                   <label className="text-[10px] text-ink-400 uppercase mb-1 block">Frete</label>
                   {perms.canEdit ? (
                     <select value={editShippingTypeId} onChange={(e) => setEditShippingTypeId(e.target.value)} className="h-9 w-full rounded-lg border border-ink-100 bg-white px-2 text-sm text-ink-900 focus:border-brand-olive focus:outline-none">
-                      <option value="">—</option>
+                      <option value="">-</option>
                       {shippingTypes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
-                  ) : <p className="text-sm text-ink-900 h-9 flex items-center">{(o.shipping_type as ShippingType | null)?.name || "—"}</p>}
+                  ) : <p className="text-sm text-ink-900 h-9 flex items-center">{(o.shipping_type as ShippingType | null)?.name || "-"}</p>}
                 </div>
               </div>
 
@@ -552,7 +552,7 @@ ${o.admin_notes ? `<div class="notes" style="margin-top:8px"><strong>Obs. do com
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-[10px] text-ink-400 uppercase mb-1 block">Obs. cliente</label>
-                  {perms.canEdit ? <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={2} className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-olive focus:outline-none resize-none" /> : <p className="text-sm text-ink-600 bg-ink-50 rounded-lg px-3 py-2 min-h-[40px]">{o.notes || "—"}</p>}
+                  {perms.canEdit ? <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={2} className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-olive focus:outline-none resize-none" /> : <p className="text-sm text-ink-600 bg-ink-50 rounded-lg px-3 py-2 min-h-[40px]">{o.notes || "-"}</p>}
                 </div>
                 <div>
                   <label className="text-[10px] text-ink-400 uppercase mb-1 block">Obs. comercial</label>

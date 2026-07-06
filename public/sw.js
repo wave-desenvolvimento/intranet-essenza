@@ -1,4 +1,4 @@
-// Essenza Hub — Service Worker for Push Notifications
+// Essenza Hub - Service Worker for Push Notifications
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

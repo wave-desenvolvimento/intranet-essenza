@@ -160,7 +160,7 @@ export function PermissionsManager({ roles, permissions, pageModules }: Props) {
       </div>
 
       <div className="flex gap-5 h-[calc(100vh-160px)]">
-        {/* Left — Roles list */}
+        {/* Left - Roles list */}
         <div className="w-52 shrink-0 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-ink-500">Tipos de Acesso</span>
@@ -197,7 +197,7 @@ export function PermissionsManager({ roles, permissions, pageModules }: Props) {
           </div>
         </div>
 
-        {/* Right — Editor */}
+        {/* Right - Editor */}
         {isEditing && (
           <div className="flex-1 flex flex-col rounded-xl border border-ink-100 bg-white overflow-hidden min-w-0">
             {/* Header fields */}
@@ -221,20 +221,20 @@ export function PermissionsManager({ roles, permissions, pageModules }: Props) {
                 <div>
                   <label className="text-xs font-medium text-ink-600 mb-1 block">Nível</label>
                   <select value={level} onChange={(e) => setLevel(e.target.value)} className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none">
-                    <option value="100">100 — Super Admin</option>
-                    <option value="90">90 — Owner</option>
-                    <option value="80">80 — Admin</option>
-                    <option value="70">70 — Operacional</option>
-                    <option value="50">50 — Comercial</option>
-                    <option value="30">30 — Admin Franquia</option>
-                    <option value="10">10 — Usuário</option>
-                    <option value="0">0 — Visualizador</option>
+                    <option value="100">100 - Super Admin</option>
+                    <option value="90">90 - Owner</option>
+                    <option value="80">80 - Admin</option>
+                    <option value="70">70 - Operacional</option>
+                    <option value="50">50 - Comercial</option>
+                    <option value="30">30 - Admin Franquia</option>
+                    <option value="10">10 - Usuário</option>
+                    <option value="0">0 - Visualizador</option>
                   </select>
                 </div>
               </div>
             </div>
 
-            {/* Matrix table — scrollable */}
+            {/* Matrix table - scrollable */}
             <div className="flex-1 overflow-auto">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10">

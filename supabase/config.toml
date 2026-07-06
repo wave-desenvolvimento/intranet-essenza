@@ -227,7 +227,7 @@ otp_expiry = 3600
 # sender_name = "Admin"
 
 [auth.email.template.confirmation]
-subject = "Confirme seu e-mail — Hub Essenza"
+subject = "Confirme seu e-mail - Hub Essenza"
 content_path = "./supabase/templates/confirm-signup.html"
 
 [auth.email.template.invite]
@@ -235,19 +235,19 @@ subject = "Você foi convidado para o Hub Essenza"
 content_path = "./supabase/templates/invite-user.html"
 
 [auth.email.template.magic_link]
-subject = "Seu link de acesso — Hub Essenza"
+subject = "Seu link de acesso - Hub Essenza"
 content_path = "./supabase/templates/magic-link.html"
 
 [auth.email.template.email_change]
-subject = "Confirme seu novo e-mail — Hub Essenza"
+subject = "Confirme seu novo e-mail - Hub Essenza"
 content_path = "./supabase/templates/change-email.html"
 
 [auth.email.template.recovery]
-subject = "Redefinir senha — Hub Essenza"
+subject = "Redefinir senha - Hub Essenza"
 content_path = "./supabase/templates/reset-password.html"
 
 [auth.email.template.reauthentication]
-subject = "Código de verificação — Hub Essenza"
+subject = "Código de verificação - Hub Essenza"
 content_path = "./supabase/templates/reauthentication.html"
 
 [auth.sms]
@@ -370,8 +370,8 @@ allow_dynamic_registration = false
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
-# `per_worker` (default) — enables hot reload during local development.
-# `oneshot` — fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
+# `per_worker` (default) - enables hot reload during local development.
+# `oneshot` - fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
 policy = "per_worker"
 # Port to attach the Chrome inspector for debugging edge functions.
 inspector_port = 8093

@@ -164,7 +164,7 @@ export function AnnouncementsManager({ announcements, franchises, canManage, cur
             const Icon = cfg.icon;
             const read = isRead(a);
             const readCount = (a.reads || []).length;
-            const authorName = (a.author as { full_name: string })?.full_name || "—";
+            const authorName = (a.author as { full_name: string })?.full_name || "-";
 
             return (
               <div

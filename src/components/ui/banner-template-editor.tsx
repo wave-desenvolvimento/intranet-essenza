@@ -72,7 +72,7 @@ export const QR_VARIABLES = [
   { value: "qr_website", label: "QR Website" },
 ];
 
-// Sizes as % of container width — scales proportionally
+// Sizes as % of container width - scales proportionally
 const SIZE_OPTIONS = [
   { value: "1.5", label: "XS" },
   { value: "2", label: "S" },
@@ -263,11 +263,11 @@ export function BannerTemplateEditor({ overlays, onChange, backgroundImage, back
         {/* Grid overlay */}
         {showGrid && (
           <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
-            {/* Vertical lines — every 5% */}
+            {/* Vertical lines - every 5% */}
             {Array.from({ length: 19 }, (_, i) => (i + 1) * 5).map((p) => (
               <div key={`v${p}`} className="absolute top-0 bottom-0" style={{ left: `${p}%`, width: 1, background: p === 50 ? "rgba(135,138,98,0.5)" : p % 10 === 0 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)" }} />
             ))}
-            {/* Horizontal lines — every 5% */}
+            {/* Horizontal lines - every 5% */}
             {Array.from({ length: 19 }, (_, i) => (i + 1) * 5).map((p) => (
               <div key={`h${p}`} className="absolute left-0 right-0" style={{ top: `${p}%`, height: 1, background: p === 50 ? "rgba(135,138,98,0.5)" : p % 10 === 0 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)" }} />
             ))}
@@ -331,7 +331,7 @@ export function BannerTemplateEditor({ overlays, onChange, backgroundImage, back
                 </span>
               )}
 
-              {/* Resize handles — 4 corners + 4 edges */}
+              {/* Resize handles - 4 corners + 4 edges */}
               {isSelected && o.type === "variable" && hasBox && (() => {
                 const h = "absolute z-50 bg-brand-olive border-2 border-white rounded-full";
                 const dot = "h-3 w-3";

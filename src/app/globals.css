@@ -6,7 +6,7 @@
 :root {
   --radius: 0.625rem;
 
-  /* shadcn semantic — remapped to Essenza palette */
+  /* shadcn semantic - remapped to Essenza palette */
   --background: #faf9f7;
   --foreground: #18160f;
   --card: #ffffff;
@@ -148,7 +148,7 @@
   /* Prevent horizontal scroll on mobile */
   html, body { overflow-x: hidden; }
 
-  /* Better touch targets — only for standalone interactive elements, not inline icons */
+  /* Better touch targets - only for standalone interactive elements, not inline icons */
   @media (max-width: 768px) {
     input, select, textarea { font-size: 16px; } /* prevents zoom on iOS */
   }
@@ -158,7 +158,7 @@
   .scrollbar-hide::-webkit-scrollbar { display: none; }
 }
 
-/* Driver.js custom theme — Essenza branded */
+/* Driver.js custom theme - Essenza branded */
 .driver-popover.essenza-tour-popover {
   background: #ffffff;
   border: 1px solid #e8e5df;

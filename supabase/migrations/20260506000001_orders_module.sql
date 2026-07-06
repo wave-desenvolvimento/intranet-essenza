@@ -1,5 +1,5 @@
 -- =============================================
--- Módulo de Pedidos — Produtos, Preços e Orders
+-- Módulo de Pedidos - Produtos, Preços e Orders
 -- =============================================
 
 -- Catálogo de produtos

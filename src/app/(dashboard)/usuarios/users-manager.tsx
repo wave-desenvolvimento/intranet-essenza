@@ -83,7 +83,7 @@ export function UsersManager({ users, franchises }: Props) {
   }
 
   function formatDate(date: string | null) {
-    if (!date) return "—";
+    if (!date) return "-";
     return new Date(date).toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "short",
@@ -187,7 +187,7 @@ export function UsersManager({ users, franchises }: Props) {
                     <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex items-center gap-1.5 text-ink-600">
                         <Building2 size={13} className="text-ink-400" />
-                        <span className="truncate">{user.franchise?.name || "—"}</span>
+                        <span className="truncate">{user.franchise?.name || "-"}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">

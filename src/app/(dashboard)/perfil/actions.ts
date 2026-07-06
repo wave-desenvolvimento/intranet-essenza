@@ -13,7 +13,7 @@ export async function updateProfile(formData: FormData) {
 
   if (!fullName) return { error: "Nome é obrigatório." };
 
-  // Validate avatar URL — only allow https:// URLs from trusted sources
+  // Validate avatar URL - only allow https:// URLs from trusted sources
   let safeAvatarUrl: string | undefined;
   if (avatarUrl) {
     try {

@@ -1,10 +1,10 @@
-# Webhook de Integração — Pedidos Aprovados (Allcance)
+# Webhook de Integração - Pedidos Aprovados (Allcance)
 
 ## Visão Geral
 
 Quando um pedido muda para o status **aprovado** na intranet, um webhook (HTTP POST) é disparado automaticamente para o sistema Allcance. Toda a lógica roda dentro do Supabase (trigger + pg_cron + pg_net), sem depender do Next.js.
 
-A API key é armazenada de forma encriptada no **Supabase Vault** — nunca fica visível no banco.
+A API key é armazenada de forma encriptada no **Supabase Vault** - nunca fica visível no banco.
 
 ---
 
@@ -48,7 +48,7 @@ A key é encriptada automaticamente pelo Vault com `pgsodium`. O campo `api_key`
 
 ### 1.3 Atualizar a API Key
 
-Mesmo comando do 1.2 — o `ON CONFLICT` atualiza o valor existente.
+Mesmo comando do 1.2 - o `ON CONFLICT` atualiza o valor existente.
 
 > **IMPORTANTE:** Enquanto `active = false`, nenhum webhook será enviado, mesmo que pedidos sejam aprovados.
 
@@ -224,7 +224,7 @@ UPDATE payment_plans SET external_id = 2675221, forma_pagamento_external_id = 51
 
 ---
 
-## 4. Segurança — API Key no Vault
+## 4. Segurança - API Key no Vault
 
 A API key **nunca** fica visível na tabela `webhook_config`. O campo `api_key` mostra `***encrypted***`.
 
@@ -236,7 +236,7 @@ O valor real é armazenado no **Supabase Vault** (`vault.secrets`), encriptado c
 | API key | `vault.secrets` (encriptada) |
 | Referência | `webhook_config.vault_secret_name` |
 
-A function `process_webhook_queue()` busca a key decriptada na hora de enviar via `get_webhook_api_key()`, que lê de `vault.decrypted_secrets`. A key decriptada existe apenas em memória durante a execução da function — nunca é persistida em texto puro.
+A function `process_webhook_queue()` busca a key decriptada na hora de enviar via `get_webhook_api_key()`, que lê de `vault.decrypted_secrets`. A key decriptada existe apenas em memória durante a execução da function - nunca é persistida em texto puro.
 
 ---
 
@@ -339,7 +339,7 @@ UPDATE webhook_config SET active = true WHERE name = 'orders_approved';
 |---|---|---|
 | Webhook não dispara | `active = false` na `webhook_config` | Ativar com `UPDATE webhook_config SET active = true ...` |
 | Webhook não dispara | Pedido não mudou para `aprovado` | Verificar se o status realmente mudou (não estava já aprovado) |
-| Status `failed` — "API key not found in vault" | Secret não inserida no vault | Inserir via SQL Editor: `INSERT INTO vault.secrets ...` |
+| Status `failed` - "API key not found in vault" | Secret não inserida no vault | Inserir via SQL Editor: `INSERT INTO vault.secrets ...` |
 | Status `failed` após 5 tentativas | Sistema externo fora do ar ou rejeitando | Verificar `last_error` e `last_status_code` na `webhook_queue` |
 | Timeout (30s) | Sistema externo lento | Otimizar endpoint ou aumentar timeout no `check_webhook_responses` |
 | Pedido duplicado no sistema externo | Retry entregou mais de uma vez | Sistema externo deve usar `X-Webhook-Id` como chave de idempotência |

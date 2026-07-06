@@ -35,7 +35,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-dvh">
-      {/* Left panel — brand */}
+      {/* Left panel - brand */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center bg-brand-olive-soft overflow-hidden">
         {/* Decorative circles */}
         <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-brand-olive/5" />
@@ -52,7 +52,7 @@ export default function LoginPage() {
             </h1>
             <p className="text-center text-base leading-relaxed text-ink-600">
               Campanhas, materiais e conteúdo organizados para
-              fortalecer a marca.
+              conectar a marca.
             </p>
           </div>
         </div>
@@ -65,7 +65,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel - form */}
       <div className="flex w-full lg:w-1/2 flex-col items-center justify-center px-6 py-12 bg-brand-cream">
         {/* Mobile logo */}
         <div className="mb-10 lg:hidden">

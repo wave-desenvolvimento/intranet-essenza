@@ -12,7 +12,7 @@ function ensureVapid() {
   }
 }
 
-/** Send push notifications to specific users. Server-only — NOT a server action. */
+/** Send push notifications to specific users. Server-only - NOT a server action. */
 export async function sendPushToUsers(userIds: string[], payload: { title: string; body?: string; href?: string }) {
   ensureVapid();
   if (!vapidConfigured) return;

@@ -25,7 +25,7 @@ export function usePermissions() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Dev mode override — only for Wesley
+      // Dev mode override - only for Wesley
       const devMode = getDevMode();
       if (devMode && DEV_PRESETS[devMode] && user?.email === "wesley@wavecommerce.com.br") {
         setPermissions(DEV_PRESETS[devMode]);

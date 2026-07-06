@@ -290,7 +290,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
                   </Link>
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  {f.city ? <span className="flex items-center gap-1 text-ink-600"><MapPin size={12} className="text-ink-400" />{f.city}{f.state ? ` - ${f.state}` : ""}</span> : <span className="text-ink-400">—</span>}
+                  {f.city ? <span className="flex items-center gap-1 text-ink-600"><MapPin size={12} className="text-ink-400" />{f.city}{f.state ? ` - ${f.state}` : ""}</span> : <span className="text-ink-400">-</span>}
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium", f.segment === "franquia" ? "bg-brand-olive-soft text-brand-olive-dark" : "bg-info-soft text-info")}>{SEGMENT_LABELS[f.segment] || f.segment}</span>

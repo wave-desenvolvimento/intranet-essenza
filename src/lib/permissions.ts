@@ -27,7 +27,7 @@ export async function requireSystemAdmin() {
   return requirePermission("configuracoes", "edit");
 }
 
-/** @deprecated RPC now uses auth.uid() internally — param is ignored */
+/** @deprecated RPC now uses auth.uid() internally - param is ignored */
 export async function isSystemAdmin(_userId: string): Promise<boolean> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("has_permission", {

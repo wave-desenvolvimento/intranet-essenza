@@ -252,10 +252,10 @@ export function ProductsManager({ products, categories }: { products: Product[];
                       <span className="font-medium text-ink-900">{p.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-ink-500 font-mono text-xs">{p.sku || "—"}</td>
-                  <td className="px-4 py-3 text-ink-500">{(p.product_category as unknown as ProductCategory)?.name || p.category || "—"}</td>
-                  <td className="px-4 py-3 text-right font-medium text-ink-900">{pFranquia ? formatPrice(pFranquia.price) : "—"}</td>
-                  <td className="px-4 py-3 text-right font-medium text-ink-900">{pPdv ? formatPrice(pPdv.price) : "—"}</td>
+                  <td className="px-4 py-3 text-ink-500 font-mono text-xs">{p.sku || "-"}</td>
+                  <td className="px-4 py-3 text-ink-500">{(p.product_category as unknown as ProductCategory)?.name || p.category || "-"}</td>
+                  <td className="px-4 py-3 text-right font-medium text-ink-900">{pFranquia ? formatPrice(pFranquia.price) : "-"}</td>
+                  <td className="px-4 py-3 text-right font-medium text-ink-900">{pPdv ? formatPrice(pPdv.price) : "-"}</td>
                   <td className="px-4 py-3 text-center text-ink-500">{p.unit}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", p.active ? "bg-success-soft text-success" : "bg-ink-100 text-ink-500")}>
@@ -463,11 +463,11 @@ export function ProductsManager({ products, categories }: { products: Product[];
                       <tr key={i} className="border-b border-ink-50 last:border-0">
                         <td className="px-3 py-1.5 text-ink-400">{i + 1}</td>
                         <td className="px-3 py-1.5 text-ink-900 font-medium">{row.name}</td>
-                        <td className="px-3 py-1.5 text-ink-500 font-mono">{row.sku || "—"}</td>
-                        <td className="px-3 py-1.5 text-ink-500">{row.category || "—"}</td>
+                        <td className="px-3 py-1.5 text-ink-500 font-mono">{row.sku || "-"}</td>
+                        <td className="px-3 py-1.5 text-ink-500">{row.category || "-"}</td>
                         <td className="px-3 py-1.5 text-center text-ink-500">{row.unit}</td>
-                        <td className="px-3 py-1.5 text-right text-ink-600">{row.priceFranquia > 0 ? formatPrice(row.priceFranquia) : "—"}</td>
-                        <td className="px-3 py-1.5 text-right text-ink-600">{row.pricePdv > 0 ? formatPrice(row.pricePdv) : "—"}</td>
+                        <td className="px-3 py-1.5 text-right text-ink-600">{row.priceFranquia > 0 ? formatPrice(row.priceFranquia) : "-"}</td>
+                        <td className="px-3 py-1.5 text-right text-ink-600">{row.pricePdv > 0 ? formatPrice(row.pricePdv) : "-"}</td>
                         <td className="px-3 py-1.5 text-center">
                           <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-medium",
                             row.stockStatus === "in_stock" ? "bg-success-soft text-success" :

@@ -384,8 +384,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
         </div>
       )}
 
-      {/* Folders grid — rendered as node passed into each view (below search) */}
-      {/* Content views — using filtered items for current folder */}
+      {/* Folders grid - rendered as node passed into each view (below search) */}
+      {/* Content views - using filtered items for current folder */}
       {currentCollection && (
         <>
           {page.view_type === "gallery" && (
@@ -1607,8 +1607,8 @@ function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelet
                         <span className="text-xs font-mono text-ink-500">{String(item.data[f.slug] || "")}</span>
                       </span>
                     ) : f.field_type === "rich_text" ? (
-                      <span className="prose prose-sm max-w-none truncate block" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(item.data[f.slug] || "—")) }} />
-                    ) : String(item.data[f.slug] || "—")}
+                      <span className="prose prose-sm max-w-none truncate block" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(item.data[f.slug] || "-")) }} />
+                    ) : String(item.data[f.slug] || "-")}
                   </td>
                 ))}
                 <td className="px-4 py-3">
@@ -2084,7 +2084,7 @@ function CoursePageView({ collection }: { collection: CollectionData }) {
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-6" onClick={() => setShowPdf(false)}>
           <div className="relative w-full max-w-4xl h-[85vh] rounded-xl bg-white shadow-modal overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3 border-b border-ink-100">
-              <p className="text-sm font-semibold text-ink-900">Material — {activeTitle}</p>
+              <p className="text-sm font-semibold text-ink-900">Material - {activeTitle}</p>
               <div className="flex items-center gap-2">
                 <a
                   href={activePdf}

@@ -120,7 +120,7 @@ export function StockTab({ franchiseId, stock, canEdit }: Props) {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-ink-500 hidden sm:table-cell font-mono text-xs">{product.sku}</td>
-                    <td className="px-4 py-3 text-ink-500 hidden md:table-cell">{product.category || "—"}</td>
+                    <td className="px-4 py-3 text-ink-500 hidden md:table-cell">{product.category || "-"}</td>
                     <td className="px-4 py-3 text-right">
                       {isEditing ? (
                         <input type="number" value={editQty} onChange={(e) => setEditQty(Number(e.target.value))} className="h-8 w-20 rounded-md border border-ink-200 px-2 text-sm text-right" min={0} />

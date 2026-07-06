@@ -130,7 +130,7 @@ export function NotificationBell() {
                     push.subscribed ? "text-brand-olive hover:text-brand-olive-dark" : "text-ink-400 hover:text-ink-700 hover:bg-ink-50",
                     push.permission === "denied" && "opacity-40 cursor-not-allowed"
                   )}
-                  title={push.subscribed ? "Push ativo — clique para desativar" : push.permission === "denied" ? "Push bloqueado no navegador" : "Ativar notificações push"}
+                  title={push.subscribed ? "Push ativo - clique para desativar" : push.permission === "denied" ? "Push bloqueado no navegador" : "Ativar notificações push"}
                 >
                   {push.subscribed ? <BellRing size={12} /> : <BellOff size={12} />}
                   <span className="hidden sm:inline">{push.subscribed ? "Push ativo" : "Ativar push"}</span>

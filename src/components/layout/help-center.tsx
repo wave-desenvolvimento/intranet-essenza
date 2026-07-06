@@ -37,7 +37,7 @@ const HELP_TOPICS: HelpTopic[] = [
   {
     icon: GraduationCap,
     title: "Treinamentos",
-    description: "Assista aos cursos e treinamentos da rede. O progresso é salvo automaticamente — continue de onde parou a qualquer momento.",
+    description: "Assista aos cursos e treinamentos da rede. O progresso é salvo automaticamente - continue de onde parou a qualquer momento.",
   },
   {
     icon: ShoppingCart,
@@ -53,7 +53,7 @@ const HELP_TOPICS: HelpTopic[] = [
   },
   {
     icon: Palette,
-    title: "CMS — Gerenciador de Conteúdo",
+    title: "CMS - Gerenciador de Conteúdo",
     description: "Crie e gerencie coleções (banners, materiais, campanhas). Defina campos, faça upload de arquivos, publique e agende conteúdo.",
     module: "cms",
   },
@@ -169,7 +169,7 @@ export function HelpCenter() {
             ))}
           </div>
 
-          {/* Shortcuts — desktop only */}
+          {/* Shortcuts - desktop only */}
           <div className="border-t border-ink-100 px-4 py-3 bg-ink-50/30 hidden md:block">
             <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">Atalhos do teclado</p>
             <div className="grid grid-cols-2 gap-1.5">

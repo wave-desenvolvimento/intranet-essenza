@@ -519,7 +519,7 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
         })}
       </div>
 
-      {/* Image Lightbox — z-[250] to render above content modal */}
+      {/* Image Lightbox - z-[250] to render above content modal */}
       {lightbox && (
         <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/80 p-8" onClick={() => setLightbox(null)}>
           <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors">

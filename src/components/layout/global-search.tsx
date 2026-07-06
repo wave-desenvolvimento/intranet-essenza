@@ -119,7 +119,7 @@ export function GlobalSearch() {
       });
     }
 
-    // CMS Items — merge text-matched + folder/collection name-matched items
+    // CMS Items - merge text-matched + folder/collection name-matched items
     const allCmsItems: { id: string; data: unknown; collection_id: string; status: string }[] = [...(items.data || [])];
     const seenItemIds = new Set(allCmsItems.map((i) => i.id));
 
@@ -215,7 +215,7 @@ export function GlobalSearch() {
               all.push({
                 id: `asset-${item.id}-${field.slug}-${assetCount}`,
                 type: "asset",
-                title: `${itemTitle} — ${label}`,
+                title: `${itemTitle} - ${label}`,
                 subtitle: `${isImg ? "Imagem" : isVid ? "Vídeo" : ext.toUpperCase()} · ${col?.name || ""}`,
                 icon: isImg ? "image" : isVid ? "video" : "file",
                 href: ps ? `/pagina/${ps}` : "/biblioteca",

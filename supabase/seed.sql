@@ -93,12 +93,12 @@ on conflict (module, action) do nothing;
 -- Roles pré-definidos
 insert into public.roles (name, slug, description, is_default, is_system, level) values
   -- Matriz
-  ('Owner', 'owner', 'Acesso total ao sistema — superadmin da franqueadora', false, true, 90),
+  ('Owner', 'owner', 'Acesso total ao sistema - superadmin da franqueadora', false, true, 90),
   ('Operacional Matriz', 'operacional', 'Gestão de campanhas, materiais, treinamentos e CMS', false, true, 70),
   ('Comercial Matriz', 'comercial_sistema', 'Foco em redes sociais, biblioteca, vídeos e relatórios', false, true, 50),
   -- Franquias
   ('Admin Franquia', 'admin_franquia', 'Gerencia usuários e visualiza tudo da sua franquia', false, false, 30),
-  ('Usuário Franquia', 'usuario_franquia', 'Acesso básico — visualização e download de materiais', true, false, 10),
+  ('Usuário Franquia', 'usuario_franquia', 'Acesso básico - visualização e download de materiais', true, false, 10),
   ('Visualizador', 'visualizador', 'Apenas visualização, sem download', false, false, 0);
 
 -- Owner: todas as permissões

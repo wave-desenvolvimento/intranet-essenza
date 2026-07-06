@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const type = searchParams.get("type");
   const nextParam = searchParams.get("next") ?? "/inicio";
 
-  // Validate redirect — must be relative path, no protocol-relative
+  // Validate redirect - must be relative path, no protocol-relative
   const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/inicio";
 
   const supabase = await createClient();
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Handle implicit flow (token_hash — used by invite, recovery, magic link)
+  // Handle implicit flow (token_hash - used by invite, recovery, magic link)
   if (tokenHash && type) {
     const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as "invite" | "recovery" | "magiclink" | "signup" | "email_change" });
     if (!error) {

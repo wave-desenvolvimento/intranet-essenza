@@ -63,7 +63,7 @@ function NpsInput({ value, onChange }: { value: number | null; onChange: (v: num
         ))}
       </div>
       <div className="flex items-center gap-2 text-[10px] text-ink-400 mt-1">
-        <span>0 — Nada provável</span><span className="flex-1" /><span>10 — Muito provável</span>
+        <span>0 - Nada provável</span><span className="flex-1" /><span>10 - Muito provável</span>
       </div>
     </div>
   );
@@ -494,7 +494,7 @@ export function SurveysManager({ surveys, canManage, canViewAll, currentUserId }
         <div className="flex flex-col gap-4">
           <div>
             <label className="text-sm font-medium text-ink-700 mb-1.5 block">Título</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus className="h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" placeholder="Pesquisa de satisfação — Maio 2026" />
+            <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus className="h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" placeholder="Pesquisa de satisfação - Maio 2026" />
           </div>
           <div>
             <label className="text-sm font-medium text-ink-700 mb-1.5 block">Descrição (opcional)</label>

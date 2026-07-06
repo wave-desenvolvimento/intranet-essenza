@@ -146,13 +146,13 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
 
 const EXPORT_SECTIONS = [
   { key: "resumo", label: "Resumo geral" },
-  { key: "mais-visualizados", label: "Conteúdo — Mais visualizados" },
-  { key: "mais-baixados", label: "Conteúdo — Mais baixados" },
+  { key: "mais-visualizados", label: "Conteúdo - Mais visualizados" },
+  { key: "mais-baixados", label: "Conteúdo - Mais baixados" },
   { key: "modulos", label: "Uso por módulo" },
-  { key: "pedidos-status", label: "Pedidos — Por status" },
-  { key: "pedidos-produtos", label: "Pedidos — Top produtos" },
-  { key: "pedidos-franquias", label: "Pedidos — Por franquia" },
-  { key: "engajamento", label: "Franquias — Engajamento detalhado" },
+  { key: "pedidos-status", label: "Pedidos - Por status" },
+  { key: "pedidos-produtos", label: "Pedidos - Top produtos" },
+  { key: "pedidos-franquias", label: "Pedidos - Por franquia" },
+  { key: "engajamento", label: "Franquias - Engajamento detalhado" },
   { key: "atividade", label: "Log de atividade" },
 ] as const;
 
@@ -233,7 +233,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
   }
 
   const periodLabel = period === "custom" && customFrom && customTo
-    ? `${new Date(customFrom).toLocaleDateString("pt-BR")} — ${new Date(customTo).toLocaleDateString("pt-BR")}`
+    ? `${new Date(customFrom).toLocaleDateString("pt-BR")} - ${new Date(customTo).toLocaleDateString("pt-BR")}`
     : getPeriodDates(period).label;
 
   const maxViewed = data.topViewed[0]?.count || 1;
@@ -339,7 +339,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
       for (const f of detailedData.franchiseDetails) {
         rows.push([
           f.name, f.totalPageViews, f.contentViews, f.contentDownloads, f.activeUsers,
-          f.lastActivity ? new Date(f.lastActivity).toLocaleString("pt-BR") : "—",
+          f.lastActivity ? new Date(f.lastActivity).toLocaleString("pt-BR") : "-",
           f.modules.map((m) => `${m.label} (${m.count})`).join(", "),
         ]);
       }
@@ -364,7 +364,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
     if (sel.has("atividade") && detailedData.activityLog.length > 0) {
       const rows = [["Data/Hora", "Usuário", "Franquia", "Ação", "Módulo", "Descrição"],
         ...detailedData.activityLog.map((a) => [
-          new Date(a.createdAt).toLocaleString("pt-BR"), a.userName, a.franchiseName || "—",
+          new Date(a.createdAt).toLocaleString("pt-BR"), a.userName, a.franchiseName || "-",
           ACTION_LABELS[a.action]?.label || a.action, a.entityType, a.description,
         ])];
       const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -390,7 +390,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
             Relatórios
             {isRefreshing && <Loader2 size={14} className="inline-block ml-2 animate-spin text-ink-400" />}
           </h1>
-          <p className="text-sm text-ink-500">Métricas de uso, navegação e vendas — {periodLabel}</p>
+          <p className="text-sm text-ink-500">Métricas de uso, navegação e vendas - {periodLabel}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Period filter */}
@@ -719,7 +719,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
         </div>
       )}
 
-      {/* Tab: Franchises — detailed engagement with drill-down */}
+      {/* Tab: Franchises - detailed engagement with drill-down */}
       {tab === "franchises" && (
         <div className="flex flex-col gap-5">
           {/* Summary cards */}
@@ -734,7 +734,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
             </div>
             <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
               <p className="text-[11px] text-ink-500 mb-1">Mais engajada</p>
-              <p className="text-sm font-semibold text-ink-900 truncate">{topFranchise?.name || "—"}</p>
+              <p className="text-sm font-semibold text-ink-900 truncate">{topFranchise?.name || "-"}</p>
               {topFranchise && <p className="text-[10px] text-ink-400">{topFranchise.totalPageViews} page views</p>}
             </div>
             <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
@@ -806,7 +806,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                                   <Clock size={11} />
                                   {timeAgo(f.lastActivity)}
                                 </span>
-                              ) : "—"}
+                              ) : "-"}
                             </td>
                             <td className="px-3 py-3">
                               <div className="w-full h-1.5 rounded-full bg-ink-50 overflow-hidden">

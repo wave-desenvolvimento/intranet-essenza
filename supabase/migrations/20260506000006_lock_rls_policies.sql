@@ -224,7 +224,7 @@ CREATE POLICY "order_items_delete" ON public.order_items FOR DELETE TO authentic
   USING (public.has_permission(auth.uid(), 'orders', 'approve'));
 
 -- =============================================
--- 9. SHARE LINKS — only owner can create
+-- 9. SHARE LINKS - only owner can create
 -- =============================================
 
 DROP POLICY IF EXISTS "share_links_insert" ON public.share_links;
@@ -232,7 +232,7 @@ CREATE POLICY "share_links_insert" ON public.share_links FOR INSERT TO authentic
   WITH CHECK (auth.uid() = created_by);
 
 -- =============================================
--- 10. NOTIFICATIONS — restrict insert to server (service_role) + triggers
+-- 10. NOTIFICATIONS - restrict insert to server (service_role) + triggers
 -- =============================================
 
 DROP POLICY IF EXISTS "Service can insert notifications" ON public.notifications;
@@ -263,7 +263,7 @@ DO $$ BEGIN
 END $$;
 
 -- =============================================
--- 12. STORAGE — restrict delete to owners or admins
+-- 12. STORAGE - restrict delete to owners or admins
 -- =============================================
 
 DROP POLICY IF EXISTS "banners_auth_delete" ON storage.objects;

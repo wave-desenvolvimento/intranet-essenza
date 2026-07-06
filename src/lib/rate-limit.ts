@@ -1,6 +1,6 @@
 /**
  * Simple in-memory rate limiter for serverless.
- * Sufficient for single-instance (Vercel) — for multi-instance use Upstash Redis.
+ * Sufficient for single-instance (Vercel) - for multi-instance use Upstash Redis.
  */
 
 const store = new Map<string, { count: number; resetAt: number }>();

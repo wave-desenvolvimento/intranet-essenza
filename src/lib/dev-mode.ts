@@ -1,4 +1,4 @@
-// Dev view mode — simulates different user roles for testing
+// Dev view mode - simulates different user roles for testing
 // Uses cookie so it works on both server and client
 
 export type DevViewMode = "admin" | "franchise_owner" | "franchise_user" | "commercial" | "";

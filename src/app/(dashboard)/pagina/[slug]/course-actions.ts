@@ -40,7 +40,7 @@ export async function updateLessonProgress(
   const pct = Math.min(100, Math.max(0, Math.round(watchedPct)));
   const completedAt = pct >= 95 ? new Date().toISOString() : null;
 
-  // Upsert — nunca reduz o progresso
+  // Upsert - nunca reduz o progresso
   const { error } = await supabase.rpc("upsert_lesson_progress", {
     p_user_id: user.id,
     p_item_id: itemId,

@@ -38,7 +38,7 @@ function getFileIcon(url: string) {
 }
 
 function getFileName(url: string) {
-  if (!url) return "—";
+  if (!url) return "-";
   return decodeURIComponent(url.split("/").pop() || "arquivo");
 }
 

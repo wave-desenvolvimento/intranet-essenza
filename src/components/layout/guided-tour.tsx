@@ -9,7 +9,7 @@ interface TourStep extends DriveStep {
   module?: string;
   desktopOnly?: boolean;
   mobileOnly?: boolean;
-  insideDrawer?: boolean; // element only exists when drawer is open — skip DOM check
+  insideDrawer?: boolean; // element only exists when drawer is open - skip DOM check
 }
 
 function isMobileView() {
@@ -88,7 +88,7 @@ const MOBILE_NAV_STEPS: TourStep[] = [
       align: "center",
     },
   },
-  // 2. Menu button — opens drawer on next
+  // 2. Menu button - opens drawer on next
   {
     element: "[data-tour='mobile-menu-btn']",
     mobileOnly: true,
@@ -107,7 +107,7 @@ const MOBILE_NAV_STEPS: TourStep[] = [
       },
     },
   },
-  // 3+ Drawer items — each module inside the drawer
+  // 3+ Drawer items - each module inside the drawer
   {
     element: "[data-tour='drawer-templates']",
     mobileOnly: true,
@@ -177,7 +177,7 @@ const MOBILE_NAV_STEPS: TourStep[] = [
       align: "start",
     },
   },
-  // Last drawer step — closes drawer on next
+  // Last drawer step - closes drawer on next
   {
     element: "[data-tour='mobile-drawer']",
     mobileOnly: true,

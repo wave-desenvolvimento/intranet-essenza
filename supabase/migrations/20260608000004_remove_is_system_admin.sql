@@ -1,5 +1,5 @@
 -- =============================================
--- Remover is_system_admin() — tudo via has_permission()
+-- Remover is_system_admin() - tudo via has_permission()
 -- has_permission() agora usa auth.uid() internamente
 -- Manter versão com _user_id pra retrocompat temporária
 -- =============================================

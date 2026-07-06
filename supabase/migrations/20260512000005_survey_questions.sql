@@ -42,6 +42,6 @@ CREATE POLICY "answers_select" ON public.survey_answers FOR SELECT TO authentica
 CREATE POLICY "answers_insert" ON public.survey_answers FOR INSERT TO authenticated
   WITH CHECK (response_id IN (SELECT id FROM survey_responses WHERE user_id = auth.uid()));
 
--- Make score nullable on survey_responses (backward compat — old NPS-only responses keep their score)
+-- Make score nullable on survey_responses (backward compat - old NPS-only responses keep their score)
 ALTER TABLE public.survey_responses ALTER COLUMN score DROP NOT NULL;
 ALTER TABLE public.survey_responses ALTER COLUMN score SET DEFAULT NULL;

@@ -144,7 +144,7 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
 
       {tab === "new" && (
         <div>
-          {/* Product catalog — full width */}
+          {/* Product catalog - full width */}
           <div>
             <div className="flex flex-col gap-2 mb-3">
               <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
                       <p className="text-[10px] text-ink-400">{p.sku && `${p.sku} · `}{p.unit}{p.min_qty > 1 ? ` · mín. ${p.min_qty}` : ""}</p>
                     </div>
                     <div className="flex flex-col items-end gap-0.5 shrink-0">
-                      <span className="text-sm font-semibold text-ink-900">{price ? formatPrice(price) : "—"}</span>
+                      <span className="text-sm font-semibold text-ink-900">{price ? formatPrice(price) : "-"}</span>
                       {p.stock_status === "pre_order" && (
                         <span className="rounded-full bg-info-soft px-1.5 py-0.5 text-[8px] font-medium text-info">Pré-venda{p.pre_order_date ? ` · ${new Date(p.pre_order_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}` : ""}</span>
                       )}
@@ -240,7 +240,7 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
             )}
           </div>
 
-          {/* Cart — floating button + Sheet */}
+          {/* Cart - floating button + Sheet */}
           {cart.length > 0 && (
             <button
               onClick={() => setCartOpen(true)}

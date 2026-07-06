@@ -248,7 +248,7 @@ export function LeadsManager({ initialData, initialTotal, initialCounts, canEdit
       <div className="flex items-center justify-between">
         <p className="text-xs text-ink-400">
           {total} resultado{total !== 1 ? "s" : ""}
-          {filterStatus && ` — filtro: ${STATUS_OPTIONS.find((s) => s.value === filterStatus)?.label}`}
+          {filterStatus && ` - filtro: ${STATUS_OPTIONS.find((s) => s.value === filterStatus)?.label}`}
         </p>
         {isLoading && <Loader2 size={14} className="animate-spin text-ink-400" />}
       </div>
@@ -318,7 +318,7 @@ export function LeadsManager({ initialData, initialTotal, initialCounts, canEdit
                             {[lead.cidade, lead.estado].filter(Boolean).join(" - ")}
                           </span>
                         ) : (
-                          <span className="text-ink-300">—</span>
+                          <span className="text-ink-300">-</span>
                         )}
                       </div>
                       <div className="px-4 py-3 hidden sm:block">
@@ -354,11 +354,11 @@ export function LeadsManager({ initialData, initialTotal, initialCounts, canEdit
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <div>
                             <p className="text-xs font-medium text-ink-500 mb-1">CNPJ</p>
-                            <p className="text-sm text-ink-700">{lead.cnpj || "—"}</p>
+                            <p className="text-sm text-ink-700">{lead.cnpj || "-"}</p>
                           </div>
                           <div>
                             <p className="text-xs font-medium text-ink-500 mb-1">Tipo</p>
-                            <p className="text-sm text-ink-700">{lead.tipo_cadastro ? TIPO_LABELS[lead.tipo_cadastro] : "—"}</p>
+                            <p className="text-sm text-ink-700">{lead.tipo_cadastro ? TIPO_LABELS[lead.tipo_cadastro] : "-"}</p>
                           </div>
                           <div>
                             <p className="text-xs font-medium text-ink-500 mb-1">Recebido em</p>

@@ -88,7 +88,7 @@ export function CollectionDetail({ collection, fields, items }: Props) {
     startTransition(async () => { await reorderFields(ids); });
   });
 
-  // Sheets — auto-open campos if ?campos=1
+  // Sheets - auto-open campos if ?campos=1
   const [itemSheet, setItemSheet] = useState(false);
   const [schemaSheet, setSchemaSheet] = useState(() => {
     if (typeof window !== "undefined") {
@@ -296,7 +296,7 @@ export function CollectionDetail({ collection, fields, items }: Props) {
         </div>
       )}
 
-      {/* Items — spreadsheet-style table */}
+      {/* Items - spreadsheet-style table */}
       {fields.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 bg-ink-50/50 py-16">
           <p className="text-sm text-ink-400 mb-3">Defina os campos primeiro</p>
@@ -663,7 +663,7 @@ function CellValue({ value, field }: { value: unknown; field: Field }) {
 
   if (type === "select") {
     const str = String(value || "");
-    if (!str) return <span className="text-ink-300">—</span>;
+    if (!str) return <span className="text-ink-300">-</span>;
     const choice = choices.find((c) => c.value === str);
     if (!choice) return <span className="text-ink-900 truncate block">{str}</span>;
     const Icon = choice.icon ? getIconComponent(choice.icon) : null;
@@ -677,7 +677,7 @@ function CellValue({ value, field }: { value: unknown; field: Field }) {
 
   if (type === "multi_select") {
     const selected = Array.isArray(value) ? (value as string[]) : [];
-    if (selected.length === 0) return <span className="text-ink-300">—</span>;
+    if (selected.length === 0) return <span className="text-ink-300">-</span>;
     return (
       <span className="flex flex-wrap gap-1">
         {selected.map((v) => {
@@ -697,13 +697,13 @@ function CellValue({ value, field }: { value: unknown; field: Field }) {
   if (type === "image_variants") {
     const variants = (typeof value === "object" && value !== null ? value : {}) as Record<string, string>;
     const keys = Object.keys(variants).filter((k) => variants[k]);
-    if (keys.length === 0) return <span className="text-ink-300">—</span>;
+    if (keys.length === 0) return <span className="text-ink-300">-</span>;
     return <span className="text-xs text-ink-500">{keys.length} {keys.length === 1 ? "formato" : "formatos"}</span>;
   }
 
   if (type === "image_array") {
     const items = Array.isArray(value) ? (value as { title?: string; url: string }[]) : [];
-    if (items.length === 0) return <span className="text-ink-300">—</span>;
+    if (items.length === 0) return <span className="text-ink-300">-</span>;
     return (
       <span className="flex items-center gap-1">
         {items.slice(0, 3).map((item, i) => (
@@ -716,12 +716,12 @@ function CellValue({ value, field }: { value: unknown; field: Field }) {
 
   if (type === "file_array") {
     const items = Array.isArray(value) ? (value as { title?: string; url: string }[]) : [];
-    if (items.length === 0) return <span className="text-ink-300">—</span>;
+    if (items.length === 0) return <span className="text-ink-300">-</span>;
     return <span className="text-xs text-ink-500">{items.length} {items.length === 1 ? "arquivo" : "arquivos"}</span>;
   }
 
   const str = String(value || "");
-  if (!str || str === "undefined") return <span className="text-ink-300">—</span>;
+  if (!str || str === "undefined") return <span className="text-ink-300">-</span>;
 
   if (type === "color") {
     return (

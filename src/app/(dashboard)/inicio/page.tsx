@@ -98,7 +98,7 @@ export default async function DashboardPage() {
       monthRevenue: (monthOrders || []).reduce((s, o) => s + Number(o.total), 0),
       recentOrders: (recent || []).map((o) => ({
         id: o.id, status: o.status, total: o.total, created_at: o.created_at,
-        franchise_name: (o.franchise as unknown as { name: string })?.name || "—",
+        franchise_name: (o.franchise as unknown as { name: string })?.name || "-",
       })),
     };
   } else if (canViewOrders && profile?.franchise_id) {

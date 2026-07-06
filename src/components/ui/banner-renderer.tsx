@@ -151,7 +151,7 @@ export function BannerRenderer({ overlays, franchise, backgroundImage, backgroun
         maxWidth: forceWidth ? undefined : "100%",
       }}
     >
-      {/* Image as flow element — drives the container size naturally */}
+      {/* Image as flow element - drives the container size naturally */}
       {backgroundImage ? (
         <img src={backgroundImage} alt="" style={{ display: "block", width: "100%", height: "auto", ...(maxHeight ? { maxHeight } : {}) }} />
       ) : (
@@ -164,7 +164,7 @@ export function BannerRenderer({ overlays, franchise, backgroundImage, backgroun
         const boxW = hasBox ? containerWidth * overlay.width / 100 : undefined;
         const boxH = hasBox ? containerWidth * overlay.height / 100 : undefined;
 
-        // Wrapper: zero-size anchor at x%, y% — child offsets from here
+        // Wrapper: zero-size anchor at x%, y% - child offsets from here
         return (
           <div key={overlay.id} style={{ position: "absolute", left: `${overlay.x}%`, top: `${overlay.y}%`, width: 0, height: 0, overflow: "visible" }}>
             {overlay.type === "qrcode" ? (() => {

@@ -80,7 +80,7 @@ export function MobileNav({ cmsPages = [] }: Props) {
         </div>
       </nav>
 
-      {/* Drawer — full navigation */}
+      {/* Drawer - full navigation */}
       {drawerOpen && (
         <div className="md:hidden fixed inset-0 z-[90]">
           <div className="absolute inset-0 bg-black/30" onClick={() => setDrawerOpen(false)} />

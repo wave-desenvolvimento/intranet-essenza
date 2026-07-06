@@ -164,7 +164,7 @@ export async function createOrder(formData: FormData) {
   if (!Array.isArray(items) || items.length === 0) return { error: "Adicione ao menos um item." };
   if (items.length > 200) return { error: "Limite de 200 itens por pedido." };
 
-  // Validate prices server-side — fetch real prices from DB
+  // Validate prices server-side - fetch real prices from DB
   const { data: franchiseData } = await supabase.from("franchises").select("segment, seller_id").eq("id", profile.franchise_id).single();
   const segment = franchiseData?.segment || "franquia";
   const sellerId = franchiseData?.seller_id || null;
@@ -233,7 +233,7 @@ export async function createOrder(formData: FormData) {
     resendClient.emails.send({
       from: FROM_EMAIL,
       to: commercialEmail,
-      subject: `Novo pedido — ${franchise?.name || "Franquia"} — R$ ${total.toFixed(2)}`,
+      subject: `Novo pedido - ${franchise?.name || "Franquia"} - R$ ${total.toFixed(2)}`,
       react: OrderNotificationEmail({
         franchiseName: franchise?.name || "",
         orderId: order.id,
@@ -248,13 +248,13 @@ export async function createOrder(formData: FormData) {
 
   // Notify admins with orders permission
   notifyByPermission("pedidos", "approve", {
-    title: `Novo pedido — ${franchise?.name || "Franquia"}`,
+    title: `Novo pedido - ${franchise?.name || "Franquia"}`,
     body: `${validatedItems.length} itens · R$ ${total.toFixed(2)}`,
     href: "/gestao-de-pedidos",
     icon: "cart",
   }, user.id).catch(() => {});
 
-  await logAudit({ action: "create", entityType: "order", entityId: order.id, description: `Criou pedido ${ocNumber} — R$ ${total.toFixed(2)}` });
+  await logAudit({ action: "create", entityType: "order", entityId: order.id, description: `Criou pedido ${ocNumber} - R$ ${total.toFixed(2)}` });
 
   revalidatePath("/novo-pedido");
   return { success: true, orderId: order.id };
@@ -303,7 +303,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
   const { data: order } = await supabase.from("orders").select("franchise_id, id").eq("id", orderId).single();
   if (order?.franchise_id) {
     notifyFranchise(order.franchise_id, {
-      title: `Pedido atualizado — ${STATUS_LABELS[status] || status}`,
+      title: `Pedido atualizado - ${STATUS_LABELS[status] || status}`,
       body: `Status do seu pedido foi atualizado`,
       href: "/novo-pedido",
       icon: "cart",
@@ -505,7 +505,7 @@ export async function importProducts(rows: { name: string; sku: string; category
   });
   if (hasInvalidPrice) return { error: "Preços devem ser valores positivos." };
 
-  // Resolve categories — create missing ones
+  // Resolve categories - create missing ones
   const uniqueCats = [...new Set(rows.map((r) => r.category).filter(Boolean))];
   const { data: existingCats } = await supabase.from("product_categories").select("id, name");
   const catMap = new Map((existingCats || []).map((c) => [c.name.toLowerCase(), c.id]));

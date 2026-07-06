@@ -1,5 +1,5 @@
 -- =============================================
--- Webhook de integracao — Allcance
+-- Webhook de integracao - Allcance
 -- Adiciona campos de mapeamento externo + trigger no formato Allcance
 -- pg_net (HTTP) + pg_cron (retry) + webhook_queue (fila)
 -- =============================================
@@ -218,7 +218,7 @@ set metadata = jsonb_build_object(
 where name = 'orders_approved';
 
 -- ===========================================
--- PARTE 3: Trigger — formato Allcance 1:1
+-- PARTE 3: Trigger - formato Allcance 1:1
 -- ===========================================
 
 create or replace function public.on_order_approved()

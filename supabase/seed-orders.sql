@@ -4,7 +4,7 @@
 -- =============================================
 
 -- 1. Fix schema: adicionar colunas e corrigir constraint de status
--- (idempotente — pode rodar várias vezes sem erro)
+-- (idempotente - pode rodar várias vezes sem erro)
 
 alter table public.orders add column if not exists approved_at timestamptz;
 alter table public.orders add column if not exists approved_by uuid references auth.users(id) on delete set null;
@@ -107,7 +107,7 @@ begin
   -- PEDIDOS: distribuídos nos últimos 60 dias, vários status
   -- ===================================================
 
-  -- #1 — Caxias, faturado, 45 dias atrás
+  -- #1 - Caxias, faturado, 45 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
   values (v_order_id, f_caxias, 'faturado', 'Pedido mensal de reposição [SEED]', 856.80,
@@ -119,7 +119,7 @@ begin
   -- fix total
   update public.orders set total = 514.80 + 298.80 + 154.80 where id = v_order_id;
 
-  -- #2 — Gramado, faturado, 40 dias atrás (pedido grande turismo)
+  -- #2 - Gramado, faturado, 40 dias atrás (pedido grande turismo)
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
   values (v_order_id, f_gramado, 'faturado', 'Reposição temporada inverno [SEED]', 0,
@@ -132,7 +132,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000016', 'Kit Presente Essenza Premium', 6, 149.90, 899.40);
   update public.orders set total = 1029.60 + 684.00 + 658.80 + 899.00 + 899.40 where id = v_order_id;
 
-  -- #3 — Carlos Barbosa (multimarca), faturado, 35 dias atrás
+  -- #3 - Carlos Barbosa (multimarca), faturado, 35 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at)
   values (v_order_id, f_carlos, 'faturado', 'Pedido inicial loja nova [SEED]', 0,
@@ -145,7 +145,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000011', 'Massa Artesanal Tagliatelle 500g', 12, 19.90, 238.80);
   update public.orders set total = 293.40 + 322.80 + 141.00 + 155.40 + 238.80 where id = v_order_id;
 
-  -- #4 — Garibaldi (multimarca), aprovado, 12 dias atrás
+  -- #4 - Garibaldi (multimarca), aprovado, 12 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at)
   values (v_order_id, f_garibaldi, 'aprovado', 'Reposição mensal [SEED]', 0,
@@ -156,11 +156,11 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000017', 'Sal Rosa do Himalaia 300g', 12, 19.90, 238.80);
   update public.orders set total = 394.80 + 318.00 + 238.80 where id = v_order_id;
 
-  -- #5 — Caxias, separacao, 8 dias atrás
+  -- #5 - Caxias, separacao, 8 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
   values (v_order_id, f_caxias, 'separacao', 'Urgente para evento fim de semana [SEED]', 0,
-    now() - interval '8 days', now() - interval '8 days', now() - interval '7 days', 'Priorizar separação — evento sábado');
+    now() - interval '8 days', now() - interval '8 days', now() - interval '7 days', 'Priorizar separação - evento sábado');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000003', 'Azeite Trufado 100ml', 6, 54.90, 329.40),
     (v_order_id, 'a0000001-0000-0000-0000-000000000015', 'Kit Presente Essenza Clássico', 8, 89.90, 719.20),
@@ -168,7 +168,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000010', 'Geleia de Damasco 260g', 12, 21.90, 262.80);
   update public.orders set total = 329.40 + 719.20 + 599.60 + 262.80 where id = v_order_id;
 
-  -- #6 — Gramado, aprovado, 6 dias atrás
+  -- #6 - Gramado, aprovado, 6 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at)
   values (v_order_id, f_gramado, 'aprovado', 'Reposição semanal [SEED]', 0,
@@ -180,7 +180,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000020', 'Conserva de Berinjela 300g', 6, 23.90, 143.40);
   update public.orders set total = 514.80 + 418.80 + 161.40 + 143.40 where id = v_order_id;
 
-  -- #7 — Matriz, separacao, 5 dias atrás (showroom)
+  -- #7 - Matriz, separacao, 5 dias atrás (showroom)
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
   values (v_order_id, f_matriz, 'separacao', 'Estoque showroom Bento [SEED]', 0,
@@ -194,7 +194,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000009', 'Geleia de Figo 260g', 12, 21.90, 262.80);
   update public.orders set total = 1029.60 + 684.00 + 597.60 + 549.60 + 238.80 + 262.80 where id = v_order_id;
 
-  -- #8 — Carlos Barbosa, enviado, 3 dias atrás (aguardando aprovação)
+  -- #8 - Carlos Barbosa, enviado, 3 dias atrás (aguardando aprovação)
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
   values (v_order_id, f_carlos, 'enviado', 'Reposição quinzenal [SEED]', 0,
@@ -205,7 +205,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000014', 'Tempero Ervas Finas 50g', 12, 17.90, 214.80);
   update public.orders set total = 322.80 + 135.00 + 214.80 where id = v_order_id;
 
-  -- #9 — Gramado, enviado, 2 dias atrás
+  -- #9 - Gramado, enviado, 2 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
   values (v_order_id, f_gramado, 'enviado', 'Faltando kits presente na vitrine [SEED]', 0,
@@ -216,7 +216,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000003', 'Azeite Trufado 100ml', 12, 54.90, 658.80);
   update public.orders set total = 1348.50 + 1499.00 + 658.80 where id = v_order_id;
 
-  -- #10 — Caxias, enviado, 1 dia atrás
+  -- #10 - Caxias, enviado, 1 dia atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
   values (v_order_id, f_caxias, 'enviado', 'Pedido semanal [SEED]', 0,
@@ -228,7 +228,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000017', 'Sal Rosa do Himalaia 300g', 12, 16.50, 198.00);
   update public.orders set total = 405.60 + 381.60 + 154.80 + 198.00 where id = v_order_id;
 
-  -- #11 — Garibaldi, enviado, hoje
+  -- #11 - Garibaldi, enviado, hoje
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
   values (v_order_id, f_garibaldi, 'enviado', 'Preciso urgente das conservas [SEED]', 0,
@@ -239,7 +239,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000008', 'Geleia de Pimenta 260g', 6, 23.50, 141.00);
   update public.orders set total = 378.00 + 342.00 + 141.00 where id = v_order_id;
 
-  -- #12 — Matriz, enviado, hoje (pedido grande)
+  -- #12 - Matriz, enviado, hoje (pedido grande)
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
   values (v_order_id, f_matriz, 'enviado', 'Reposição geral showroom [SEED]', 0,
@@ -253,7 +253,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000016', 'Kit Presente Essenza Premium', 10, 149.90, 1499.00);
   update public.orders set total = 2059.20 + 1368.00 + 1317.60 + 837.60 + 1798.00 + 1499.00 where id = v_order_id;
 
-  -- #13 — Caxias, cancelado, 30 dias atrás
+  -- #13 - Caxias, cancelado, 30 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, admin_notes)
   values (v_order_id, f_caxias, 'cancelado', 'Pedido duplicado [SEED]', 514.80,
@@ -261,7 +261,7 @@ begin
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000001', 'Azeite Extra Virgem 500ml', 12, 42.90, 514.80);
 
-  -- #14 — Gramado, faturado, 20 dias atrás
+  -- #14 - Gramado, faturado, 20 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
   values (v_order_id, f_gramado, 'faturado', 'Reposição rápida [SEED]', 0,
@@ -272,7 +272,7 @@ begin
     (v_order_id, 'a0000001-0000-0000-0000-000000000010', 'Geleia de Damasco 260g', 12, 21.90, 262.80);
   update public.orders set total = 597.60 + 549.60 + 262.80 where id = v_order_id;
 
-  -- #15 — Garibaldi, faturado, 55 dias atrás
+  -- #15 - Garibaldi, faturado, 55 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at)
   values (v_order_id, f_garibaldi, 'faturado', 'Primeiro pedido da loja [SEED]', 0,

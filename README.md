@@ -14,15 +14,15 @@ Brand Hub para a rede **Empório Essenza Serra Gaúcha**. Plataforma centralizad
 
 ## Funcionalidades
 
-- **CMS dinâmico** — Collections com 15+ field types, 4 view types (gallery, files, table, course), drag-reorder, versionamento com revert, share links
-- **Pages Manager** — Estrutura hierárquica de páginas com coleções vinculadas e roles (main/sidebar)
-- **Módulo de Pedidos** — Catálogo com preços por segmento (franquia vs multimarca/PDV), carrinho, gestão admin com filtros/exports/status workflow
-- **Templates** — Editor visual drag-and-drop com variáveis dinâmicas, QR codes, download PNG, share WhatsApp
-- **Permissões granulares** — Sistema módulo.ação com roles hierárquicas e levels
-- **Notificações** — In-app + Web Push com bell e unread count
-- **Analytics** — Tracking de views/downloads, dashboard de métricas, relatórios de pedidos
-- **PWA** — Manifest, ícones, responsivo 100% mobile, bottom nav, drawer
-- **Tour guiado** — Onboarding interativo responsivo (desktop e mobile)
+- **CMS dinâmico** - Collections com 15+ field types, 4 view types (gallery, files, table, course), drag-reorder, versionamento com revert, share links
+- **Pages Manager** - Estrutura hierárquica de páginas com coleções vinculadas e roles (main/sidebar)
+- **Módulo de Pedidos** - Catálogo com preços por segmento (franquia vs multimarca/PDV), carrinho, gestão admin com filtros/exports/status workflow
+- **Templates** - Editor visual drag-and-drop com variáveis dinâmicas, QR codes, download PNG, share WhatsApp
+- **Permissões granulares** - Sistema módulo.ação com roles hierárquicas e levels
+- **Notificações** - In-app + Web Push com bell e unread count
+- **Analytics** - Tracking de views/downloads, dashboard de métricas, relatórios de pedidos
+- **PWA** - Manifest, ícones, responsivo 100% mobile, bottom nav, drawer
+- **Tour guiado** - Onboarding interativo responsivo (desktop e mobile)
 
 ## Pré-requisitos
 

@@ -108,7 +108,7 @@ export async function getAnalyticsDashboard(from?: string, to?: string) {
     for (const e of events || []) {
       if (!e.franchise_id) continue;
       const franchise = e.franchises as unknown as { name: string };
-      const existing = map.get(e.franchise_id) || { franchiseId: e.franchise_id, name: franchise?.name || "—", views: 0, downloads: 0 };
+      const existing = map.get(e.franchise_id) || { franchiseId: e.franchise_id, name: franchise?.name || "-", views: 0, downloads: 0 };
       if (e.event_type === "view") existing.views++;
       else if (e.event_type === "download") existing.downloads++;
       map.set(e.franchise_id, existing);
@@ -206,7 +206,7 @@ export async function getOrdersAnalytics(from?: string, to?: string) {
     if (!o.franchise_id) continue;
     const f = o.franchises as unknown as { name: string; segment: string };
     const existing = byFranchiseMap.get(o.franchise_id) || {
-      franchiseId: o.franchise_id, name: f?.name || "—", segment: f?.segment || "franquia", orders: 0, revenue: 0,
+      franchiseId: o.franchise_id, name: f?.name || "-", segment: f?.segment || "franquia", orders: 0, revenue: 0,
     };
     existing.orders++;
     existing.revenue += Number(o.total);
@@ -302,7 +302,7 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
 
   for (const pv of pvRows) {
     if (!pv.franchise_id) continue;
-    const fName = (pv.franchises as unknown as { name: string })?.name || "—";
+    const fName = (pv.franchises as unknown as { name: string })?.name || "-";
     const existing = franchiseDetailMap.get(pv.franchise_id) || {
       franchiseId: pv.franchise_id, name: fName,
       totalPageViews: 0, modules: new Map(), users: new Map(), lastActivity: pv.created_at,

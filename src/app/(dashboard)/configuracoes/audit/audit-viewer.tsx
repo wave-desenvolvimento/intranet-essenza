@@ -174,8 +174,8 @@ export function AuditViewer({ entries: initialEntries, total: initialTotal }: Pr
                           {Object.entries(e.changes as Record<string, { old: unknown; new: unknown }>).map(([field, val]) => (
                             <div key={field}>
                               <span className="text-ink-400">{field}:</span>{" "}
-                              <span className="text-danger line-through">{String(val.old ?? "—")}</span>{" → "}
-                              <span className="text-success">{String(val.new ?? "—")}</span>
+                              <span className="text-danger line-through">{String(val.old ?? "-")}</span>{" → "}
+                              <span className="text-success">{String(val.new ?? "-")}</span>
                             </div>
                           ))}
                         </div>

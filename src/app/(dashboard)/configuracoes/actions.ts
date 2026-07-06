@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermission, getUserRoleLevel } from "@/lib/permissions";
 
-// Ações pertinentes por módulo — só cria o que cada módulo realmente usa
+// Ações pertinentes por módulo - só cria o que cada módulo realmente usa
 const MODULE_ACTIONS: Record<string, string[]> = {
   dashboard:            ["view"],
   usuarios:             ["view", "create", "edit", "delete", "manage"],

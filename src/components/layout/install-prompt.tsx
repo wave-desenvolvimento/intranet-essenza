@@ -35,7 +35,7 @@ export function InstallPrompt() {
     // Already installed or dismissed
     if (isStandalone() || isDismissed()) return;
 
-    // iOS Safari — no beforeinstallprompt, show manual instructions
+    // iOS Safari - no beforeinstallprompt, show manual instructions
     if (isIOS()) {
       // Only show in Safari (not in-app browsers)
       const isSafari = /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
@@ -45,7 +45,7 @@ export function InstallPrompt() {
       return;
     }
 
-    // Android/Chrome — capture install prompt
+    // Android/Chrome - capture install prompt
     function handleBeforeInstall(e: Event) {
       e.preventDefault();
       setDeferredPrompt(e);

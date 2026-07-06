@@ -162,7 +162,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
   }
 
   function formatDate(date: string | null) {
-    if (!date) return "—";
+    if (!date) return "-";
     return new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
   }
 
@@ -389,7 +389,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                 </div>
               )}
 
-              {/* Roles — only system admins can assign roles */}
+              {/* Roles - only system admins can assign roles */}
               {canManageRoles && roles.length > 0 && (
                 <div>
                   <label className="text-xs font-medium text-ink-700 mb-2 block flex items-center gap-1.5">

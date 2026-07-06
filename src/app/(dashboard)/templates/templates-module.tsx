@@ -365,7 +365,7 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
         link.download = file.name;
         link.href = URL.createObjectURL(blob);
         link.click();
-        toast.success("Imagem salva — envie manualmente pelo WhatsApp");
+        toast.success("Imagem salva - envie manualmente pelo WhatsApp");
       }
     } catch (err) {
       toast.dismiss("share");
@@ -413,7 +413,7 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
 
             return (
               <div key={t.id} className="rounded-xl border border-ink-100 bg-white overflow-hidden group">
-                {/* Thumbnail — clipped to max height */}
+                {/* Thumbnail - clipped to max height */}
                 <div
                   id={`template-render-${t.id}`}
                   className="cursor-pointer max-h-64 overflow-hidden"
@@ -474,10 +474,10 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
           : undefined;
         return (
           <div className="fixed inset-0 z-[100]">
-            {/* Backdrop — full coverage */}
+            {/* Backdrop - full coverage */}
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewTemplate(null)} />
 
-            {/* Close button — top right */}
+            {/* Close button - top right */}
             <button
               onClick={() => setPreviewTemplate(null)}
               className="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
@@ -485,7 +485,7 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
               <X size={20} />
             </button>
 
-            {/* Content — centered */}
+            {/* Content - centered */}
             <div className="absolute inset-0 flex flex-col items-center justify-center p-6 pointer-events-none">
               {/* Image */}
               <div id="template-preview-render" className="pointer-events-auto rounded-xl overflow-hidden shadow-2xl" style={{ maxHeight: "calc(100vh - 140px)", maxWidth: "min(90vw, 800px)" }}>
@@ -499,7 +499,7 @@ export function TemplatesModule({ templates, canCreate, canEdit, canDelete, fran
                 />
               </div>
 
-              {/* Actions — fixed bottom bar */}
+              {/* Actions - fixed bottom bar */}
               <div className="pointer-events-auto mt-5 flex items-center gap-2 rounded-2xl bg-white/95 backdrop-blur px-3 py-2.5 shadow-xl">
                 <button onClick={() => handleDownload(t)} disabled={downloading} className="flex items-center gap-1.5 rounded-xl bg-brand-olive px-4 py-2 text-xs font-medium text-white hover:bg-brand-olive-dark transition-colors">
                   <Download size={13} /> {downloading ? "Gerando..." : "Baixar PNG"}

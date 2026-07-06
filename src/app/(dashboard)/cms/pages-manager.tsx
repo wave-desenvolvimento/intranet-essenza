@@ -517,7 +517,7 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
           </SortableContext>
         </div>
 
-        {/* Sections — entire block is sortable, pages inside are also sortable */}
+        {/* Sections - entire block is sortable, pages inside are also sortable */}
         <SortableContext items={groupPages.map((g) => g.id)} strategy={verticalListSortingStrategy}>
           {grouped.map(({ group, children }) => (
             <SortableSection
@@ -642,7 +642,7 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
 
           {editingIsSystem && (
             <div className="rounded-lg bg-ink-50 px-3 py-2">
-              <p className="text-xs text-ink-500">Página de sistema — rota e permissões são fixas. Você pode alterar título, ícone e seção.</p>
+              <p className="text-xs text-ink-500">Página de sistema - rota e permissões são fixas. Você pode alterar título, ícone e seção.</p>
             </div>
           )}
 

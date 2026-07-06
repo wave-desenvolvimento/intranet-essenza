@@ -1,10 +1,10 @@
-# Intranet Essenza — Documentação do Sistema
+# Intranet Essenza - Documentação do Sistema
 
 ## Sobre o projeto
 
 A Intranet Essenza é uma plataforma digital completa desenvolvida para a franqueadora Essenza (serra gaúcha), que nasceu da necessidade de centralizar a gestão de materiais de marketing e comunicação com franqueados, e evoluiu para uma intranet corporativa com módulos de pedidos, integração com ERP, pesquisas de satisfação e gestão completa da operação de franquias.
 
-O sistema substitui processos que antes eram feitos por e-mail, WhatsApp e planilhas — unificando tudo numa plataforma acessível via web e mobile, com controle granular de permissões por perfil de usuário.
+O sistema substitui processos que antes eram feitos por e-mail, WhatsApp e planilhas - unificando tudo numa plataforma acessível via web e mobile, com controle granular de permissões por perfil de usuário.
 
 ---
 
@@ -36,7 +36,7 @@ O coração da plataforma. Permite criar e gerenciar qualquer tipo de conteúdo 
 - **Páginas compostas** por uma ou mais coleções, organizadas em seções na sidebar
 - **3 tipos de visualização:** tabela (spreadsheet), galeria (cards visuais) e arquivos (lista)
 - **Drag-and-drop** para reordenar páginas e seções
-- **Sistema de campos** editável em tempo real — o admin monta a estrutura sem código
+- **Sistema de campos** editável em tempo real - o admin monta a estrutura sem código
 - **Versionamento** com histórico de alterações por item
 - **Agendamento** de publicação e expiração de conteúdo
 - **Busca full-text** em todos os conteúdos
@@ -63,7 +63,7 @@ Página centralizada que agrega todos os arquivos e imagens de todas as coleçõ
 
 ### 3. Templates Personalizáveis
 
-Sistema de geração de materiais gráficos personalizados por franquia — o franqueado baixa banners, posts e artes já com seus dados (telefone, endereço, Instagram, etc.) automaticamente preenchidos.
+Sistema de geração de materiais gráficos personalizados por franquia - o franqueado baixa banners, posts e artes já com seus dados (telefone, endereço, Instagram, etc.) automaticamente preenchidos.
 
 **Funcionalidades:**
 - Editor visual drag-and-drop para posicionar textos sobre imagens
@@ -270,7 +270,7 @@ Histórico completo de ações no sistema.
 
 ## Segurança
 
-- **RLS** em todas as tabelas públicas — dados filtrados no nível do banco
+- **RLS** em todas as tabelas públicas - dados filtrados no nível do banco
 - **API keys** encriptadas no Supabase Vault (pgsodium)
 - **Anon key** apenas no client, **service_role** apenas no server
 - **Permissões** verificadas em server actions e policies
@@ -284,12 +284,12 @@ Histórico completo de ações no sistema.
 
 O projeto começou como um simples **gerenciador de assets** para compartilhar materiais de marketing com franqueados. A partir das necessidades reais da operação, evoluiu organicamente para uma intranet corporativa completa:
 
-1. **Fase 1 — CMS e Assets:** Cadastro de materiais, categorias, download por franqueados
-2. **Fase 2 — Permissões e Roles:** Controle granular de acesso por tipo de usuário
-3. **Fase 3 — Pedidos:** Módulo comercial completo com catálogo, carrinho e gestão
-4. **Fase 4 — Comunicação:** Comunicados, FAQ, pesquisas NPS
-5. **Fase 5 — Integração:** Webhook com ERP Allcance, templates personalizáveis
-6. **Fase 6 — Inteligência:** Relatórios com filtros de período, biblioteca centralizada, busca global, auto-cleanup
+1. **Fase 1 - CMS e Assets:** Cadastro de materiais, categorias, download por franqueados
+2. **Fase 2 - Permissões e Roles:** Controle granular de acesso por tipo de usuário
+3. **Fase 3 - Pedidos:** Módulo comercial completo com catálogo, carrinho e gestão
+4. **Fase 4 - Comunicação:** Comunicados, FAQ, pesquisas NPS
+5. **Fase 5 - Integração:** Webhook com ERP Allcance, templates personalizáveis
+6. **Fase 6 - Inteligência:** Relatórios com filtros de período, biblioteca centralizada, busca global, auto-cleanup
 
 Toda a plataforma roda num stack enxuto (Next.js + Supabase), sem backend separado, sem infraestrutura complexa. As automações pesadas (webhooks, cleanup, retries) rodam direto no PostgreSQL via pg_cron e pg_net, eliminando a necessidade de workers externos ou filas de mensagens.
 
@@ -306,5 +306,5 @@ Toda a plataforma roda num stack enxuto (Next.js + Supabase), sem backend separa
 
 ---
 
-*Desenvolvido por WaveCommerce — wesley@wavecommerce.com.br*
+*Desenvolvido por WaveCommerce - wesley@wavecommerce.com.br*
 *Última atualização: Junho 2026*
