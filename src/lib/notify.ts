@@ -133,7 +133,7 @@ export async function notifyFranchise({ franchiseId, notification, email, exclud
 // ---- Email dispatch (internal) ----
 
 const BATCH_SIZE = 50;
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://intranet.emporioessenza.com.br";
+const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://intranet.emporioessenza.com.br").replace(/\/$/, "");
 
 async function sendBatchEmail(userIds: string[], params: EmailParams) {
   const resend = getResend();

@@ -465,7 +465,7 @@ async function notifyNewContent(
       icon: "megaphone",
     },
     email: {
-      subject: `Novo conteúdo disponível -${collectionName}`,
+      subject: `Novo conteúdo disponível: ${collectionName}`,
       emailBody: `Um novo material foi publicado em "${collectionName}".\n\nAcesse o Hub para conferir.`,
       ctaLabel: "Ver conteúdo",
       ctaUrl: pageSlug ? `/pagina/${pageSlug}` : "/inicio",

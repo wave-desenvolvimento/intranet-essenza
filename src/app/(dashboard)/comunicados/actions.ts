@@ -76,7 +76,7 @@ export async function createAnnouncement(formData: FormData) {
       icon: "megaphone",
     },
     email: {
-      subject: `Novo comunicado${priorityLabel} -${title}`,
+      subject: `Novo comunicado${priorityLabel}: ${title}`,
       emailBody: body.replace(/<[^>]+>/g, "").slice(0, 500),
       ctaLabel: "Ver comunicado",
       ctaUrl: "/comunicados",
