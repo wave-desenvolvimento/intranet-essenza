@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, X, Check, Image, FileText } from "lucide-react";
+import { Search, X, Check, ChevronLeft, ChevronRight, Image, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLibraryAssets, type LibraryAsset } from "@/app/(dashboard)/biblioteca/actions";
 
@@ -12,6 +12,8 @@ interface LibraryPickerProps {
   multiple?: boolean;
   accept?: "image" | "file" | "all";
 }
+
+const PAGE_SIZE = 30;
 
 function isImageUrl(url: string) {
   const ext = url.split("?")[0].split(".").pop()?.toLowerCase() || "";
@@ -25,6 +27,7 @@ export function LibraryPicker({ open, onClose, onSelect, multiple = false, accep
   const [loading, setLoading] = useState(!cachedAssets);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(0);
 
   const load = useCallback(async () => {
     if (cachedAssets) { setAssets(cachedAssets); setLoading(false); return; }
@@ -36,7 +39,7 @@ export function LibraryPicker({ open, onClose, onSelect, multiple = false, accep
   }, []);
 
   useEffect(() => {
-    if (open) { load(); setSelected(new Set()); setSearch(""); }
+    if (open) { load(); setSelected(new Set()); setSearch(""); setPage(0); }
   }, [open, load]);
 
   if (!open) return null;
@@ -50,6 +53,10 @@ export function LibraryPicker({ open, onClose, onSelect, multiple = false, accep
     }
     return true;
   });
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const safePage = Math.min(page, Math.max(0, totalPages - 1));
+  const paginated = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   function toggle(id: string) {
     if (multiple) {
@@ -80,6 +87,11 @@ export function LibraryPicker({ open, onClose, onSelect, multiple = false, accep
     }
   }
 
+  function handleSearch(v: string) {
+    setSearch(v);
+    setPage(0);
+  }
+
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 px-3" onClick={onClose}>
       <div className="w-full max-w-2xl max-h-[80vh] rounded-xl bg-white shadow-modal flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -92,17 +104,17 @@ export function LibraryPicker({ open, onClose, onSelect, multiple = false, accep
         {/* Search */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-ink-50">
           <Search size={14} className="text-ink-400 shrink-0" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por titulo, colecao..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
-          {search && <button onClick={() => setSearch("")} className="text-ink-400 hover:text-ink-700"><X size={12} /></button>}
+          <input value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Buscar por titulo, colecao..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
+          {search && <button onClick={() => handleSearch("")} className="text-ink-400 hover:text-ink-700"><X size={12} /></button>}
         </div>
 
         {/* Grid */}
         <div className="flex-1 overflow-y-auto p-3">
           {loading && <p className="text-center text-sm text-ink-400 py-8">Carregando...</p>}
           {!loading && filtered.length === 0 && <p className="text-center text-sm text-ink-400 py-8">Nenhum arquivo encontrado</p>}
-          {!loading && filtered.length > 0 && (
+          {!loading && paginated.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-              {filtered.map((a) => {
+              {paginated.map((a) => {
                 const isImg = isImageUrl(a.url);
                 const isSelected = selected.has(a.id);
                 return (
@@ -137,13 +149,25 @@ export function LibraryPicker({ open, onClose, onSelect, multiple = false, accep
           )}
         </div>
 
-        {/* Footer */}
-        {multiple && selected.size > 0 && (
+        {/* Pagination + Footer */}
+        {(totalPages > 1 || (multiple && selected.size > 0)) && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-ink-100">
-            <span className="text-xs text-ink-500">{selected.size} selecionado{selected.size > 1 ? "s" : ""}</span>
-            <button onClick={confirm} className="rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors">
-              Confirmar
-            </button>
+            {totalPages > 1 ? (
+              <div className="flex items-center gap-2">
+                <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={safePage === 0} className="rounded-md p-1 text-ink-400 hover:text-ink-700 disabled:opacity-30 transition-colors"><ChevronLeft size={16} /></button>
+                <span className="text-xs text-ink-500">{safePage + 1} / {totalPages}</span>
+                <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={safePage >= totalPages - 1} className="rounded-md p-1 text-ink-400 hover:text-ink-700 disabled:opacity-30 transition-colors"><ChevronRight size={16} /></button>
+                <span className="text-[10px] text-ink-400 ml-1">{filtered.length} itens</span>
+              </div>
+            ) : <div />}
+            {multiple && selected.size > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-ink-500">{selected.size} selecionado{selected.size > 1 ? "s" : ""}</span>
+                <button onClick={confirm} className="rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors">
+                  Confirmar
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
