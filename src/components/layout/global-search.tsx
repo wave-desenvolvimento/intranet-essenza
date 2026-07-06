@@ -86,8 +86,8 @@ export function GlobalSearch() {
     const [pages, items, franchises, products, orders, profiles, announcements, faqItems, surveys, mediaFields, matchingFolders, matchingCollections] = await Promise.all([
       // Pages
       supabase.from("cms_pages").select("id, title, slug, icon, is_group").ilike("title", `%${q}%`).limit(5),
-      // CMS Items
-      supabase.from("cms_items").select("id, data, collection_id, status").ilike("data::text", `%${q}%`).limit(10),
+      // CMS Items (data + tags via RPC - PostgREST não suporta ::text cast em ilike)
+      supabase.rpc("search_cms_items", { search_term: q, result_limit: 20 }),
       // Franchises
       supabase.from("franchises").select("id, name, slug, city, segment").or(`name.ilike.%${q}%,city.ilike.%${q}%,cnpj.ilike.%${q}%`).limit(5),
       // Products
@@ -119,7 +119,7 @@ export function GlobalSearch() {
       });
     }
 
-    // CMS Items - merge text-matched + folder/collection name-matched items
+    // CMS Items - merge RPC results + folder/collection name-matched items
     const allCmsItems: { id: string; data: unknown; collection_id: string; status: string }[] = [...(items.data || [])];
     const seenItemIds = new Set(allCmsItems.map((i) => i.id));
 
@@ -151,16 +151,12 @@ export function GlobalSearch() {
       }
     }
 
-    // Dedicated search for items in media-containing collections (separate limit)
+    // Dedicated search for items in media-containing collections via RPC
     if (mediaFields.data && mediaFields.data.length > 0) {
       const mediaColIds = [...new Set(mediaFields.data.map((mf: { collection_id: string }) => mf.collection_id))];
-      const { data: mediaItems } = await supabase
-        .from("cms_items")
-        .select("id, data, collection_id, status")
-        .in("collection_id", mediaColIds)
-        .eq("status", "published")
-        .ilike("data::text", `%${q}%`)
-        .limit(15);
+      const { data: mediaItems } = await supabase.rpc("search_cms_items", {
+        search_term: q, filter_collection_ids: mediaColIds, filter_status: "published", result_limit: 15,
+      });
       for (const mi of mediaItems || []) {
         if (!seenItemIds.has(mi.id)) { allCmsItems.push(mi); seenItemIds.add(mi.id); }
       }
