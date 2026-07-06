@@ -5,10 +5,13 @@ import { getEffectivePermissions } from "@/lib/dev-mode-server";
 
 export default async function DynamicPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ folder?: string; item?: string }>;
 }) {
   const { slug } = await params;
+  const { folder: initialFolderId, item: initialItemId } = await searchParams;
   const supabase = await createClient();
 
   // Check permission for this page's module
@@ -72,6 +75,8 @@ export default async function DynamicPage({
       collections={validCollections}
       folders={folders || []}
       allCollections={allCollections || []}
+      initialFolderId={initialFolderId}
+      initialItemId={initialItemId}
     />
   );
 }

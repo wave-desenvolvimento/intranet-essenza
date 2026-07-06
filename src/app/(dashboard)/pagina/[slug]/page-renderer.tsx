@@ -72,9 +72,11 @@ interface Props {
   collections: CollectionData[];
   folders: FolderType[];
   allCollections: CollectionMeta[];
+  initialFolderId?: string;
+  initialItemId?: string;
 }
 
-export function PageRenderer({ page, collections, folders: initialFolders, allCollections }: Props) {
+export function PageRenderer({ page, collections, folders: initialFolders, allCollections, initialFolderId, initialItemId }: Props) {
   const mainCollection = collections.find((c) => c.role === "main");
   const filterCollections = collections.filter((c) => c.role === "filter");
   const { can } = usePermissions();
@@ -87,6 +89,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const [error, setError] = useState("");
   const { confirm, dialogProps } = useConfirm();
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
 
   // Folder state
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -102,6 +105,38 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   const folders = initialFolders;
+
+  // Deep-link: navigate to folder and highlight item from search
+  useEffect(() => {
+    if (initialFolderId) {
+      // Build folder path from root to target
+      const path: { id: string; name: string }[] = [];
+      let walkId: string | null = initialFolderId;
+      let depth = 0;
+      while (walkId && depth < 20) {
+        const f = folders.find((fo) => fo.id === walkId);
+        if (!f) break;
+        path.unshift({ id: f.id, name: f.name });
+        walkId = f.parent_id;
+        depth++;
+      }
+      if (path.length > 0) {
+        setCurrentFolderId(initialFolderId);
+        setFolderPath(path);
+      }
+    }
+    if (initialItemId) {
+      setHighlightedItemId(initialItemId);
+      // Scroll to item after render
+      setTimeout(() => {
+        const el = document.querySelector(`[data-item-id="${initialItemId}"]`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+      // Remove highlight after 3s
+      setTimeout(() => setHighlightedItemId(null), 3500);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load favorite IDs
   useEffect(() => {
@@ -389,13 +424,13 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
       {currentCollection && (
         <>
           {page.view_type === "gallery" && (
-            <GalleryPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} foldersNode={foldersGrid} />
+            <GalleryPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} foldersNode={foldersGrid} highlightedItemId={highlightedItemId} />
           )}
           {page.view_type === "files" && (
-            <FilesPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} foldersNode={foldersGrid} />
+            <FilesPageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} favoriteIds={favoriteIds} foldersNode={foldersGrid} highlightedItemId={highlightedItemId} />
           )}
           {page.view_type === "table" && (
-            <TablePageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} foldersNode={foldersGrid} />
+            <TablePageView collection={currentCollection} filterCollections={filterCollections} canEdit={canEdit} onEdit={openItemSheet} onDelete={removeItem} isPending={isPending} foldersNode={foldersGrid} highlightedItemId={highlightedItemId} />
           )}
           {page.view_type === "course" && (
             <CoursePageView collection={currentCollection} />
@@ -895,7 +930,7 @@ function PageCollectionMultiRefField({ field, value, onChange }: { field: Field;
 }
 
 // === Gallery View (read-only, pra franqueado) ===
-function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set(), foldersNode }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string>; foldersNode?: React.ReactNode }) {
+function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set(), foldersNode, highlightedItemId }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string>; foldersNode?: React.ReactNode; highlightedItemId?: string | null }) {
   const [lightbox, setLightbox] = useState<{ url: string; variants: ImageVariant[] } | null>(null);
   const [detailItem, setDetailItem] = useState<Item | null>(null);
   const [fileModal, setFileModal] = useState<{ title: string; files: { title: string; url: string }[] } | null>(null);
@@ -1107,7 +1142,7 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
           }
 
           return (
-            <div key={item.id} className={cn("rounded-xl border bg-white overflow-hidden transition-colors", isSelected ? "border-brand-olive ring-2 ring-brand-olive/20" : "border-ink-100 hover:border-ink-200")}>
+            <div key={item.id} data-item-id={item.id} className={cn("rounded-xl border bg-white overflow-hidden transition-all", isSelected ? "border-brand-olive ring-2 ring-brand-olive/20" : highlightedItemId === item.id ? "border-brand-olive ring-2 ring-brand-olive/30 animate-pulse" : "border-ink-100 hover:border-ink-200")}>
               {/* Thumbnail */}
               <div
                 className={cn(
@@ -1448,7 +1483,7 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
   );
 }
 
-function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set(), foldersNode }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string>; foldersNode?: React.ReactNode }) {
+function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set(), foldersNode, highlightedItemId }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string>; foldersNode?: React.ReactNode; highlightedItemId?: string | null }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const titleField = collection.fields.find((f) => f.field_type === "text");
@@ -1532,7 +1567,7 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
           const isImg = imageField && downloadField === imageField && fileUrl;
 
           return (
-            <div key={item.id} className={cn("flex items-center gap-4 px-5 py-3.5 hover:bg-ink-50/50 transition-colors group", i < paginatedFiles.length - 1 && "border-b border-ink-50")}>
+            <div key={item.id} data-item-id={item.id} className={cn("flex items-center gap-4 px-5 py-3.5 hover:bg-ink-50/50 transition-all group", i < paginatedFiles.length - 1 && "border-b border-ink-50", highlightedItemId === item.id && "bg-brand-olive-soft/40 ring-2 ring-inset ring-brand-olive/30 animate-pulse")}>
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-50">
                 {isImg ? <img src={fileUrl} alt="" className="h-10 w-10 rounded-lg object-cover" /> : <FileText size={18} className="text-ink-400" />}
               </div>
@@ -1566,7 +1601,7 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
 }
 
 // === Table View ===
-function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelete, isPending, foldersNode }: { collection: CollectionData; filterCollections: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; foldersNode?: React.ReactNode }) {
+function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelete, isPending, foldersNode, highlightedItemId }: { collection: CollectionData; filterCollections: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; foldersNode?: React.ReactNode; highlightedItemId?: string | null }) {
   const [search, setSearch] = useState("");
   const titleField = collection.fields.find((f) => f.field_type === "text");
   const visibleFields = collection.fields.filter((f) => !["boolean", "image", "file", "file_array", "image_array"].includes(f.field_type)).slice(0, 4);
@@ -1598,7 +1633,7 @@ function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelet
           </thead>
           <tbody>
             {filtered.map((item) => (
-              <tr key={item.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/50 transition-colors">
+              <tr key={item.id} data-item-id={item.id} className={cn("border-b border-ink-50 last:border-0 hover:bg-ink-50/50 transition-all", highlightedItemId === item.id && "bg-brand-olive-soft/40 animate-pulse")}>
                 {visibleFields.map((f) => (
                   <td key={f.id} className="px-4 py-3 max-w-[220px] truncate text-ink-900">
                     {f.field_type === "color" ? (

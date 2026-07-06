@@ -120,7 +120,7 @@ export function GlobalSearch() {
     }
 
     // CMS Items - merge RPC results + folder/collection name-matched items
-    const allCmsItems: { id: string; data: unknown; collection_id: string; status: string }[] = [...(items.data || [])];
+    const allCmsItems: { id: string; data: unknown; collection_id: string; status: string; folder_id?: string | null }[] = [...(items.data || [])];
     const seenItemIds = new Set(allCmsItems.map((i) => i.id));
 
     // Add items from folders whose name matches the query
@@ -128,7 +128,7 @@ export function GlobalSearch() {
       const folderIds = matchingFolders.data.map((f: { id: string }) => f.id);
       const { data: folderItems } = await supabase
         .from("cms_items")
-        .select("id, data, collection_id, status")
+        .select("id, data, collection_id, status, folder_id")
         .in("folder_id", folderIds)
         .eq("status", "published")
         .limit(15);
@@ -142,7 +142,7 @@ export function GlobalSearch() {
       const colIds = matchingCollections.data.map((c: { id: string }) => c.id);
       const { data: colItems } = await supabase
         .from("cms_items")
-        .select("id, data, collection_id, status")
+        .select("id, data, collection_id, status, folder_id")
         .in("collection_id", colIds)
         .eq("status", "published")
         .limit(15);
@@ -184,10 +184,14 @@ export function GlobalSearch() {
         if (!title) continue;
         const col = colMap.get(item.collection_id);
         const pageSlug = pageMap.get(item.collection_id);
+        const itemParams = new URLSearchParams();
+        if (item.folder_id) itemParams.set("folder", item.folder_id);
+        itemParams.set("item", item.id);
+        const itemQs = itemParams.toString();
         all.push({
           id: `item-${item.id}`, type: "item", title,
           subtitle: (col?.name || "") + (item.status === "draft" ? " · Rascunho" : ""),
-          icon: "file", href: pageSlug ? `/pagina/${pageSlug}` : `/cms/${col?.slug || ""}`,
+          icon: "file", href: pageSlug ? `/pagina/${pageSlug}?${itemQs}` : `/cms/${col?.slug || ""}`,
         });
       }
 
@@ -222,6 +226,11 @@ export function GlobalSearch() {
             const raw = d[field.slug];
             if (!raw) continue;
 
+            const assetParams = new URLSearchParams();
+            if (item.folder_id) assetParams.set("folder", item.folder_id as string);
+            assetParams.set("item", item.id);
+            const assetQs = assetParams.toString();
+
             const addAsset = (url: string, label: string) => {
               if (assetCount >= 8) return;
               const ext = url.split("?")[0].split(".").pop()?.toLowerCase() || "";
@@ -233,7 +242,7 @@ export function GlobalSearch() {
                 title: `${itemTitle} - ${label}`,
                 subtitle: `${isImg ? "Imagem" : isVid ? "Vídeo" : ext.toUpperCase()} · ${col?.name || ""}`,
                 icon: isImg ? "image" : isVid ? "video" : "file",
-                href: ps ? `/pagina/${ps}` : "/biblioteca",
+                href: ps ? `/pagina/${ps}?${assetQs}` : "/biblioteca",
               });
               assetCount++;
             };
