@@ -24,21 +24,21 @@ export function Sheet({ open, onClose, onSubmit, title, wide, children }: SheetP
 
     const mod = e.metaKey || e.ctrlKey;
 
-    // Cmd+S / Ctrl+S — save from anywhere
+    // Cmd+S / Ctrl+S - save from anywhere
     if (mod && e.key === "s" && onSubmit) {
       e.preventDefault();
       onSubmit();
       return;
     }
 
-    // Cmd+Enter — save even from textarea/rich text
+    // Cmd+Enter - save even from textarea/rich text
     if (mod && e.key === "Enter" && onSubmit) {
       e.preventDefault();
       onSubmit();
       return;
     }
 
-    // Enter (without mod) — save from simple inputs only
+    // Enter (without mod) - save from simple inputs only
     if (e.key === "Enter" && onSubmit) {
       const tag = (e.target as HTMLElement)?.tagName;
       const isRichText = (e.target as HTMLElement)?.closest?.(".ProseMirror");
@@ -90,7 +90,7 @@ export function Sheet({ open, onClose, onSubmit, title, wide, children }: SheetP
           {children}
         </div>
 
-        {/* Keyboard hints — desktop only */}
+        {/* Keyboard hints - desktop only */}
         <div className="shrink-0 px-6 py-2 border-t border-ink-50 items-center gap-3 text-[10px] text-ink-400 hidden md:flex">
           <span><kbd className="rounded bg-ink-100 px-1 py-0.5 font-mono text-[9px]">Esc</kbd> fechar</span>
           {onSubmit && (

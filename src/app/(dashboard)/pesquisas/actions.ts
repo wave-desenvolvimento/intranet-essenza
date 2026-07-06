@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermission } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { notifyAllActive } from "@/lib/notify";
 
 export async function getSurveys() {
   await requireAuth();
@@ -68,6 +69,24 @@ export async function createSurvey(formData: FormData) {
   );
 
   await logAudit({ action: "create", entityType: "survey", entityId: survey.id, description: `Criou pesquisa "${title}" com ${questions.length} pergunta(s)` });
+
+  // Notify all users about new survey
+  notifyAllActive({
+    notification: {
+      title: `Nova pesquisa: ${title}`,
+      body: description || "Uma nova pesquisa está disponível para resposta.",
+      href: "/inicio",
+      icon: "clipboard-list",
+    },
+    email: {
+      subject: `Nova pesquisa — ${title}`,
+      emailBody: `A pesquisa "${title}" está aguardando sua resposta.${description ? `\n\n${description}` : ""}\n\nSua opinião é muito importante para a melhoria contínua da rede.`,
+      ctaLabel: "Responder pesquisa",
+      ctaUrl: "/inicio",
+    },
+    excludeUserId: user?.id,
+  }).catch(() => {});
+
   revalidatePath("/pesquisas");
   return { success: true };
 }

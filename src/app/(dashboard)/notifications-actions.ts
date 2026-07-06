@@ -1,9 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { sendPushToUsers } from "@/lib/push";
+import {
+  notifyUsers as _notifyUsers,
+  notifyByPermission as _notifyByPermission,
+  notifyFranchise as _notifyFranchise,
+} from "@/lib/notify";
 
-// ---- Helper: create notifications for multiple users ----
+// ---- Thin wrappers (keep existing call-sites working) ----
 
 interface NotifyParams {
   title: string;
@@ -12,62 +16,16 @@ interface NotifyParams {
   icon?: string;
 }
 
-/** Notify specific users by ID — creates in-app notification + sends push */
 export async function notifyUsers(userIds: string[], params: NotifyParams) {
-  if (userIds.length === 0) return;
-  const supabase = await createClient();
-  const rows = userIds.map((uid) => ({
-    user_id: uid,
-    title: params.title,
-    body: params.body || null,
-    href: params.href || null,
-    icon: params.icon || "bell",
-  }));
-  await supabase.from("notifications").insert(rows);
-
-  // Also send push notification (non-blocking)
-  sendPushToUsers(userIds, {
-    title: params.title,
-    body: params.body,
-    href: params.href,
-  }).catch(() => {});
+  await _notifyUsers({ userIds, notification: params });
 }
 
-/** Notify all active users with a specific permission */
 export async function notifyByPermission(module: string, action: string, params: NotifyParams, excludeUserId?: string) {
-  const supabase = await createClient();
-
-  // Get user IDs that have this permission via their roles
-  const { data: users } = await supabase
-    .from("profiles")
-    .select("id, user_roles!inner(role_id, role:roles!inner(id, permissions!inner(module, action)))")
-    .eq("status", "active")
-    .eq("user_roles.role.permissions.module", module)
-    .eq("user_roles.role.permissions.action", action);
-
-  const userIds = (users || [])
-    .map((u) => u.id)
-    .filter((id) => id !== excludeUserId);
-
-  if (userIds.length === 0) return;
-  await notifyUsers(userIds, params);
+  await _notifyByPermission({ module, action, notification: params, excludeUserId });
 }
 
-/** Notify all users of a specific franchise */
 export async function notifyFranchise(franchiseId: string, params: NotifyParams, excludeUserId?: string) {
-  const supabase = await createClient();
-  const { data: users } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("franchise_id", franchiseId)
-    .eq("status", "active");
-
-  const userIds = (users || [])
-    .map((u) => u.id)
-    .filter((id) => id !== excludeUserId);
-
-  if (userIds.length === 0) return;
-  await notifyUsers(userIds, params);
+  await _notifyFranchise({ franchiseId, notification: params, excludeUserId });
 }
 
 // ---- Read / Update ----

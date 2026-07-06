@@ -61,13 +61,14 @@ DELETE FROM permissions WHERE
   OR (module IN ('universo-da-marca', 'material-corporativo', 'campanhas', 'redes-sociais', 'fotos', 'videos', 'treinamento', 'cigam')
       AND action NOT IN ('view', 'create', 'edit', 'download'));
 
--- 3. Garante Owner (d328cef4) com TODAS as permissões restantes
+-- 3. Garante Owner com TODAS as permissões restantes
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT 'd328cef4-d42b-42f7-9124-b4d2bfbff308', p.id
-FROM permissions p
-WHERE NOT EXISTS (
+SELECT r.id, p.id
+FROM roles r, permissions p
+WHERE r.slug = 'owner'
+AND NOT EXISTS (
   SELECT 1 FROM role_permissions rp
-  WHERE rp.role_id = 'd328cef4-d42b-42f7-9124-b4d2bfbff308'
+  WHERE rp.role_id = r.id
   AND rp.permission_id = p.id
 )
 ON CONFLICT DO NOTHING;

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermission } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { notifyAllActive } from "@/lib/notify";
 
 export async function getAnnouncements() {
   await requireAuth();
@@ -27,7 +28,7 @@ export async function getAnnouncements() {
 
   return data.map((a) => ({
     ...a,
-    author: { full_name: profileMap.get(a.author_id) || "—" },
+    author: { full_name: profileMap.get(a.author_id) || "-" },
   }));
 }
 
@@ -64,6 +65,24 @@ export async function createAnnouncement(formData: FormData) {
     entityId: ann.id,
     description: `Criou comunicado "${title}"`,
   });
+
+  // Notify all users about new announcement
+  const priorityLabel = priority === "urgent" ? " (Urgente)" : "";
+  notifyAllActive({
+    notification: {
+      title: `Novo comunicado${priorityLabel}: ${title}`,
+      body: body.replace(/<[^>]+>/g, "").slice(0, 120),
+      href: "/comunicados",
+      icon: "megaphone",
+    },
+    email: {
+      subject: `Novo comunicado${priorityLabel} — ${title}`,
+      emailBody: body.replace(/<[^>]+>/g, "").slice(0, 500),
+      ctaLabel: "Ver comunicado",
+      ctaUrl: "/comunicados",
+    },
+    excludeUserId: user.id,
+  }).catch(() => {});
 
   revalidatePath("/comunicados");
   revalidatePath("/inicio");

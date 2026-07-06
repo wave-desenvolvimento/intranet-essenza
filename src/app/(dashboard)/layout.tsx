@@ -12,6 +12,7 @@ import { SwRegister } from "@/components/layout/sw-register";
 import { Toaster } from "sonner";
 import { SurveyWidget } from "@/components/layout/survey-widget";
 import { PageViewTracker } from "@/components/layout/page-view-tracker";
+import { IdleLogout } from "@/components/layout/idle-logout";
 
 export default async function DashboardLayout({
   children,
@@ -21,7 +22,7 @@ export default async function DashboardLayout({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Fetch user role from DB — name comes from what admin configured
+  // Fetch user role from DB - name comes from what admin configured
   const { data: userRole } = await supabase
     .from("user_roles")
     .select("role:roles(name, level)")
@@ -90,6 +91,7 @@ export default async function DashboardLayout({
       <InstallPrompt />
       <SwRegister />
       <PageViewTracker />
+      <IdleLogout />
       <Toaster position="bottom-right" richColors />
     </div>
   );

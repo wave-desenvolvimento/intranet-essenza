@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/permissions";
+import { notifyAllActive } from "@/lib/notify";
 
 function safeJsonParse(str: string, fallback: unknown = null) {
   try { return JSON.parse(str); } catch { return fallback; }
@@ -243,6 +244,11 @@ export async function createItem(formData: FormData) {
 
   if (error) return { error: "Erro ao criar item." };
 
+  // Notify on publish
+  if (status === "published") {
+    notifyNewContent(supabase, collectionId, user?.id).catch(() => {});
+  }
+
   revalidatePath("/cms");
   return { success: true };
 }
@@ -424,4 +430,46 @@ export async function duplicateCollection(id: string) {
 
   revalidatePath("/cms");
   return { success: true };
+}
+
+// ---- Email notification for new published content ----
+
+async function notifyNewContent(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  collectionId: string,
+  excludeUserId?: string,
+) {
+  const { data: col } = await supabase
+    .from("cms_collections")
+    .select("name")
+    .eq("id", collectionId)
+    .single();
+
+  const { data: pageLink } = await supabase
+    .from("cms_page_collections")
+    .select("page:cms_pages(slug)")
+    .eq("collection_id", collectionId)
+    .eq("role", "main")
+    .limit(1)
+    .single();
+
+  const collectionName = col?.name || "Conteúdo";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pageSlug = (pageLink?.page as any)?.slug;
+
+  await notifyAllActive({
+    notification: {
+      title: `Novo conteúdo: ${collectionName}`,
+      body: `Novo material publicado em ${collectionName}.`,
+      href: pageSlug ? `/pagina/${pageSlug}` : "/inicio",
+      icon: "megaphone",
+    },
+    email: {
+      subject: `Novo conteúdo disponível — ${collectionName}`,
+      emailBody: `Um novo material foi publicado em "${collectionName}".\n\nAcesse o Hub para conferir.`,
+      ctaLabel: "Ver conteúdo",
+      ctaUrl: pageSlug ? `/pagina/${pageSlug}` : "/inicio",
+    },
+    excludeUserId,
+  });
 }
