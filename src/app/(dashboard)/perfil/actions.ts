@@ -39,7 +39,7 @@ export async function updateProfile(formData: FormData) {
     data: { full_name: fullName, avatar_url: safeAvatarUrl },
   });
 
-  revalidatePath("/perfil");
+  revalidatePath("/", "layout");
   return { success: true };
 }
 

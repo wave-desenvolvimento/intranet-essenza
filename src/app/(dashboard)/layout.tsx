@@ -39,6 +39,7 @@ export default async function DashboardLayout({
     name: user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário",
     email: user?.email || "",
     role: roleName || "Usuário",
+    avatarUrl: user?.user_metadata?.avatar_url || "",
   };
 
   // Fetch pending surveys (active, not expired, not yet responded by user)
