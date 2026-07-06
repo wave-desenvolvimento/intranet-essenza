@@ -151,6 +151,21 @@ export function GlobalSearch() {
       }
     }
 
+    // Dedicated search for items in media-containing collections (separate limit)
+    if (mediaFields.data && mediaFields.data.length > 0) {
+      const mediaColIds = [...new Set(mediaFields.data.map((mf: { collection_id: string }) => mf.collection_id))];
+      const { data: mediaItems } = await supabase
+        .from("cms_items")
+        .select("id, data, collection_id, status")
+        .in("collection_id", mediaColIds)
+        .eq("status", "published")
+        .ilike("data::text", `%${q}%`)
+        .limit(15);
+      for (const mi of mediaItems || []) {
+        if (!seenItemIds.has(mi.id)) { allCmsItems.push(mi); seenItemIds.add(mi.id); }
+      }
+    }
+
     if (allCmsItems.length > 0) {
       const collectionIds = [...new Set(allCmsItems.map((i) => i.collection_id))];
       const [cols, pageLinks] = await Promise.all([
@@ -196,11 +211,15 @@ export function GlobalSearch() {
           if (!mf) continue;
 
           const d = item.data as Record<string, unknown>;
-          const itemTitle = String(d.titulo || d.title || d.nome || "").trim();
-          if (!itemTitle) continue;
+          let itemTitle = String(d.titulo || d.title || d.nome || "").trim();
+          if (!itemTitle) {
+            const firstStr = Object.values(d).find((v) => typeof v === "string" && v.length > 2 && !String(v).startsWith("http"));
+            itemTitle = firstStr ? String(firstStr).replace(/<[^>]*>/g, "").trim().slice(0, 60) : "";
+          }
 
           const col = colMap.get(item.collection_id);
           const ps = pageMap.get(item.collection_id);
+          if (!itemTitle) itemTitle = col?.name || "Sem título";
 
           for (const field of mf) {
             if (assetCount >= 8) break;
