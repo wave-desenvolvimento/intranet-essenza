@@ -4,10 +4,10 @@ import { useState, useTransition, useCallback } from "react";
 import {
   Search, Trash2, ChevronDown, ChevronUp, MessageSquare,
   Mail, Calendar, X, ChevronLeft, ChevronRight, Loader2,
-  Settings, Plus, KeyRound, HelpCircle, LogIn,
+  Settings, Plus, KeyRound, HelpCircle, LogIn, Send, CheckCircle,
 } from "lucide-react";
 import {
-  getTickets, updateTicketStatus, updateTicketNotes, deleteTicket,
+  getTickets, updateTicketStatus, updateTicketNotes, deleteTicket, replyToTicket,
   getSupportNotificationEmails, addSupportNotificationEmail, removeSupportNotificationEmail,
 } from "./actions";
 import type { SupportTicket, SupportNotificationEmail } from "./actions";
@@ -107,6 +107,15 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
   async function handleSaveNotes(id: string) {
     await updateTicketNotes(id, notesValue);
     setEditingNotes(null);
+    startTransition(() => fetchTickets(page, filterStatus, search));
+  }
+
+  const [replying, setReplying] = useState<string | null>(null);
+
+  async function handleReply(id: string, status: "em_andamento" | "resolvido") {
+    setReplying(id);
+    await replyToTicket(id, status);
+    setReplying(null);
     startTransition(() => fetchTickets(page, filterStatus, search));
   }
 
@@ -265,15 +274,40 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
                           <p className="text-sm text-ink-800 whitespace-pre-wrap">{t.descricao}</p>
                         </div>
 
-                        {/* Status change */}
+                        {/* Status + Reply actions */}
                         {canEdit && (
-                          <div className="flex items-center gap-3">
-                            <p className="text-xs font-medium text-ink-500">Status:</p>
-                            <CustomSelect
-                              value={t.status}
-                              options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
-                              onChange={(v) => handleStatusChange(t.id, v)}
-                            />
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3">
+                              <p className="text-xs font-medium text-ink-500">Status:</p>
+                              <CustomSelect
+                                value={t.status}
+                                options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
+                                onChange={(v) => handleStatusChange(t.id, v)}
+                                className="min-w-[180px]"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {t.status === "novo" && (
+                                <button
+                                  onClick={() => handleReply(t.id, "em_andamento")}
+                                  disabled={replying === t.id}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-700 hover:bg-yellow-100 disabled:opacity-50 transition-colors"
+                                >
+                                  {replying === t.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                                  Informar que esta em andamento
+                                </button>
+                              )}
+                              {t.status !== "resolvido" && (
+                                <button
+                                  onClick={() => handleReply(t.id, "resolvido")}
+                                  disabled={replying === t.id}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors"
+                                >
+                                  {replying === t.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                                  Informar resolucao
+                                </button>
+                              )}
+                            </div>
                           </div>
                         )}
 
@@ -309,9 +343,9 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
 
                         {/* Actions */}
                         <div className="flex items-center gap-3 pt-2 border-t border-ink-100">
-                          <a href={`mailto:${t.email}`} className="inline-flex items-center gap-1.5 text-xs text-brand-olive hover:text-brand-olive-dark">
-                            <Mail size={12} /> Responder por email
-                          </a>
+                          <span className="text-[10px] text-ink-400">
+                            <Mail size={10} className="inline mr-1" />{t.email}
+                          </span>
                           {canDelete && (
                             <button onClick={() => handleDelete(t.id)} className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 ml-auto">
                               <Trash2 size={12} /> Remover

@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermission } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { getResend, FROM_EMAIL } from "@/lib/email";
+import { render } from "@react-email/render";
+import { NotificationEmail } from "@/emails/notification";
 
 export interface SupportTicket {
   id: string;
@@ -94,6 +97,76 @@ export async function updateTicketNotes(id: string, notas: string) {
   if (error) return { error: error.message };
 
   await logAudit({ action: "update", entityType: "support_ticket", entityId: id, description: "Atualizou notas do ticket" });
+  revalidatePath("/suporte");
+  return { success: true };
+}
+
+const REPLY_TEMPLATES: Record<string, { subject: string; title: string; body: string }> = {
+  em_andamento: {
+    subject: "Seu ticket esta sendo analisado",
+    title: "Estamos analisando seu ticket",
+    body: "Recebemos sua solicitacao e nossa equipe ja esta trabalhando nela.\n\nEntraremos em contato assim que tivermos uma resolucao. Se precisar de algo urgente, responda este email.",
+  },
+  resolvido: {
+    subject: "Seu ticket foi resolvido",
+    title: "Seu ticket foi resolvido",
+    body: "Sua solicitacao foi resolvida pela nossa equipe.\n\nCaso o problema persista ou precise de mais ajuda, responda este email ou abra um novo ticket.",
+  },
+};
+
+const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://intranet.emporioessenza.com.br").replace(/\/$/, "");
+
+export async function replyToTicket(id: string, newStatus: "em_andamento" | "resolvido") {
+  const p = await requirePermission("suporte", "edit");
+  if (p.error) return p;
+  const supabase = await createClient();
+
+  const { data: ticket } = await supabase
+    .from("support_tickets")
+    .select("nome, email, tipo, descricao, status")
+    .eq("id", id)
+    .single();
+
+  if (!ticket) return { error: "Ticket nao encontrado." };
+  if (ticket.status === newStatus) return { error: "Ticket ja esta nesse status." };
+
+  const template = REPLY_TEMPLATES[newStatus];
+  if (!template) return { error: "Status invalido." };
+
+  // Update status
+  const { error } = await supabase
+    .from("support_tickets")
+    .update({ status: newStatus })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  // Send email
+  const resend = getResend();
+  if (resend) {
+    const html = await render(
+      NotificationEmail({
+        title: template.title,
+        body: `Ola, ${ticket.nome}!\n\n${template.body}`,
+        ctaLabel: "Acessar o Hub",
+        ctaUrl: `${baseUrl}/login`,
+      }),
+    );
+
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: ticket.email,
+      subject: template.subject,
+      html,
+    });
+  }
+
+  await logAudit({
+    action: "update",
+    entityType: "support_ticket",
+    entityId: id,
+    description: `Respondeu ticket e alterou status para "${newStatus}"`,
+  });
+
   revalidatePath("/suporte");
   return { success: true };
 }
