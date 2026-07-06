@@ -30,6 +30,7 @@ interface SearchResult {
   subtitle: string;
   icon: string;
   href: string;
+  thumbnail?: string;
 }
 
 const TYPE_CONFIG: Record<SearchResult["type"], { label: string; icon: React.ElementType; bg: string; color: string }> = {
@@ -243,6 +244,7 @@ export function GlobalSearch() {
                 subtitle: `${isImg ? "Imagem" : isVid ? "Vídeo" : ext.toUpperCase()} · ${col?.name || ""}`,
                 icon: isImg ? "image" : isVid ? "video" : "file",
                 href: ps ? `/pagina/${ps}?${assetQs}` : "/biblioteca",
+                thumbnail: isImg ? url : undefined,
               });
               assetCount++;
             };
@@ -446,9 +448,13 @@ export function GlobalSearch() {
                               onClick={() => navigate(r.href)}
                               className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-ink-50 transition-colors"
                             >
-                              <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", config.bg)}>
-                                <Icon size={14} className={config.color} />
-                              </div>
+                              {r.thumbnail ? (
+                                <img src={r.thumbnail} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
+                              ) : (
+                                <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", config.bg)}>
+                                  <Icon size={14} className={config.color} />
+                                </div>
+                              )}
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-ink-900 truncate">{r.title}</p>
                                 <p className="text-[10px] text-ink-400 truncate">{r.subtitle}</p>
