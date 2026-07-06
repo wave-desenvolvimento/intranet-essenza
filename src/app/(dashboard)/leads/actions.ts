@@ -132,6 +132,61 @@ export async function updateLeadNotes(id: string, notas: string) {
   return { success: true };
 }
 
+// ---- Lead notification emails ----
+
+export interface LeadNotificationEmail {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
+export async function getLeadNotificationEmails(): Promise<LeadNotificationEmail[]> {
+  await requireAuth();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("lead_notification_emails")
+    .select("*")
+    .order("created_at");
+  return (data || []) as LeadNotificationEmail[];
+}
+
+export async function addLeadNotificationEmail(email: string) {
+  const p = await requirePermission("leads", "edit");
+  if (p.error) return p;
+  const supabase = await createClient();
+
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed || !trimmed.includes("@")) return { error: "Email inválido." };
+
+  const { error } = await supabase
+    .from("lead_notification_emails")
+    .insert({ email: trimmed });
+
+  if (error) {
+    if (error.code === "23505") return { error: "Email já cadastrado." };
+    return { error: error.message };
+  }
+
+  revalidatePath("/leads");
+  return { success: true };
+}
+
+export async function removeLeadNotificationEmail(id: string) {
+  const p = await requirePermission("leads", "edit");
+  if (p.error) return p;
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("lead_notification_emails")
+    .delete()
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/leads");
+  return { success: true };
+}
+
 export async function deleteLead(id: string) {
   const p = await requirePermission("leads", "delete");
   if (p.error) return p;

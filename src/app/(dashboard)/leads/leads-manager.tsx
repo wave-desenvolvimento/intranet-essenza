@@ -4,9 +4,14 @@ import { useState, useTransition, useCallback } from "react";
 import {
   Search, Download, Trash2, ChevronDown, ChevronUp, MessageSquare,
   Phone, Mail, MapPin, Calendar, X, ChevronLeft, ChevronRight, Loader2,
+  Settings, Plus,
 } from "lucide-react";
-import { getLeads, getLeadsForExport, updateLeadStatus, updateLeadNotes, deleteLead } from "./actions";
-import type { ResellerLead } from "./actions";
+import {
+  getLeads, getLeadsForExport, updateLeadStatus, updateLeadNotes, deleteLead,
+  getLeadNotificationEmails, addLeadNotificationEmail, removeLeadNotificationEmail,
+} from "./actions";
+import type { ResellerLead, LeadNotificationEmail } from "./actions";
+import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -55,6 +60,10 @@ export function LeadsManager({ initialData, initialTotal, initialCounts, canEdit
   const [notesValue, setNotesValue] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(false);
+  const [emailsOpen, setEmailsOpen] = useState(false);
+  const [notifEmails, setNotifEmails] = useState<LeadNotificationEmail[]>([]);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const totalAll = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -168,6 +177,27 @@ export function LeadsManager({ initialData, initialTotal, initialCounts, canEdit
     XLSX.writeFile(wb, `leads-${new Date().toISOString().slice(0, 10)}.xlsx`);
   }, [filterStatus, filterOrigem, search]);
 
+  async function openEmailSettings() {
+    setEmailsOpen(true);
+    setEmailError("");
+    setNewEmail("");
+    const emails = await getLeadNotificationEmails();
+    setNotifEmails(emails);
+  }
+
+  async function handleAddEmail() {
+    setEmailError("");
+    const res = await addLeadNotificationEmail(newEmail);
+    if ("error" in res && res.error) { setEmailError(res.error); return; }
+    setNewEmail("");
+    setNotifEmails(await getLeadNotificationEmails());
+  }
+
+  async function handleRemoveEmail(id: string) {
+    await removeLeadNotificationEmail(id);
+    setNotifEmails(await getLeadNotificationEmails());
+  }
+
   const statusOpts = [{ value: "", label: "Todos status" }, ...STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))];
   const origemOpts = [
     { value: "", label: "Todas origens" },
@@ -183,15 +213,27 @@ export function LeadsManager({ initialData, initialTotal, initialCounts, canEdit
           <h1 className="text-xl font-semibold text-ink-900">Leads de Revenda</h1>
           <p className="text-sm text-ink-500 mt-0.5">{totalAll} leads no total</p>
         </div>
-        {canExport && (
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
-          >
-            <Download size={16} />
-            Exportar XLS
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <button
+              onClick={openEmailSettings}
+              className="inline-flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+              title="Emails de notificação"
+            >
+              <Settings size={16} />
+              <span className="hidden sm:inline">Notificações</span>
+            </button>
+          )}
+          {canExport && (
+            <button
+              onClick={handleExport}
+              className="inline-flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+            >
+              <Download size={16} />
+              Exportar XLS
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Status cards */}
@@ -519,6 +561,57 @@ export function LeadsManager({ initialData, initialTotal, initialCounts, canEdit
           </div>
         </div>
       )}
+
+      <Sheet open={emailsOpen} onClose={() => setEmailsOpen(false)} title="Emails de notificação">
+        <p className="text-sm text-ink-500 mb-4">
+          Leads novos serão enviados por email para os endereços abaixo.
+        </p>
+
+        <div className="flex gap-2 mb-4">
+          <input
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddEmail()}
+            placeholder="nome@empresa.com"
+            className="flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-olive/30 focus:border-brand-olive"
+          />
+          <button
+            onClick={handleAddEmail}
+            disabled={!newEmail.trim()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-olive px-3 py-2 text-sm font-medium text-white hover:bg-brand-olive/90 disabled:opacity-40 transition-colors"
+          >
+            <Plus size={14} />
+            Adicionar
+          </button>
+        </div>
+
+        {emailError && (
+          <p className="text-sm text-red-600 mb-3">{emailError}</p>
+        )}
+
+        {notifEmails.length === 0 ? (
+          <p className="text-sm text-ink-400 text-center py-8">Nenhum email cadastrado.</p>
+        ) : (
+          <ul className="space-y-2">
+            {notifEmails.map((ne) => (
+              <li key={ne.id} className="flex items-center justify-between rounded-lg border border-ink-100 px-3 py-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Mail size={14} className="text-ink-400 shrink-0" />
+                  <span className="text-sm text-ink-800 truncate">{ne.email}</span>
+                </div>
+                <button
+                  onClick={() => handleRemoveEmail(ne.id)}
+                  className="rounded p-1 text-ink-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                  title="Remover"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Sheet>
 
       <ConfirmDialog {...dialogProps} />
     </div>
