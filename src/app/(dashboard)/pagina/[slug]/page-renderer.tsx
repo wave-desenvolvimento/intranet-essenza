@@ -26,6 +26,7 @@ import { getUserFavoriteIds } from "@/app/(dashboard)/favorites-actions";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { WhatsAppShareImage } from "@/components/ui/whatsapp-share";
 import { usePagination } from "@/hooks/use-pagination";
+import { LibraryPicker } from "@/components/ui/library-picker";
 
 interface Field {
   id: string;
@@ -688,6 +689,7 @@ function PageImageVariantsField({ field, value, onChange }: { field: Field; valu
   const formats = opts.options?.formats || ["Original"];
   const variants = (typeof value === "object" && value !== null ? value : {}) as Record<string, string>;
   const [uploading, setUploading] = useState<string | null>(null);
+  const [pickerFormat, setPickerFormat] = useState<string | null>(null);
 
   async function handleUpload(format: string, file: File) {
     setUploading(format);
@@ -715,20 +717,27 @@ function PageImageVariantsField({ field, value, onChange }: { field: Field; valu
                 <button type="button" onClick={() => removeVariant(format)} className="absolute top-1.5 right-1.5 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"><X size={10} /></button>
               </div>
             ) : (
-              <label className={cn("flex items-center justify-center gap-2 rounded-md border-2 border-dashed h-16 cursor-pointer transition-colors", uploading === format ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 hover:border-brand-olive")}>
-                <input type="file" accept="image/*" className="sr-only" disabled={uploading !== null} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(format, f); }} />
-                {uploading === format ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={13} className="text-ink-400" /><span className="text-xs text-ink-500">Enviar {format}</span></>}
-              </label>
+              <div className="flex gap-2 h-16">
+                <label className={cn("flex flex-1 items-center justify-center gap-2 rounded-md border-2 border-dashed cursor-pointer transition-colors", uploading === format ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 hover:border-brand-olive")}>
+                  <input type="file" accept="image/*" className="sr-only" disabled={uploading !== null} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(format, f); }} />
+                  {uploading === format ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={13} className="text-ink-400" /><span className="text-xs text-ink-500">Enviar</span></>}
+                </label>
+                <button type="button" onClick={() => setPickerFormat(format)} className="flex items-center justify-center gap-1.5 rounded-md border-2 border-dashed border-ink-200 px-3 hover:border-brand-olive hover:bg-brand-olive-soft/30 transition-colors">
+                  <Image size={13} className="text-ink-400" /><span className="text-xs text-ink-500">Biblioteca</span>
+                </button>
+              </div>
             )}
           </div>
         );
       })}
+      <LibraryPicker open={!!pickerFormat} onClose={() => setPickerFormat(null)} accept="image" onSelect={(items) => { if (pickerFormat) onChange({ ...variants, [pickerFormat]: items[0].url }); }} />
     </div>
   );
 }
 
 function PageFileField({ field, value, onChange }: { field: Field; value: unknown; onChange: (val: unknown) => void }) {
   const [uploading, setUploading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const fileUrl = String(value || "");
   const isImage = field.field_type === "image";
   async function handleUpload(file: File) {
@@ -740,10 +749,16 @@ function PageFileField({ field, value, onChange }: { field: Field; value: unknow
   return (
     <div className="flex flex-col gap-2">
       {fileUrl && isImage && <div className="relative w-full h-24 rounded-lg border border-ink-100 overflow-hidden bg-ink-50"><img src={fileUrl} alt="" className="w-full h-full object-cover" /><button type="button" onClick={() => onChange("")} className="absolute top-1.5 right-1.5 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"><X size={10} /></button></div>}
-      <label className={cn("flex items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors", uploading ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30", fileUrl ? "h-10" : "h-20")}>
-        <input type="file" accept={isImage ? "image/*" : "*"} className="sr-only" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
-        {uploading ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">{fileUrl ? "Trocar" : isImage ? "Enviar imagem" : "Enviar arquivo"}</span></>}
-      </label>
+      <div className={cn("flex gap-2", fileUrl ? "h-10" : "h-20")}>
+        <label className={cn("flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors", uploading ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30")}>
+          <input type="file" accept={isImage ? "image/*" : "*"} className="sr-only" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+          {uploading ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">{fileUrl ? "Trocar" : "Enviar"}</span></>}
+        </label>
+        <button type="button" onClick={() => setPickerOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-ink-200 bg-ink-50/50 px-3 hover:border-brand-olive hover:bg-brand-olive-soft/30 transition-colors">
+          <Image size={14} className="text-ink-400" /><span className="text-xs text-ink-500">Biblioteca</span>
+        </button>
+      </div>
+      <LibraryPicker open={pickerOpen} onClose={() => setPickerOpen(false)} accept={isImage ? "image" : "all"} onSelect={(items) => onChange(items[0].url)} />
     </div>
   );
 }
@@ -753,6 +768,7 @@ interface ArrayFileItem { title: string; url: string; filename?: string }
 function PageImageArrayField({ field, value, onChange }: { field: Field; value: unknown; onChange: (val: unknown) => void }) {
   const items: ArrayFileItem[] = Array.isArray(value) ? (value as ArrayFileItem[]) : [];
   const [uploading, setUploading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   async function handleUpload(files: FileList) {
     setUploading(true);
@@ -803,11 +819,17 @@ function PageImageArrayField({ field, value, onChange }: { field: Field; value: 
           ))}
         </div>
       )}
-      <label className={cn("flex items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors", uploading ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30", items.length > 0 ? "h-10" : "h-20")}>
-        <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading} onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }} />
-        {uploading ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">{items.length > 0 ? "Adicionar imagens" : "Enviar imagens"}</span></>}
-      </label>
+      <div className={cn("flex gap-2", items.length > 0 ? "h-10" : "h-20")}>
+        <label className={cn("flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors", uploading ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30")}>
+          <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading} onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }} />
+          {uploading ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">{items.length > 0 ? "Adicionar" : "Enviar"}</span></>}
+        </label>
+        <button type="button" onClick={() => setPickerOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-ink-200 bg-ink-50/50 px-3 hover:border-brand-olive hover:bg-brand-olive-soft/30 transition-colors">
+          <Image size={14} className="text-ink-400" /><span className="text-xs text-ink-500">Biblioteca</span>
+        </button>
+      </div>
       {items.length > 0 && <p className="text-[10px] text-ink-400">{items.length} {items.length === 1 ? "imagem" : "imagens"}</p>}
+      <LibraryPicker open={pickerOpen} onClose={() => setPickerOpen(false)} accept="image" multiple onSelect={(selected) => onChange([...items, ...selected.map((s) => ({ title: s.title, url: s.url }))])} />
     </div>
   );
 }
@@ -815,6 +837,7 @@ function PageImageArrayField({ field, value, onChange }: { field: Field; value: 
 function PageFileArrayField({ field, value, onChange }: { field: Field; value: unknown; onChange: (val: unknown) => void }) {
   const items: ArrayFileItem[] = Array.isArray(value) ? (value as ArrayFileItem[]) : [];
   const [uploading, setUploading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   function getFileExt(url: string) {
     const match = url.match(/\.(\w{2,5})(?:\?|$)/);
@@ -869,11 +892,17 @@ function PageFileArrayField({ field, value, onChange }: { field: Field; value: u
           </div>
         );
       })}
-      <label className={cn("flex items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors", uploading ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30", items.length > 0 ? "h-10" : "h-20")}>
-        <input type="file" multiple className="sr-only" disabled={uploading} onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }} />
-        {uploading ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">{items.length > 0 ? "Adicionar arquivos" : "Enviar arquivos"}</span></>}
-      </label>
+      <div className={cn("flex gap-2", items.length > 0 ? "h-10" : "h-20")}>
+        <label className={cn("flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors", uploading ? "border-brand-olive bg-brand-olive-soft/30" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30")}>
+          <input type="file" multiple className="sr-only" disabled={uploading} onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }} />
+          {uploading ? <span className="text-xs text-brand-olive font-medium">Enviando...</span> : <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">{items.length > 0 ? "Adicionar" : "Enviar"}</span></>}
+        </label>
+        <button type="button" onClick={() => setPickerOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-ink-200 bg-ink-50/50 px-3 hover:border-brand-olive hover:bg-brand-olive-soft/30 transition-colors">
+          <Image size={14} className="text-ink-400" /><span className="text-xs text-ink-500">Biblioteca</span>
+        </button>
+      </div>
       {items.length > 0 && <p className="text-[10px] text-ink-400">{items.length} {items.length === 1 ? "arquivo" : "arquivos"}</p>}
+      <LibraryPicker open={pickerOpen} onClose={() => setPickerOpen(false)} accept="all" multiple onSelect={(selected) => onChange([...items, ...selected.map((s) => ({ title: s.title, url: s.url }))])} />
     </div>
   );
 }
