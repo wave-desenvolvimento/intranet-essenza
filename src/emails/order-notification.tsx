@@ -45,8 +45,8 @@ export function OrderNotificationEmail({ franchiseName, orderId, items, total, n
             <Section className="rounded-xl bg-white p-8 shadow-sm">
               <Img
                 src="https://intranet-essenza.vercel.app/_next/static/media/logo.0-7z6gznwvp2a.svg"
-                width="80"
-                height="80"
+                width="160"
+                height="auto"
                 alt="Empório Essenza"
                 className="mx-auto mb-2"
               />
