@@ -291,14 +291,12 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 
   function saveItem() {
     if (!activeCollection) return;
-    if (!itemPublishedAt) { setError("Data de inicio e obrigatoria."); return; }
-    if (!itemExpiresAt) { setError("Data de expiracao e obrigatoria."); return; }
-    if (new Date(itemExpiresAt) <= new Date(itemPublishedAt)) { setError("Data de expiracao deve ser posterior ao inicio."); return; }
+    if (itemPublishedAt && itemExpiresAt && new Date(itemExpiresAt) <= new Date(itemPublishedAt)) { setError("Data de expiracao deve ser posterior ao inicio."); return; }
     const fd = new FormData();
     fd.set("data", JSON.stringify(itemData));
     fd.set("status", itemStatus);
-    fd.set("publishedAt", new Date(itemPublishedAt).toISOString());
-    fd.set("expiresAt", new Date(itemExpiresAt).toISOString());
+    fd.set("publishedAt", itemPublishedAt ? new Date(itemPublishedAt).toISOString() : "");
+    fd.set("expiresAt", itemExpiresAt ? new Date(itemExpiresAt).toISOString() : "");
     fd.set("tags", JSON.stringify(itemTags));
     if (editingItem) {
       fd.set("id", editingItem.id);
@@ -574,11 +572,11 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
             <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-3">Vigencia</p>
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
-                <label className="text-xs font-medium text-ink-700 mb-1 block">Inicio <span className="text-danger">*</span></label>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Inicio</label>
                 <input type="datetime-local" value={itemPublishedAt} onChange={(e) => setItemPublishedAt(e.target.value)} className="h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
               </div>
               <div>
-                <label className="text-xs font-medium text-ink-700 mb-1 block">Expiracao <span className="text-danger">*</span></label>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Expiracao</label>
                 <input type="datetime-local" value={itemExpiresAt} onChange={(e) => setItemExpiresAt(e.target.value)} className="h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10" />
               </div>
             </div>
