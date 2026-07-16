@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useRef } from "react";
 import DOMPurify from "dompurify";
 import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput } from "lucide-react";
-import { cn, isAssetVisible } from "@/lib/utils";
+import { cn, isAssetVisible, getAssetScheduleStatus } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Sheet } from "@/components/ui/sheet";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -789,12 +789,38 @@ function PageFileField({ field, value, onChange }: { field: Field; value: unknow
   );
 }
 
-interface ArrayFileItem { title: string; url: string; filename?: string }
+interface ArrayFileItem { title: string; url: string; filename?: string; published_at?: string | null; expires_at?: string | null }
+
+function PageAssetSchedulePanel({ item, index, onChange, items }: { item: ArrayFileItem; index: number; onChange: (val: ArrayFileItem[]) => void; items: ArrayFileItem[] }) {
+  function update(field: "published_at" | "expires_at", value: string) {
+    onChange(items.map((it, i) => i === index ? { ...it, [field]: value || null } : it));
+  }
+  function clear() {
+    onChange(items.map((it, i) => i === index ? { ...it, published_at: null, expires_at: null } : it));
+  }
+  const inputCls = "h-8 w-full rounded-md border border-ink-100 bg-white px-2 text-[11px] text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-1 focus:ring-brand-olive/10";
+  return (
+    <div className="border-t border-ink-100 p-2 bg-ink-50/50 space-y-1.5">
+      <div>
+        <label className="text-[10px] font-medium text-ink-500 block mb-0.5">Entra em</label>
+        <input type="datetime-local" value={item.published_at?.slice(0, 16) || ""} onChange={(e) => update("published_at", e.target.value)} className={inputCls} />
+      </div>
+      <div>
+        <label className="text-[10px] font-medium text-ink-500 block mb-0.5">Sai em</label>
+        <input type="datetime-local" value={item.expires_at?.slice(0, 16) || ""} onChange={(e) => update("expires_at", e.target.value)} className={inputCls} />
+      </div>
+      {(item.published_at || item.expires_at) && (
+        <button type="button" onClick={clear} className="text-[10px] text-danger hover:underline">Limpar agendamento</button>
+      )}
+    </div>
+  );
+}
 
 function PageImageArrayField({ field, value, onChange }: { field: Field; value: unknown; onChange: (val: unknown) => void }) {
   const items: ArrayFileItem[] = Array.isArray(value) ? (value as ArrayFileItem[]) : [];
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [schedulingIdx, setSchedulingIdx] = useState<number | null>(null);
 
   async function handleUpload(files: FileList) {
     setUploading(true);
@@ -816,6 +842,7 @@ function PageImageArrayField({ field, value, onChange }: { field: Field; value: 
 
   function removeItem(index: number) {
     onChange(items.filter((_, i) => i !== index));
+    if (schedulingIdx === index) setSchedulingIdx(null);
   }
 
   function moveItem(from: number, to: number) {
@@ -830,19 +857,38 @@ function PageImageArrayField({ field, value, onChange }: { field: Field; value: 
     <div className="flex flex-col gap-2">
       {items.length > 0 && (
         <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
-          {items.map((item, i) => (
-            <div key={i} className="rounded-lg border border-ink-100 bg-ink-50/30 overflow-hidden group">
-              <div className="relative h-24">
-                <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
-                <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70"><ChevronRight size={10} className="rotate-180" /></button>}
-                  {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70"><ChevronRight size={10} /></button>}
-                  <button type="button" onClick={() => removeItem(i)} className="rounded-full bg-black/50 p-1 text-white hover:bg-danger"><X size={10} /></button>
+          {items.map((item, i) => {
+            const schedStatus = getAssetScheduleStatus(item);
+            const hasSchedule = !!(item.published_at || item.expires_at);
+            return (
+              <div key={i} className={cn(
+                "rounded-lg border overflow-hidden",
+                schedStatus === "scheduled" ? "border-warning bg-warning-soft/20" : schedStatus === "expired" ? "border-ink-200 opacity-60" : "border-ink-100 bg-ink-50/30",
+              )}>
+                <div className="relative h-24">
+                  <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
+                  {schedStatus === "scheduled" && (
+                    <span className="absolute top-1 left-1 rounded-full bg-warning px-1.5 py-0.5 text-[9px] font-semibold text-white flex items-center gap-0.5 shadow-sm">
+                      <Clock size={8} />{item.published_at ? new Date(item.published_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Agendado"}
+                    </span>
+                  )}
+                  {schedStatus === "expired" && (
+                    <span className="absolute top-1 left-1 rounded-full bg-ink-400 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-sm">Expirado</span>
+                  )}
+                  <div className="absolute top-1 right-1 flex gap-0.5">
+                    {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70"><ChevronRight size={10} className="rotate-180" /></button>}
+                    {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70"><ChevronRight size={10} /></button>}
+                    <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-full p-1 text-white", hasSchedule ? "bg-warning hover:bg-warning/80" : "bg-black/50 hover:bg-black/70")} title="Agendar"><Clock size={10} /></button>
+                    <button type="button" onClick={() => removeItem(i)} className="rounded-full bg-black/50 p-1 text-white hover:bg-danger"><X size={10} /></button>
+                  </div>
                 </div>
+                <input type="text" value={item.title} onChange={(e) => updateTitle(i, e.target.value)} placeholder="Titulo..." className="w-full border-t border-ink-100 px-2 py-1.5 text-xs text-ink-900 bg-white focus:outline-none focus:bg-brand-olive-soft/20" />
+                {schedulingIdx === i && (
+                  <PageAssetSchedulePanel item={item} index={i} onChange={(v) => onChange(v)} items={items} />
+                )}
               </div>
-              <input type="text" value={item.title} onChange={(e) => updateTitle(i, e.target.value)} placeholder="Título..." className="w-full border-t border-ink-100 px-2 py-1.5 text-xs text-ink-900 bg-white focus:outline-none focus:bg-brand-olive-soft/20" />
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       <div className={cn("flex gap-2", items.length > 0 ? "h-10" : "h-20")}>
@@ -864,6 +910,7 @@ function PageFileArrayField({ field, value, onChange }: { field: Field; value: u
   const items: ArrayFileItem[] = Array.isArray(value) ? (value as ArrayFileItem[]) : [];
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [schedulingIdx, setSchedulingIdx] = useState<number | null>(null);
 
   function getFileExt(url: string) {
     const match = url.match(/\.(\w{2,5})(?:\?|$)/);
@@ -890,6 +937,7 @@ function PageFileArrayField({ field, value, onChange }: { field: Field; value: u
 
   function removeItem(index: number) {
     onChange(items.filter((_, i) => i !== index));
+    if (schedulingIdx === index) setSchedulingIdx(null);
   }
 
   function moveItem(from: number, to: number) {
@@ -904,17 +952,36 @@ function PageFileArrayField({ field, value, onChange }: { field: Field; value: u
     <div className="flex flex-col gap-1.5">
       {items.map((item, i) => {
         const ext = getFileExt(item.url);
+        const schedStatus = getAssetScheduleStatus(item);
+        const hasSchedule = !!(item.published_at || item.expires_at);
         return (
-          <div key={i} className="flex items-center gap-2 rounded-lg border border-ink-100 bg-white px-3 py-2 group">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-ink-50">
-              <span className="text-[8px] font-bold text-ink-500">{ext}</span>
+          <div key={i} className={cn(
+            "rounded-lg border overflow-hidden",
+            schedStatus === "scheduled" ? "border-warning bg-warning-soft/20" : schedStatus === "expired" ? "border-ink-200 opacity-60" : "border-ink-100 bg-white",
+          )}>
+            <div className="flex items-center gap-2 px-3 py-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-ink-50">
+                <span className="text-[8px] font-bold text-ink-500">{ext}</span>
+              </div>
+              <input type="text" value={item.title} onChange={(e) => updateTitle(i, e.target.value)} placeholder="Titulo do arquivo..." className="flex-1 min-w-0 text-sm text-ink-900 bg-transparent focus:outline-none" />
+              {schedStatus === "scheduled" && (
+                <span className="rounded-full bg-warning px-1.5 py-0.5 text-[9px] font-semibold text-white flex items-center gap-0.5 shrink-0">
+                  <Clock size={8} />{item.published_at ? new Date(item.published_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Agendado"}
+                </span>
+              )}
+              {schedStatus === "expired" && (
+                <span className="rounded-full bg-ink-400 px-1.5 py-0.5 text-[9px] font-semibold text-white shrink-0">Expirado</span>
+              )}
+              <div className="flex items-center gap-0.5 shrink-0">
+                {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700"><ChevronRight size={12} className="-rotate-90" /></button>}
+                {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700"><ChevronRight size={12} className="rotate-90" /></button>}
+                <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-md p-1", hasSchedule ? "text-warning hover:text-warning/80" : "text-ink-400 hover:text-ink-700")} title="Agendar"><Clock size={12} /></button>
+                <button type="button" onClick={() => removeItem(i)} className="rounded-md p-1 text-ink-400 hover:text-danger"><X size={12} /></button>
+              </div>
             </div>
-            <input type="text" value={item.title} onChange={(e) => updateTitle(i, e.target.value)} placeholder="Título do arquivo..." className="flex-1 min-w-0 text-sm text-ink-900 bg-transparent focus:outline-none" />
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-              {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700"><ChevronRight size={12} className="-rotate-90" /></button>}
-              {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700"><ChevronRight size={12} className="rotate-90" /></button>}
-              <button type="button" onClick={() => removeItem(i)} className="rounded-md p-1 text-ink-400 hover:text-danger"><X size={12} /></button>
-            </div>
+            {schedulingIdx === i && (
+              <PageAssetSchedulePanel item={item} index={i} onChange={(v) => onChange(v)} items={items} />
+            )}
           </div>
         );
       })}

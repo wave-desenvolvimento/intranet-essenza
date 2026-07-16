@@ -1176,7 +1176,7 @@ function ImageArrayField({ field, value, onChange }: { field: Field; value: unkn
                 <div className="relative h-24">
                   <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
                   <AssetScheduleBadge status={schedStatus} publishedAt={item.published_at} />
-                  <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-1 right-1 flex gap-0.5">
                     {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70" title="Mover para esquerda"><ChevronRight size={10} className="rotate-180" /></button>}
                     {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70" title="Mover para direita"><ChevronRight size={10} /></button>}
                     <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-full p-1 text-white", hasSchedule ? "bg-warning hover:bg-warning/80" : "bg-black/50 hover:bg-black/70")} title="Agendar"><Clock size={10} /></button>
@@ -1287,7 +1287,7 @@ function FileArrayField({ field, value, onChange }: { field: Field; value: unkno
               {schedStatus === "expired" && (
                 <span className="rounded-full bg-ink-400 px-1.5 py-0.5 text-[9px] font-semibold text-white shrink-0">Expirado</span>
               )}
-              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <div className="flex items-center gap-0.5 shrink-0">
                 {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Subir"><ChevronRight size={12} className="-rotate-90" /></button>}
                 {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Descer"><ChevronRight size={12} className="rotate-90" /></button>}
                 <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-md p-1", hasSchedule ? "text-warning hover:text-warning/80" : "text-ink-400 hover:text-ink-700")} title="Agendar"><Clock size={12} /></button>
