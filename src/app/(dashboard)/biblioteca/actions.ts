@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { isAssetVisible } from "@/lib/utils";
 
 export interface LibraryAsset {
   id: string;
@@ -64,8 +65,8 @@ export async function getLibraryAssets(): Promise<LibraryAsset[]> {
           if (url) assets.push({ id: `${item.id}-${f.slug}-${variant}`, url, title: `${itemTitle || variant} - ${variant}`, collection: colName, type: "image" });
         }
       } else if (Array.isArray(raw)) {
-        for (const [i, entry] of (raw as { url: string; title?: string }[]).entries()) {
-          if (entry.url) assets.push({ id: `${item.id}-${f.slug}-${i}`, url: entry.url, title: entry.title || itemTitle || `${f.name} ${i + 1}`, collection: colName, type: isImageType ? "image" : "file" });
+        for (const [i, entry] of (raw as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]).entries()) {
+          if (entry.url && isAssetVisible(entry)) assets.push({ id: `${item.id}-${f.slug}-${i}`, url: entry.url, title: entry.title || itemTitle || `${f.name} ${i + 1}`, collection: colName, type: isImageType ? "image" : "file" });
         }
       }
     }

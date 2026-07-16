@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useRef } from "react";
 import DOMPurify from "dompurify";
 import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isAssetVisible } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Sheet } from "@/components/ui/sheet";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -1020,8 +1020,8 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
 
   function getItemFiles(item: Item): { title: string; url: string }[] {
     if (fileArrayField) {
-      const arr = Array.isArray(item.data[fileArrayField.slug]) ? (item.data[fileArrayField.slug] as { title?: string; url: string }[]) : [];
-      return arr.map((f) => ({ title: f.title || "Arquivo", url: f.url }));
+      const arr = Array.isArray(item.data[fileArrayField.slug]) ? (item.data[fileArrayField.slug] as { title?: string; url: string; published_at?: string | null; expires_at?: string | null }[]) : [];
+      return arr.filter((f) => isAssetVisible(f)).map((f) => ({ title: f.title || "Arquivo", url: f.url }));
     }
     if (fileField) {
       const url = String(item.data[fileField.slug] || "");
@@ -1090,12 +1090,10 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
         }
       }
       if (imageArrayField && Array.isArray(i.data[imageArrayField.slug])) {
-        const arr = i.data[imageArrayField.slug] as { url: string; title?: string }[];
-        arr.forEach((img, idx) => {
-          if (img.url) {
-            const ext = img.url.split(".").pop()?.split("?")[0] || "jpg";
-            files.push({ url: img.url, filename: `${title || i.id}_${img.title || idx + 1}.${ext}`, itemId: i.id });
-          }
+        const arr = i.data[imageArrayField.slug] as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[];
+        arr.filter((img) => img.url && isAssetVisible(img)).forEach((img, idx) => {
+          const ext = img.url.split(".").pop()?.split("?")[0] || "jpg";
+          files.push({ url: img.url, filename: `${title || i.id}_${img.title || idx + 1}.${ext}`, itemId: i.id });
         });
       }
     }
@@ -1174,7 +1172,7 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
           const itemVariants: ImageVariant[] = variantsData && typeof variantsData === "object" && !Array.isArray(variantsData)
             ? Object.entries(variantsData).filter(([, url]) => url).map(([label, url]) => ({ label, url }))
             : [];
-          const imageArrayData = imageArrayField && Array.isArray(item.data[imageArrayField.slug]) ? (item.data[imageArrayField.slug] as { url: string; title?: string }[]) : [];
+          const imageArrayData = imageArrayField && Array.isArray(item.data[imageArrayField.slug]) ? (item.data[imageArrayField.slug] as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]).filter((a) => isAssetVisible(a)) : [];
           const imgUrl = (imageField ? safeStr(item.data[imageField.slug]) : "") || itemVariants[0]?.url || imageArrayData[0]?.url || "";
 
           const descFieldLocal = collection.fields.find((f) => f.field_type === "textarea" || f.field_type === "rich_text");
@@ -1333,8 +1331,8 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
         break;
       }
       case "image_array": {
-        const arr = Array.isArray(raw) ? (raw as { url: string; title?: string }[]) : [];
-        const imgs = arr.filter((a) => a.url).map((a, i) => ({ label: a.title || `${f.name} ${i + 1}`, url: a.url }));
+        const arr = Array.isArray(raw) ? (raw as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]) : [];
+        const imgs = arr.filter((a) => a.url && isAssetVisible(a)).map((a, i) => ({ label: a.title || `${f.name} ${i + 1}`, url: a.url }));
         if (imgs.length) sections.push({ kind: "images", name: f.name, images: imgs });
         break;
       }
@@ -1344,8 +1342,8 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
         break;
       }
       case "file_array": {
-        const arr = Array.isArray(raw) ? (raw as { title?: string; url: string; filename?: string }[]) : [];
-        const fls = arr.filter((a) => a.url).map((a) => ({ title: a.title || a.filename || f.name, url: a.url }));
+        const arr = Array.isArray(raw) ? (raw as { title?: string; url: string; filename?: string; published_at?: string | null; expires_at?: string | null }[]) : [];
+        const fls = arr.filter((a) => a.url && isAssetVisible(a)).map((a) => ({ title: a.title || a.filename || f.name, url: a.url }));
         if (fls.length) sections.push({ kind: "files", name: f.name, files: fls });
         break;
       }

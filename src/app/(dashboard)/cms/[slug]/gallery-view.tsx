@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { Image as ImageIcon, Pencil, Trash2, X, ZoomIn, Copy, Download, Eye, FileText, File, Share2, Link2, Check, Loader2, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isAssetVisible } from "@/lib/utils";
 import { ImageFormatDownload, type ImageVariant } from "@/components/ui/image-format-download";
 import { getIconComponent } from "@/components/ui/icon-picker";
 import { BrandLogo } from "@/components/layout/brand-logo";
@@ -342,8 +342,8 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
       }
     }
     for (const f of imageArrayFields) {
-      const arr = Array.isArray(item.data[f.slug]) ? item.data[f.slug] as { url: string; title?: string }[] : [];
-      arr.forEach((img, i) => { if (img.url) images.push({ label: img.title || `${f.name} ${i + 1}`, url: img.url }); });
+      const arr = Array.isArray(item.data[f.slug]) ? item.data[f.slug] as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[] : [];
+      arr.forEach((img, i) => { if (img.url && isAssetVisible(img)) images.push({ label: img.title || `${f.name} ${i + 1}`, url: img.url }); });
     }
     return images;
   }
@@ -351,8 +351,8 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
   function getItemFiles(item: Item): { title: string; url: string }[] {
     const files: { title: string; url: string }[] = [];
     for (const f of fileArrayFields) {
-      const arr = Array.isArray(item.data[f.slug]) ? (item.data[f.slug] as { title?: string; url: string }[]) : [];
-      arr.forEach((file) => { if (file.url) files.push({ title: file.title || f.name, url: file.url }); });
+      const arr = Array.isArray(item.data[f.slug]) ? (item.data[f.slug] as { title?: string; url: string; published_at?: string | null; expires_at?: string | null }[]) : [];
+      arr.forEach((file) => { if (file.url && isAssetVisible(file)) files.push({ title: file.title || f.name, url: file.url }); });
     }
     for (const f of fileFields) {
       const url = String(item.data[f.slug] || "");
@@ -389,15 +389,15 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
           if (imgs.length) sections.push({ kind: "images", name: f.name, images: imgs });
         }
       } else if (f.field_type === "image_array") {
-        const arr = Array.isArray(raw) ? (raw as { url: string; title?: string }[]) : [];
-        const imgs = arr.filter((a) => a.url).map((a, i) => ({ label: a.title || `${f.name} ${i + 1}`, url: a.url }));
+        const arr = Array.isArray(raw) ? (raw as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]) : [];
+        const imgs = arr.filter((a) => a.url && isAssetVisible(a)).map((a, i) => ({ label: a.title || `${f.name} ${i + 1}`, url: a.url }));
         if (imgs.length) sections.push({ kind: "images", name: f.name, images: imgs });
       } else if (f.field_type === "file") {
         const url = String(raw);
         if (url) sections.push({ kind: "files", name: f.name, files: [{ title: f.name, url }] });
       } else if (f.field_type === "file_array") {
-        const arr = Array.isArray(raw) ? (raw as { title?: string; url: string }[]) : [];
-        const fls = arr.filter((a) => a.url).map((a) => ({ title: a.title || f.name, url: a.url }));
+        const arr = Array.isArray(raw) ? (raw as { title?: string; url: string; published_at?: string | null; expires_at?: string | null }[]) : [];
+        const fls = arr.filter((a) => a.url && isAssetVisible(a)).map((a) => ({ title: a.title || f.name, url: a.url }));
         if (fls.length) sections.push({ kind: "files", name: f.name, files: fls });
       } else {
         sections.push({ kind: "detail", detail: { name: f.name, raw, type: f.field_type, options: f.options } });

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { BibliotecaContent } from "./biblioteca-content";
+import { isAssetVisible } from "@/lib/utils";
 
 export default async function BibliotecaPage() {
   const supabase = await createClient();
@@ -129,12 +130,12 @@ export default async function BibliotecaPage() {
           });
         }
       } else if (f.field_type === "image_array" && Array.isArray(raw)) {
-        for (const [i, img] of (raw as { url: string; title?: string }[]).entries()) {
-          if (!img.url) continue;
+        for (const [i, img] of (raw as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]).entries()) {
+          if (!img.url || !isAssetVisible(img)) continue;
           assets.push({
             id: `${item.id}-${f.slug}-${i}`, itemId: item.id, title: itemTitle || img.title || `${f.name} ${i + 1}`,
             collection: col?.name || "", collectionSlug: col?.slug || "", pageSlug,
-            type: "image", url: img.url, label: img.title || `${f.name} ${i + 1}`, tags: itemTags, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
+            type: "image", url: img.url, label: img.title || `${f.name} ${i + 1}`, tags: itemTags, createdAt: item.created_at, publishedAt: img.published_at || item.published_at, expiresAt: img.expires_at || item.expires_at,
           });
         }
       } else if (f.field_type === "file" && typeof raw === "string" && raw) {
@@ -144,12 +145,12 @@ export default async function BibliotecaPage() {
           type: "file", url: raw, label: f.name, tags: itemTags, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
         });
       } else if (f.field_type === "file_array" && Array.isArray(raw)) {
-        for (const [i, file] of (raw as { url: string; title?: string }[]).entries()) {
-          if (!file.url) continue;
+        for (const [i, file] of (raw as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]).entries()) {
+          if (!file.url || !isAssetVisible(file)) continue;
           assets.push({
             id: `${item.id}-${f.slug}-${i}`, itemId: item.id, title: file.title || itemTitle || `${f.name} ${i + 1}`,
             collection: col?.name || "", collectionSlug: col?.slug || "", pageSlug,
-            type: isImageType ? "image" : "file", url: file.url, label: file.title || `${f.name} ${i + 1}`, tags: itemTags, createdAt: item.created_at, publishedAt: item.published_at, expiresAt: item.expires_at,
+            type: isImageType ? "image" : "file", url: file.url, label: file.title || `${f.name} ${i + 1}`, tags: itemTags, createdAt: item.created_at, publishedAt: file.published_at || item.published_at, expiresAt: file.expires_at || item.expires_at,
           });
         }
       }

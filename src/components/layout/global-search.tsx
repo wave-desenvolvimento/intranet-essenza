@@ -7,7 +7,7 @@ import {
   Film,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, isAssetVisible } from "@/lib/utils";
 import { getIconComponent } from "@/components/ui/icon-picker";
 import { useRouter } from "next/navigation";
 import { useIsMac } from "@/hooks/use-platform";
@@ -213,7 +213,8 @@ export function GlobalSearch() {
             } else if (f.field_type === "image_variants" && typeof raw === "object" && !Array.isArray(raw)) {
               thumb = Object.values(raw as Record<string, string>).find((u) => u) || undefined;
             } else if (f.field_type === "image_array" && Array.isArray(raw)) {
-              thumb = (raw as { url: string }[])[0]?.url || undefined;
+              const visibleImgs = (raw as { url: string; published_at?: string | null; expires_at?: string | null }[]).filter((a) => isAssetVisible(a));
+              thumb = visibleImgs[0]?.url || undefined;
             }
           }
         }
@@ -280,8 +281,8 @@ export function GlobalSearch() {
                 if (url) addAsset(url, variant);
               }
             } else if (Array.isArray(raw)) {
-              for (const entry of raw as { url: string; title?: string }[]) {
-                if (entry.url) addAsset(entry.url, entry.title || field.name);
+              for (const entry of raw as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]) {
+                if (entry.url && isAssetVisible(entry)) addAsset(entry.url, entry.title || field.name);
               }
             }
           }
