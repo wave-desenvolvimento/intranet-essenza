@@ -261,9 +261,7 @@ export async function createOrder(formData: FormData) {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  pendente: "Pendente", aprovado: "Aprovado", confirmado: "Confirmado",
-  separacao: "Em Separação", faturado: "Faturado", entregue: "Entregue",
-  cancelado: "Cancelado",
+  pendente: "Pendente", aprovado: "Aprovado",
 };
 
 // === Payment Plans & Shipping Types ===

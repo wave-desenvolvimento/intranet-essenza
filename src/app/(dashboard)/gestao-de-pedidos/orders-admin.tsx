@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from "react";
 import {
   Search, Download, ChevronRight, Package, Clock, CheckCircle,
-  Truck, FileText, XCircle, Minus, Plus, Save, X, BarChart3,
+  FileText, Minus, Plus, Save, X, BarChart3,
   CalendarDays, Printer, Trash2, User,
 } from "lucide-react";
 import { updateOrderStatus, updateOrder } from "@/app/(dashboard)/novo-pedido/actions";
@@ -35,15 +35,10 @@ interface Order {
 interface Stats { pending: number; today: number; week: number; month: number }
 interface Permissions { canApprove: boolean; canEdit: boolean; canExport: boolean; canDelete: boolean; canManageProducts: boolean }
 
-const STATUS_FLOW = ["pendente", "aprovado", "confirmado", "separacao", "faturado", "entregue"] as const;
+const STATUS_FLOW = ["pendente", "aprovado"] as const;
 const STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bg: string; step: number }> = {
   pendente: { label: "Pendente", icon: Clock, color: "text-warning", bg: "bg-warning-soft", step: 0 },
-  aprovado: { label: "Aprovado", icon: CheckCircle, color: "text-info", bg: "bg-info-soft", step: 1 },
-  confirmado: { label: "Confirmado", icon: CheckCircle, color: "text-success", bg: "bg-success-soft", step: 2 },
-  separacao: { label: "Em Separação", icon: Truck, color: "text-warning", bg: "bg-warning-soft", step: 3 },
-  faturado: { label: "Faturado", icon: FileText, color: "text-brand-olive", bg: "bg-brand-olive-soft", step: 4 },
-  entregue: { label: "Entregue", icon: CheckCircle, color: "text-brand-olive", bg: "bg-brand-olive-soft", step: 5 },
-  cancelado: { label: "Cancelado", icon: XCircle, color: "text-danger", bg: "bg-danger-soft", step: -1 },
+  aprovado: { label: "Aprovado", icon: CheckCircle, color: "text-success", bg: "bg-success-soft", step: 1 },
 };
 
 function formatPrice(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
@@ -219,7 +214,7 @@ thead th:nth-child(2){text-align:center}thead th:nth-child(3),thead th:nth-child
   <div class="info-box"><label>Franquia</label><p>${o.franchise?.name || "-"}</p></div>
   <div class="info-box"><label>Vendedor</label><p>${o.seller_name || "-"}</p></div>
   <div class="info-box"><label>Solicitante</label><p>${o.creator_name || "-"}</p></div>
-  <div class="info-box"><label>Status</label><p><span class="badge" style="background:${o.status === "pendente" ? "#fef3c7;color:#92400e" : o.status === "aprovado" ? "#dbeafe;color:#1e40af" : o.status === "confirmado" ? "#dcfce7;color:#166534" : o.status === "faturado" || o.status === "entregue" ? "#f0e8d6;color:#5a5735" : o.status === "separacao" ? "#fef3c7;color:#92400e" : o.status === "cancelado" ? "#fef2f2;color:#991b1b" : "#dbeafe;color:#1e40af"}">${STATUS_CONFIG[o.status]?.label || o.status}</span></p></div>
+  <div class="info-box"><label>Status</label><p><span class="badge" style="background:${o.status === "pendente" ? "#fef3c7;color:#92400e" : "#dcfce7;color:#166534"}">${STATUS_CONFIG[o.status]?.label || o.status}</span></p></div>
   <div class="info-box"><label>Pagamento</label><p>${(pp as PaymentPlan | null)?.name || "-"}</p></div>
   <div class="info-box"><label>Frete</label><p>${(st as ShippingType | null)?.name || "-"}</p></div>
 </div>
@@ -416,36 +411,30 @@ ${o.admin_notes ? `<div class="notes" style="margin-top:8px"><strong>Obs. do com
                 </div>
               </div>
 
-              {/* Status stepper */}
-              {perms.canApprove && o.status !== "cancelado" ? (
+              {/* Status */}
+              {perms.canApprove ? (
                 <div>
                   <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-3">Status</p>
-                  <div className="flex items-center gap-1">
-                    {STATUS_FLOW.map((s, i) => {
+                  <div className="flex items-center gap-2">
+                    {STATUS_FLOW.map((s) => {
                       const sc = STATUS_CONFIG[s];
                       const isCurrent = o.status === s;
-                      const isPast = currentStep > sc.step;
                       return (
                         <button
                           key={s}
                           onClick={() => !isCurrent && handleStatusChange(o.id, s)}
                           disabled={isPending || isCurrent}
                           className={cn(
-                            "flex-1 flex flex-col items-center gap-1 rounded-lg py-2 px-1 text-[10px] font-medium transition-all border-2",
-                            isCurrent ? `${sc.bg} ${sc.color} border-current shadow-sm` : isPast ? "bg-ink-50 text-ink-400 border-transparent" : "bg-white text-ink-500 border-ink-100 hover:border-ink-300"
+                            "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-xs font-medium transition-all border-2",
+                            isCurrent ? `${sc.bg} ${sc.color} border-current shadow-sm` : "bg-white text-ink-500 border-ink-100 hover:border-ink-300"
                           )}
                         >
                           <sc.icon size={14} />
-                          <span className="leading-tight">{sc.label}</span>
+                          <span>{sc.label}</span>
                         </button>
                       );
                     })}
                   </div>
-                  {perms.canDelete && o.status !== "cancelado" && (
-                    <button onClick={() => handleStatusChange(o.id, "cancelado")} disabled={isPending} className="flex items-center gap-1 mt-2 text-[10px] font-medium text-danger hover:text-danger/80 transition-colors">
-                      <XCircle size={11} /> Cancelar pedido
-                    </button>
-                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2">

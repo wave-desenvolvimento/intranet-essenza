@@ -3,23 +3,24 @@
 import { useState, useTransition, useMemo } from "react";
 import {
   ShoppingCart, Plus, Minus, Trash2, Send, Package, Search,
-  FileText, Clock, CheckCircle, XCircle, ArrowRight, CalendarDays,
-  ZoomIn, X as XIcon, ChevronLeft, ChevronRight as ChevronRightIcon, Filter,
+  Clock, CheckCircle, ArrowRight, CalendarDays,
+  ZoomIn, X as XIcon, ChevronLeft, ChevronRight as ChevronRightIcon,
+  ChevronDown,
 } from "lucide-react";
 import { createOrder } from "./actions";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Sheet } from "@/components/ui/sheet";
-import { usePagination } from "@/hooks/use-pagination";
+
 import { format, startOfMonth, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { DateRange } from "react-day-picker";
-import Link from "next/link";
 
 interface Price { segment: string; price: number }
-interface Product { id: string; name: string; sku: string | null; category: string | null; unit: string; min_qty: number; image_url: string | null; stock_status: string; pre_order_date: string | null; prices: Price[] }
+interface ProductCategory { id: string; name: string }
+interface Product { id: string; name: string; sku: string | null; category: string | null; unit: string; min_qty: number; image_url: string | null; stock_status: string; pre_order_date: string | null; prices: Price[]; product_category?: ProductCategory | null }
 interface OrderItem { product_name: string; quantity: number; unit_price: number; subtotal: number }
 interface Order { id: string; status: string; total: number; notes: string | null; purchase_order: string | null; created_at: string; items: OrderItem[] }
 
@@ -35,16 +36,13 @@ interface Props {
 }
 
 const STATUS_ICON: Record<string, React.ElementType> = {
-  pendente: Clock, aprovado: CheckCircle, confirmado: CheckCircle, separacao: Clock, faturado: FileText, entregue: CheckCircle, cancelado: XCircle,
+  pendente: Clock, aprovado: CheckCircle,
 };
 const STATUS_LABEL: Record<string, string> = {
-  pendente: "Pendente", aprovado: "Aprovado", confirmado: "Confirmado", separacao: "Em Separação", faturado: "Faturado", entregue: "Entregue", cancelado: "Cancelado",
+  pendente: "Pendente", aprovado: "Aprovado",
 };
 const STATUS_COLOR: Record<string, string> = {
-  pendente: "bg-warning-soft text-warning", aprovado: "bg-info-soft text-info", confirmado: "bg-success-soft text-success",
-  separacao: "bg-warning-soft text-warning",
-  faturado: "bg-brand-olive-soft text-brand-olive", entregue: "bg-brand-olive-soft text-brand-olive",
-  cancelado: "bg-danger-soft text-danger",
+  pendente: "bg-warning-soft text-warning", aprovado: "bg-success-soft text-success",
 };
 
 function formatPrice(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
@@ -58,26 +56,56 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
   const [historyDateRange, setHistoryDateRange] = useState<DateRange | undefined>({ from: startOfMonth(new Date()), to: new Date() });
   const [historyCalendarOpen, setHistoryCalendarOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [filterCategories, setFilterCategories] = useState<string[]>([]);
-  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
 
-  const categories = [...new Set(products.map((p) => (p as unknown as { product_category?: { name: string } }).product_category?.name || p.category).filter(Boolean))].sort() as string[];
+  // Group products by category
+  const groupedProducts = useMemo(() => {
+    const q = search.toLowerCase();
+    const filtered = search
+      ? products.filter((p) => p.name.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q))
+      : products;
 
-  function toggleCategory(cat: string) {
-    setFilterCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
+    const groups: { name: string; products: Product[] }[] = [];
+    const catMap = new Map<string, Product[]>();
+    const uncategorized: Product[] = [];
+
+    for (const p of filtered) {
+      const catName = p.product_category?.name || p.category;
+      if (catName) {
+        const list = catMap.get(catName) || [];
+        list.push(p);
+        catMap.set(catName, list);
+      } else {
+        uncategorized.push(p);
+      }
+    }
+
+    // Sort categories alphabetically
+    for (const [name, prods] of [...catMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      groups.push({ name, products: prods });
+    }
+    if (uncategorized.length > 0) {
+      groups.push({ name: "Outros", products: uncategorized });
+    }
+
+    return groups;
+  }, [products, search]);
+
+  const totalProducts = groupedProducts.reduce((sum, g) => sum + g.products.length, 0);
+
+  function toggleCategoryAccordion(name: string) {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
   }
 
-  const filteredProducts = products.filter((p) => {
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase());
-    const catName = (p as unknown as { product_category?: { name: string } }).product_category?.name || p.category;
-    const matchCategory = filterCategories.length === 0 || (catName && filterCategories.includes(catName));
-    return matchSearch && matchCategory;
-  });
-
-  const { paginated: paginatedProducts, hasMore, loadMore, showing, total: totalFiltered } = usePagination(filteredProducts, { pageSize: 15 });
+  // When searching, auto-expand all categories
+  const effectiveExpanded = search ? new Set(groupedProducts.map((g) => g.name)) : expandedCategories;
 
   function getPrice(product: Product) {
     return product.prices.find((p) => p.segment === segment)?.price || 0;
@@ -144,100 +172,98 @@ export function OrderPage({ products, orders, segment, franchiseName, franchiseI
 
       {tab === "new" && (
         <div>
-          {/* Product catalog - full width */}
-          <div>
-            <div className="flex flex-col gap-2 mb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-white py-1 px-3 h-9 flex-1">
-                  <Search size={14} className="text-ink-400" />
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou SKU..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
-                </div>
-                {categories.length > 0 && (
-                  <button onClick={() => setShowCategoryFilter(!showCategoryFilter)} className={cn("flex items-center gap-1.5 rounded-lg border px-3 h-9 text-xs font-medium transition-colors shrink-0", filterCategories.length > 0 ? "border-brand-olive bg-brand-olive-soft text-brand-olive" : "border-ink-100 bg-white text-ink-600 hover:border-ink-200")}>
-                    <Filter size={13} />
-                    {filterCategories.length > 0 ? `${filterCategories.length} categorias` : "Categorias"}
-                  </button>
-                )}
-              </div>
-              {showCategoryFilter && (
-                <div className="rounded-lg border border-ink-100 bg-white p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] text-ink-400 uppercase font-medium">Filtrar por categoria</p>
-                    {filterCategories.length > 0 && (
-                      <button onClick={() => setFilterCategories([])} className="text-[10px] text-ink-500 hover:text-ink-900 transition-colors">Limpar</button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {categories.map((c) => {
-                      const isActive = filterCategories.includes(c);
-                      return (
-                        <button key={c} onClick={() => toggleCategory(c)} className={cn("rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors border", isActive ? "border-brand-olive bg-brand-olive text-white" : "border-ink-100 bg-ink-50/50 text-ink-600 hover:border-ink-200")}>
-                          {c}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* Search */}
+          <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-white py-1 px-3 h-9 mb-3">
+            <Search size={14} className="text-ink-400" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou SKU..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
+          </div>
 
-            <p className="text-[10px] text-ink-400 mb-2">{showing} de {totalFiltered} produtos</p>
-            <div className="rounded-xl border border-ink-100 bg-white overflow-hidden">
-              {paginatedProducts.map((p, i) => {
-                const price = getPrice(p);
-                const inCart = cart.find((c) => c.productId === p.id);
-                return (
-                  <div key={p.id} className={cn("flex items-center gap-3 px-4 py-3 hover:bg-ink-50/50 transition-colors", i < paginatedProducts.length - 1 && "border-b border-ink-50")}>
-                    {p.image_url ? (
-                      <div className="relative group/img shrink-0">
-                        <img src={p.image_url} alt="" className="h-10 w-10 rounded-lg object-cover" />
-                        <button onClick={(e) => { e.stopPropagation(); const allImgs = [p.image_url!, ...((p as unknown as { images?: string[] }).images || [])].filter(Boolean); setLightbox({ urls: allImgs, index: 0 }); }} className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 group-hover/img:bg-black/30 transition-colors">
-                          <ZoomIn size={12} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-50">
-                        <Package size={16} className="text-ink-300" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-ink-900">{p.name}</p>
-                      <p className="text-[10px] text-ink-400">{p.sku && `${p.sku} · `}{p.unit}{p.min_qty > 1 ? ` · mín. ${p.min_qty}` : ""}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-0.5 shrink-0">
-                      <span className="text-sm font-semibold text-ink-900">{price ? formatPrice(price) : "-"}</span>
-                      {p.stock_status === "pre_order" && (
-                        <span className="rounded-full bg-info-soft px-1.5 py-0.5 text-[8px] font-medium text-info">Pré-venda{p.pre_order_date ? ` · ${new Date(p.pre_order_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}` : ""}</span>
-                      )}
-                      {p.stock_status === "out_of_stock" && (
-                        <span className="rounded-full bg-danger-soft px-1.5 py-0.5 text-[8px] font-medium text-danger">Sem estoque</span>
-                      )}
-                    </div>
-                    {price > 0 && p.stock_status !== "out_of_stock" && (
-                      inCart ? (
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button onClick={() => updateQty(p.id, -1)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-ink-200 text-ink-500 hover:bg-ink-50"><Minus size={12} /></button>
-                          <span className="w-8 text-center text-sm font-medium text-ink-900">{inCart.quantity}</span>
-                          <button onClick={() => updateQty(p.id, 1)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-ink-200 text-ink-500 hover:bg-ink-50"><Plus size={12} /></button>
-                        </div>
-                      ) : (
-                        <button onClick={() => addToCart(p)} className="flex items-center gap-1 rounded-lg bg-brand-olive-soft px-3 py-1.5 text-[11px] font-medium text-brand-olive hover:bg-brand-olive/10 transition-colors shrink-0">
-                          <Plus size={12} /> Adicionar
-                        </button>
-                      )
-                    )}
-                  </div>
-                );
-              })}
-              {filteredProducts.length === 0 && <p className="text-center text-sm text-ink-400 py-8">Nenhum produto encontrado</p>}
-            </div>
-            {hasMore && (
-              <div className="flex justify-center mt-3">
-                <button onClick={loadMore} className="rounded-lg border border-ink-200 px-5 py-2 text-xs font-medium text-ink-700 hover:bg-ink-50 transition-colors">
-                  Carregar mais
-                </button>
+          <p className="text-[10px] text-ink-400 mb-2">{totalProducts} produtos · {groupedProducts.length} {groupedProducts.length === 1 ? "colecao" : "colecoes"}</p>
+
+          {/* Category accordions */}
+          <div className="flex flex-col gap-2">
+            {groupedProducts.length === 0 && (
+              <div className="rounded-xl border border-dashed border-ink-200 bg-ink-50/50 py-8 text-center">
+                <Package size={24} className="text-ink-300 mx-auto mb-2" />
+                <p className="text-sm text-ink-400">Nenhum produto encontrado</p>
               </div>
             )}
+            {groupedProducts.map((group) => {
+              const isOpen = effectiveExpanded.has(group.name);
+              const groupCartCount = group.products.filter((p) => cart.some((c) => c.productId === p.id)).length;
+              return (
+                <div key={group.name} className="rounded-xl border border-ink-100 bg-white overflow-hidden">
+                  {/* Category header */}
+                  <button
+                    onClick={() => toggleCategoryAccordion(group.name)}
+                    className="flex items-center gap-3 w-full px-4 py-3.5 text-left hover:bg-ink-50/50 transition-colors"
+                  >
+                    <ChevronDown size={16} className={cn("text-ink-400 transition-transform shrink-0", isOpen && "rotate-180")} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-ink-900">{group.name}</p>
+                      <p className="text-[10px] text-ink-400">{group.products.length} {group.products.length === 1 ? "produto" : "produtos"}</p>
+                    </div>
+                    {groupCartCount > 0 && (
+                      <span className="flex items-center gap-1 rounded-full bg-brand-olive-soft px-2 py-0.5 text-[10px] font-medium text-brand-olive shrink-0">
+                        <ShoppingCart size={10} /> {groupCartCount} no carrinho
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Products list */}
+                  {isOpen && (
+                    <div className="border-t border-ink-100">
+                      {group.products.map((p, i) => {
+                        const price = getPrice(p);
+                        const inCart = cart.find((c) => c.productId === p.id);
+                        return (
+                          <div key={p.id} className={cn("flex items-center gap-3 px-4 py-3 hover:bg-ink-50/50 transition-colors", i < group.products.length - 1 && "border-b border-ink-50")}>
+                            {p.image_url ? (
+                              <div className="relative group/img shrink-0">
+                                <img src={p.image_url} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                                <button onClick={(e) => { e.stopPropagation(); const allImgs = [p.image_url!, ...((p as unknown as { images?: string[] }).images || [])].filter(Boolean); setLightbox({ urls: allImgs, index: 0 }); }} className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 group-hover/img:bg-black/30 transition-colors">
+                                  <ZoomIn size={12} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-50">
+                                <Package size={16} className="text-ink-300" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-ink-900">{p.name}</p>
+                              <p className="text-[10px] text-ink-400">{p.sku && `${p.sku} · `}{p.unit}{p.min_qty > 1 ? ` · min. ${p.min_qty}` : ""}</p>
+                            </div>
+                            <div className="flex flex-col items-end gap-0.5 shrink-0">
+                              <span className="text-sm font-semibold text-ink-900">{price ? formatPrice(price) : "-"}</span>
+                              {p.stock_status === "pre_order" && (
+                                <span className="rounded-full bg-info-soft px-1.5 py-0.5 text-[8px] font-medium text-info">Pre-venda{p.pre_order_date ? ` · ${new Date(p.pre_order_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}` : ""}</span>
+                              )}
+                              {p.stock_status === "out_of_stock" && (
+                                <span className="rounded-full bg-danger-soft px-1.5 py-0.5 text-[8px] font-medium text-danger">Sem estoque</span>
+                              )}
+                            </div>
+                            {price > 0 && p.stock_status !== "out_of_stock" && (
+                              inCart ? (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button onClick={() => updateQty(p.id, -1)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-ink-200 text-ink-500 hover:bg-ink-50"><Minus size={12} /></button>
+                                  <span className="w-8 text-center text-sm font-medium text-ink-900">{inCart.quantity}</span>
+                                  <button onClick={() => updateQty(p.id, 1)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-ink-200 text-ink-500 hover:bg-ink-50"><Plus size={12} /></button>
+                                </div>
+                              ) : (
+                                <button onClick={() => addToCart(p)} className="flex items-center gap-1 rounded-lg bg-brand-olive-soft px-3 py-1.5 text-[11px] font-medium text-brand-olive hover:bg-brand-olive/10 transition-colors shrink-0">
+                                  <Plus size={12} /> Adicionar
+                                </button>
+                              )
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Cart - floating button + Sheet */}

@@ -85,11 +85,8 @@ BEGIN
     v_days_ago := floor(random() * 55)::int;
 
     v_status := CASE
-      WHEN random() < 0.30 THEN 'enviado'
-      WHEN random() < 0.55 THEN 'confirmado'
-      WHEN random() < 0.85 THEN 'faturado'
-      WHEN random() < 0.95 THEN 'rascunho'
-      ELSE 'cancelado'
+      WHEN random() < 0.50 THEN 'pendente'
+      ELSE 'aprovado'
     END;
 
     v_total := 0;

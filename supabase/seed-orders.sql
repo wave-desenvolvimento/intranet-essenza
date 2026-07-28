@@ -11,12 +11,12 @@ alter table public.orders add column if not exists approved_by uuid references a
 alter table public.orders add column if not exists admin_notes text;
 alter table public.products add column if not exists image_url text;
 
--- Atualizar constraint de status para incluir 'aprovado' e 'separacao'
+-- Atualizar constraint de status
 do $$
 begin
   alter table public.orders drop constraint if exists orders_status_check;
   alter table public.orders add constraint orders_status_check
-    check (status in ('rascunho', 'enviado', 'aprovado', 'separacao', 'faturado', 'cancelado'));
+    check (status in ('pendente', 'aprovado'));
 exception when others then null;
 end $$;
 
@@ -110,7 +110,7 @@ begin
   -- #1 - Caxias, faturado, 45 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
-  values (v_order_id, f_caxias, 'faturado', 'Pedido mensal de reposição [SEED]', 856.80,
+  values (v_order_id, f_caxias, 'aprovado', 'Pedido mensal de reposição [SEED]', 856.80,
     now() - interval '45 days', now() - interval '45 days', now() - interval '43 days', 'NF 4521 emitida');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000001', 'Azeite Extra Virgem 500ml', 12, 42.90, 514.80),
@@ -122,7 +122,7 @@ begin
   -- #2 - Gramado, faturado, 40 dias atrás (pedido grande turismo)
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
-  values (v_order_id, f_gramado, 'faturado', 'Reposição temporada inverno [SEED]', 0,
+  values (v_order_id, f_gramado, 'aprovado', 'Reposição temporada inverno [SEED]', 0,
     now() - interval '40 days', now() - interval '40 days', now() - interval '38 days', 'Enviado via transportadora Braspress');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000001', 'Azeite Extra Virgem 500ml', 24, 42.90, 1029.60),
@@ -135,7 +135,7 @@ begin
   -- #3 - Carlos Barbosa (multimarca), faturado, 35 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at)
-  values (v_order_id, f_carlos, 'faturado', 'Pedido inicial loja nova [SEED]', 0,
+  values (v_order_id, f_carlos, 'aprovado', 'Pedido inicial loja nova [SEED]', 0,
     now() - interval '35 days', now() - interval '35 days', now() - interval '33 days');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000001', 'Azeite Extra Virgem 500ml', 6, 48.90, 293.40),
@@ -159,7 +159,7 @@ begin
   -- #5 - Caxias, separacao, 8 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
-  values (v_order_id, f_caxias, 'separacao', 'Urgente para evento fim de semana [SEED]', 0,
+  values (v_order_id, f_caxias, 'aprovado', 'Urgente para evento fim de semana [SEED]', 0,
     now() - interval '8 days', now() - interval '8 days', now() - interval '7 days', 'Priorizar separação - evento sábado');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000003', 'Azeite Trufado 100ml', 6, 54.90, 329.40),
@@ -183,7 +183,7 @@ begin
   -- #7 - Matriz, separacao, 5 dias atrás (showroom)
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
-  values (v_order_id, f_matriz, 'separacao', 'Estoque showroom Bento [SEED]', 0,
+  values (v_order_id, f_matriz, 'aprovado', 'Estoque showroom Bento [SEED]', 0,
     now() - interval '5 days', now() - interval '5 days', now() - interval '4 days', 'Separar do lote novo');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000001', 'Azeite Extra Virgem 500ml', 24, 42.90, 1029.60),
@@ -197,7 +197,7 @@ begin
   -- #8 - Carlos Barbosa, enviado, 3 dias atrás (aguardando aprovação)
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
-  values (v_order_id, f_carlos, 'enviado', 'Reposição quinzenal [SEED]', 0,
+  values (v_order_id, f_carlos, 'pendente', 'Reposição quinzenal [SEED]', 0,
     now() - interval '3 days', now() - interval '3 days');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000004', 'Vinagre Balsâmico 250ml', 12, 26.90, 322.80),
@@ -208,7 +208,7 @@ begin
   -- #9 - Gramado, enviado, 2 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
-  values (v_order_id, f_gramado, 'enviado', 'Faltando kits presente na vitrine [SEED]', 0,
+  values (v_order_id, f_gramado, 'pendente', 'Faltando kits presente na vitrine [SEED]', 0,
     now() - interval '2 days', now() - interval '2 days');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000015', 'Kit Presente Essenza Clássico', 15, 89.90, 1348.50),
@@ -219,7 +219,7 @@ begin
   -- #10 - Caxias, enviado, 1 dia atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
-  values (v_order_id, f_caxias, 'enviado', 'Pedido semanal [SEED]', 0,
+  values (v_order_id, f_caxias, 'pendente', 'Pedido semanal [SEED]', 0,
     now() - interval '1 day', now() - interval '1 day');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000011', 'Massa Artesanal Tagliatelle 500g', 24, 16.90, 405.60),
@@ -231,7 +231,7 @@ begin
   -- #11 - Garibaldi, enviado, hoje
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
-  values (v_order_id, f_garibaldi, 'enviado', 'Preciso urgente das conservas [SEED]', 0,
+  values (v_order_id, f_garibaldi, 'pendente', 'Preciso urgente das conservas [SEED]', 0,
     now(), now());
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000019', 'Conserva de Alcachofra 300g', 12, 31.50, 378.00),
@@ -242,7 +242,7 @@ begin
   -- #12 - Matriz, enviado, hoje (pedido grande)
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at)
-  values (v_order_id, f_matriz, 'enviado', 'Reposição geral showroom [SEED]', 0,
+  values (v_order_id, f_matriz, 'pendente', 'Reposição geral showroom [SEED]', 0,
     now(), now());
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000001', 'Azeite Extra Virgem 500ml', 48, 42.90, 2059.20),
@@ -256,7 +256,7 @@ begin
   -- #13 - Caxias, cancelado, 30 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, admin_notes)
-  values (v_order_id, f_caxias, 'cancelado', 'Pedido duplicado [SEED]', 514.80,
+  values (v_order_id, f_caxias, 'pendente', 'Pedido duplicado [SEED]', 514.80,
     now() - interval '30 days', now() - interval '30 days', 'Cancelado: duplicidade com pedido anterior');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000001', 'Azeite Extra Virgem 500ml', 12, 42.90, 514.80);
@@ -264,7 +264,7 @@ begin
   -- #14 - Gramado, faturado, 20 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at, admin_notes)
-  values (v_order_id, f_gramado, 'faturado', 'Reposição rápida [SEED]', 0,
+  values (v_order_id, f_gramado, 'aprovado', 'Reposição rápida [SEED]', 0,
     now() - interval '20 days', now() - interval '20 days', now() - interval '19 days', 'NF 4589');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000006', 'Molho Pesto Genovese 180g', 24, 24.90, 597.60),
@@ -275,7 +275,7 @@ begin
   -- #15 - Garibaldi, faturado, 55 dias atrás
   v_order_id := gen_random_uuid();
   insert into public.orders (id, franchise_id, status, notes, total, sent_at, created_at, approved_at)
-  values (v_order_id, f_garibaldi, 'faturado', 'Primeiro pedido da loja [SEED]', 0,
+  values (v_order_id, f_garibaldi, 'aprovado', 'Primeiro pedido da loja [SEED]', 0,
     now() - interval '55 days', now() - interval '55 days', now() - interval '53 days');
   insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, subtotal) values
     (v_order_id, 'a0000001-0000-0000-0000-000000000001', 'Azeite Extra Virgem 500ml', 6, 48.90, 293.40),
