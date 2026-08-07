@@ -443,7 +443,8 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
           const descText = rawDesc.replace(/<[^>]*>/g, "").trim();
           const images = getItemImages(item);
           const files = getItemFiles(item);
-          const imgUrl = images[0]?.url || "";
+          const coverUrl = String(item.data._cover || "");
+          const imgUrl = coverUrl || images[0]?.url || "";
 
           // Decide what to show in the thumbnail
           const showImage = !!imgUrl;

@@ -5,7 +5,7 @@ import DOMPurify from "dompurify";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
-  ArrowLeft, Plus, Pencil, Trash2, X, Settings, Check, Upload, GripVertical, ChevronRight, Copy, History, RotateCcw, Search, Clock,
+  ArrowLeft, Plus, Pencil, Trash2, X, Settings, Check, Upload, GripVertical, ChevronRight, ChevronUp, ChevronDown, Copy, History, RotateCcw, Search, Clock,
 } from "lucide-react";
 import { createField, updateField, deleteField, createItem, updateItem, deleteItem, reorderItems, reorderFields, updateCollection, bulkUpdateStatus, bulkDeleteItems, duplicateItem } from "../actions";
 import { getItemHistory, revertToVersion } from "@/app/(dashboard)/history-actions";
@@ -419,6 +419,11 @@ export function CollectionDetail({ collection, fields, items }: Props) {
       <Sheet open={itemSheet} onClose={closeItem} onSubmit={saveItem} title={editingItem ? "Editar Item" : "Novo Item"} wide>
         <div className={cn(isBanner ? "flex gap-6" : "")}>
           <div className="flex-1 flex flex-col gap-4">
+            {/* Campo capa fixo */}
+            <div>
+              <label className="text-sm font-medium text-ink-700 mb-1.5 block">Capa</label>
+              <FileUploadField field={{ id: "_cover", name: "Capa", slug: "_cover", field_type: "image", required: false, placeholder: null, options: null, sort_order: -1 }} value={itemData._cover} onChange={(val) => setItemData((prev) => ({ ...prev, _cover: val }))} />
+            </div>
             {fields.map((f) => (
               <div key={f.id}>
                 <label className="text-sm font-medium text-ink-700 mb-1.5 flex items-center gap-1">
@@ -1107,19 +1112,22 @@ function AssetSchedulePanel({ item, index, onChange, items }: { item: ArrayItem;
   function clear() {
     onChange(items.map((it, i) => i === index ? { ...it, published_at: null, expires_at: null } : it));
   }
-  const inputCls = "h-8 w-full rounded-md border border-ink-100 bg-white px-2 text-[11px] text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-1 focus:ring-brand-olive/10";
+  const inputCls = "h-9 w-full rounded-md border border-ink-100 bg-white px-2.5 text-xs text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-1 focus:ring-brand-olive/10";
   return (
-    <div className="border-t border-ink-100 p-2 bg-ink-50/50 space-y-1.5">
-      <div>
-        <label className="text-[10px] font-medium text-ink-500 block mb-0.5">Entra em</label>
-        <input type="datetime-local" value={item.published_at?.slice(0, 16) || ""} onChange={(e) => update("published_at", e.target.value)} className={inputCls} />
-      </div>
-      <div>
-        <label className="text-[10px] font-medium text-ink-500 block mb-0.5">Sai em</label>
-        <input type="datetime-local" value={item.expires_at?.slice(0, 16) || ""} onChange={(e) => update("expires_at", e.target.value)} className={inputCls} />
+    <div className="border-t border-ink-100 p-2.5 bg-ink-50/50">
+      <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">Agendamento</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs font-medium text-ink-600 block mb-1">Entra em</label>
+          <input type="datetime-local" value={item.published_at?.slice(0, 16) || ""} onChange={(e) => update("published_at", e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-ink-600 block mb-1">Sai em</label>
+          <input type="datetime-local" value={item.expires_at?.slice(0, 16) || ""} onChange={(e) => update("expires_at", e.target.value)} className={inputCls} />
+        </div>
       </div>
       {(item.published_at || item.expires_at) && (
-        <button type="button" onClick={clear} className="text-[10px] text-danger hover:underline">Limpar agendamento</button>
+        <button type="button" onClick={clear} className="text-xs text-danger hover:underline mt-1.5">Limpar agendamento</button>
       )}
     </div>
   );
@@ -1309,10 +1317,10 @@ function FileArrayField({ field, value, onChange }: { field: Field; value: unkno
                 <span className="rounded-full bg-ink-400 px-1.5 py-0.5 text-[9px] font-semibold text-white shrink-0">Expirado</span>
               )}
               <div className="flex items-center gap-0.5 shrink-0">
-                {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Subir"><ChevronRight size={12} className="-rotate-90" /></button>}
-                {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Descer"><ChevronRight size={12} className="rotate-90" /></button>}
-                <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-md p-1", hasSchedule ? "text-warning hover:text-warning/80" : "text-ink-400 hover:text-ink-700")} title="Agendar"><Clock size={12} /></button>
-                <button type="button" onClick={() => removeItem(i)} className="rounded-md p-1 text-ink-400 hover:text-danger" title="Remover"><X size={12} /></button>
+                {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Mover para cima"><ChevronUp size={12} /></button>}
+                {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Mover para baixo"><ChevronDown size={12} /></button>}
+                <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-md p-1", hasSchedule ? "text-warning hover:text-warning/80" : "text-ink-400 hover:text-ink-700")} title="Agendar exibicao"><Clock size={12} /></button>
+                <button type="button" onClick={() => removeItem(i)} className="rounded-md p-1 text-ink-400 hover:text-danger" title="Remover arquivo"><X size={12} /></button>
               </div>
             </div>
             {schedulingIdx === i && (

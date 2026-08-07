@@ -75,7 +75,9 @@ export function FilesView({ items, fields, onEdit, onDelete, onDuplicate, isPend
           >
             {/* File icon / thumbnail */}
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-50">
-              {fileUrl && imageField && downloadField === imageField ? (
+              {String(item.data._cover || "") ? (
+                <img src={String(item.data._cover)} alt="" className="h-10 w-10 rounded-lg object-cover" />
+              ) : fileUrl && imageField && downloadField === imageField ? (
                 <img src={fileUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
               ) : (
                 <FileIcon size={18} className="text-ink-400" />

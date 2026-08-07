@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import DOMPurify from "dompurify";
-import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput, GripVertical } from "lucide-react";
+import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ChevronUp, ChevronDown, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput, GripVertical } from "lucide-react";
 import { cn, isAssetVisible, getAssetScheduleStatus } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Sheet } from "@/components/ui/sheet";
@@ -33,6 +33,7 @@ interface Field {
   name: string;
   slug: string;
   field_type: string;
+  required?: boolean;
 }
 
 interface Item {
@@ -92,6 +93,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const [itemPublishedAt, setItemPublishedAt] = useState("");
   const [itemExpiresAt, setItemExpiresAt] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { confirm, dialogProps } = useConfirm();
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
@@ -304,13 +306,33 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
     setItemPublishedAt(item?.published_at ? item.published_at.slice(0, 16) : "");
     setItemExpiresAt(item?.expires_at ? item.expires_at.slice(0, 16) : "");
     setError("");
+    setFieldErrors({});
     setItemSheet(true);
   }
 
-  function closeItemSheet() { setItemSheet(false); setEditingItem(null); }
+  function closeItemSheet() { setItemSheet(false); setEditingItem(null); setFieldErrors({}); }
 
   function saveItem() {
     if (!activeCollection) return;
+    // Validar campos required
+    const fields = activeCollection.fields || [];
+    const errors: Record<string, string> = {};
+    for (const f of fields) {
+      if (!f.required) continue;
+      const val = itemData[f.slug];
+      const isEmpty = val === undefined || val === null || val === "" || (Array.isArray(val) && val.length === 0);
+      if (isEmpty) errors[f.slug] = "Campo obrigatorio";
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError("Preencha os campos obrigatorios marcados com *");
+      setTimeout(() => {
+        const el = document.querySelector("[data-field-error]");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+      return;
+    }
+    setFieldErrors({});
     if (itemPublishedAt && itemExpiresAt && new Date(itemExpiresAt) <= new Date(itemPublishedAt)) { setError("Data de expiracao deve ser posterior ao inicio."); return; }
     const fd = new FormData();
     fd.set("data", JSON.stringify(itemData));
@@ -604,19 +626,23 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
       {/* Item edit sheet */}
       <Sheet open={itemSheet} onClose={closeItemSheet} onSubmit={saveItem} title={editingItem ? "Editar" : "Novo Item"} wide>
         <div className="flex flex-col gap-4">
-          {/* Campo capa fixo quando dentro de pasta */}
-          {currentFolderId && (
-            <div>
-              <label className="text-sm font-medium text-ink-700 mb-1.5 block">Capa</label>
-              <PageFileField field={{ id: "_cover", name: "Capa", slug: "_cover", field_type: "image" }} value={itemData._cover} onChange={(val) => setItemData((prev) => ({ ...prev, _cover: val }))} />
-            </div>
-          )}
-          {(activeCollection || mainCollection)?.fields.map((f) => (
-            <div key={f.id}>
-              <label className="text-sm font-medium text-ink-700 mb-1.5 block">{f.name}</label>
-              <PageDynamicField field={f} value={itemData[f.slug]} onChange={(val) => setItemData((prev) => ({ ...prev, [f.slug]: val }))} />
-            </div>
-          ))}
+          {/* Campo capa fixo */}
+          <div>
+            <label className="text-sm font-medium text-ink-700 mb-1.5 block">Capa</label>
+            <PageFileField field={{ id: "_cover", name: "Capa", slug: "_cover", field_type: "image" }} value={itemData._cover} onChange={(val) => setItemData((prev) => ({ ...prev, _cover: val }))} />
+          </div>
+          {(activeCollection || mainCollection)?.fields.map((f) => {
+            const hasError = !!fieldErrors[f.slug];
+            return (
+              <div key={f.id} {...(hasError ? { "data-field-error": true } : {})}>
+                <label className={cn("text-sm font-medium mb-1.5 block", hasError ? "text-danger" : "text-ink-700")}>{f.name}{f.required && <span className="text-danger ml-0.5">*</span>}</label>
+                <div className={hasError ? "rounded-lg ring-2 ring-danger/30" : ""}>
+                  <PageDynamicField field={f} value={itemData[f.slug]} onChange={(val) => { setItemData((prev) => ({ ...prev, [f.slug]: val })); if (hasError) setFieldErrors((prev) => { const next = { ...prev }; delete next[f.slug]; return next; }); }} />
+                </div>
+                {hasError && <p className="text-xs text-danger mt-1">{fieldErrors[f.slug]}</p>}
+              </div>
+            );
+          })}
           {/* Vigencia + Tags */}
           <div className="border-t border-ink-100 pt-4 mt-2">
             <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-3">Vigencia</p>
@@ -846,19 +872,22 @@ function PageAssetSchedulePanel({ item, index, onChange, items }: { item: ArrayF
   function clear() {
     onChange(items.map((it, i) => i === index ? { ...it, published_at: null, expires_at: null } : it));
   }
-  const inputCls = "h-8 w-full rounded-md border border-ink-100 bg-white px-2 text-[11px] text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-1 focus:ring-brand-olive/10";
+  const inputCls = "h-9 w-full rounded-md border border-ink-100 bg-white px-2.5 text-xs text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-1 focus:ring-brand-olive/10";
   return (
-    <div className="border-t border-ink-100 p-2 bg-ink-50/50 space-y-1.5">
+    <div className="border-t border-ink-100 p-2.5 bg-ink-50/50">
+      <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">Agendamento</p>
+      <div className="grid grid-cols-2 gap-2">
       <div>
-        <label className="text-[10px] font-medium text-ink-500 block mb-0.5">Entra em</label>
+        <label className="text-xs font-medium text-ink-600 block mb-1">Entra em</label>
         <input type="datetime-local" value={item.published_at?.slice(0, 16) || ""} onChange={(e) => update("published_at", e.target.value)} className={inputCls} />
       </div>
       <div>
-        <label className="text-[10px] font-medium text-ink-500 block mb-0.5">Sai em</label>
+        <label className="text-xs font-medium text-ink-600 block mb-1">Sai em</label>
         <input type="datetime-local" value={item.expires_at?.slice(0, 16) || ""} onChange={(e) => update("expires_at", e.target.value)} className={inputCls} />
       </div>
+      </div>
       {(item.published_at || item.expires_at) && (
-        <button type="button" onClick={clear} className="text-[10px] text-danger hover:underline">Limpar agendamento</button>
+        <button type="button" onClick={clear} className="text-xs text-danger hover:underline mt-1.5">Limpar agendamento</button>
       )}
     </div>
   );
@@ -1042,10 +1071,10 @@ function PageFileArrayField({ field, value, onChange }: { field: Field; value: u
                 <span className="rounded-full bg-ink-400 px-1.5 py-0.5 text-[9px] font-semibold text-white shrink-0">Expirado</span>
               )}
               <div className="flex items-center gap-0.5 shrink-0">
-                {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700"><ChevronRight size={12} className="-rotate-90" /></button>}
-                {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700"><ChevronRight size={12} className="rotate-90" /></button>}
-                <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-md p-1", hasSchedule ? "text-warning hover:text-warning/80" : "text-ink-400 hover:text-ink-700")} title="Agendar"><Clock size={12} /></button>
-                <button type="button" onClick={() => removeItem(i)} className="rounded-md p-1 text-ink-400 hover:text-danger"><X size={12} /></button>
+                {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Mover para cima"><ChevronUp size={12} /></button>}
+                {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Mover para baixo"><ChevronDown size={12} /></button>}
+                <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-md p-1", hasSchedule ? "text-warning hover:text-warning/80" : "text-ink-400 hover:text-ink-700")} title="Agendar exibicao"><Clock size={12} /></button>
+                <button type="button" onClick={() => removeItem(i)} className="rounded-md p-1 text-ink-400 hover:text-danger" title="Remover arquivo"><X size={12} /></button>
               </div>
             </div>
             {schedulingIdx === i && (
