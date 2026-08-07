@@ -42,9 +42,10 @@ interface Props {
   users: UserProfile[];
   franchises: Franchise[];
   roles: Role[];
+  currentUserId: string;
 }
 
-export function UsersManager({ users, franchises }: Props) {
+export function UsersManager({ users, franchises, currentUserId }: Props) {
   const [search, setSearch] = useState("");
   const [filterFranchise, setFilterFranchise] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -163,6 +164,7 @@ export function UsersManager({ users, franchises }: Props) {
             ) : (
               filtered.map((user) => {
                 const initial = user.full_name?.[0]?.toUpperCase() || "U";
+                const isSelf = user.id === currentUserId;
                 return (
                   <tr
                     key={user.id}
@@ -208,15 +210,16 @@ export function UsersManager({ users, franchises }: Props) {
                     <td className="px-4 py-3">
                       <button
                         onClick={() => handleToggleStatus(user.id)}
-                        disabled={isPending}
+                        disabled={isPending || isSelf}
                         className={cn(
                           "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors",
+                          isSelf ? "cursor-not-allowed opacity-50" :
                           user.status === "active"
                             ? "bg-success-soft text-success hover:bg-success/10"
                             : "bg-ink-100 text-ink-500 hover:bg-ink-200"
                         )}
-                        aria-label="Alternar status"
-                        title="Alternar status"
+                        aria-label={isSelf ? "Não é possível alterar seu próprio status" : "Alternar status"}
+                        title={isSelf ? "Não é possível alterar seu próprio status" : "Alternar status"}
                       >
                         {user.status === "active" ? (
                           <><UserCheck size={11} /> Ativo</>
@@ -242,10 +245,10 @@ export function UsersManager({ users, franchises }: Props) {
                         )}
                         <button
                           onClick={() => handleDelete(user.id)}
-                          disabled={isPending}
-                          className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors"
-                          aria-label="Remover usuário"
-                          title="Remover usuário"
+                          disabled={isPending || isSelf}
+                          className={cn("rounded-md p-1.5 transition-colors", isSelf ? "text-ink-200 cursor-not-allowed" : "text-ink-400 hover:text-danger hover:bg-danger-soft")}
+                          aria-label={isSelf ? "Não é possível remover seu próprio usuário" : "Remover usuário"}
+                          title={isSelf ? "Não é possível remover seu próprio usuário" : "Remover usuário"}
                         >
                           <Trash2 size={14} />
                         </button>

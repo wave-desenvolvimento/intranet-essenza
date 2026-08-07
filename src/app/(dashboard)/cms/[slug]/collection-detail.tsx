@@ -1129,6 +1129,8 @@ function ImageArrayField({ field, value, onChange }: { field: Field; value: unkn
   const items: ArrayItem[] = Array.isArray(value) ? (value as ArrayItem[]) : [];
   const [uploading, setUploading] = useState(false);
   const [schedulingIdx, setSchedulingIdx] = useState<number | null>(null);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
 
   async function handleUpload(files: FileList) {
     setUploading(true);
@@ -1161,6 +1163,14 @@ function ImageArrayField({ field, value, onChange }: { field: Field; value: unkn
     onChange(next);
   }
 
+  function handleDragEnd() {
+    if (dragIdx !== null && overIdx !== null && dragIdx !== overIdx) {
+      moveItem(dragIdx, overIdx);
+    }
+    setDragIdx(null);
+    setOverIdx(null);
+  }
+
   return (
     <div className="flex flex-col gap-2">
       {items.length > 0 && (
@@ -1169,16 +1179,27 @@ function ImageArrayField({ field, value, onChange }: { field: Field; value: unkn
             const schedStatus = getAssetScheduleStatus(item);
             const hasSchedule = !!(item.published_at || item.expires_at);
             return (
-              <div key={i} className={cn(
-                "rounded-lg border overflow-hidden group",
-                schedStatus === "scheduled" ? "border-warning bg-warning-soft/20" : schedStatus === "expired" ? "border-ink-200 opacity-60" : "border-ink-100 bg-ink-50/30",
-              )}>
+              <div
+                key={i}
+                draggable
+                onDragStart={(e) => { setDragIdx(i); e.dataTransfer.effectAllowed = "move"; }}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverIdx(i); }}
+                onDragLeave={() => { if (overIdx === i) setOverIdx(null); }}
+                className={cn(
+                  "rounded-lg border overflow-hidden group transition-all",
+                  dragIdx === i && "opacity-40 scale-95",
+                  overIdx === i && dragIdx !== null && dragIdx !== i && "ring-2 ring-brand-olive border-brand-olive",
+                  schedStatus === "scheduled" ? "border-warning bg-warning-soft/20" : schedStatus === "expired" ? "border-ink-200 opacity-60" : "border-ink-100 bg-ink-50/30",
+                )}
+              >
                 <div className="relative h-24">
-                  <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
+                  <img src={item.url} alt={item.title} className="w-full h-full object-cover cursor-grab active:cursor-grabbing" />
                   <AssetScheduleBadge status={schedStatus} publishedAt={item.published_at} />
+                  <div className="absolute bottom-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical size={14} className="text-white drop-shadow-md" />
+                  </div>
                   <div className="absolute top-1 right-1 flex gap-0.5">
-                    {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70" title="Mover para esquerda"><ChevronRight size={10} className="rotate-180" /></button>}
-                    {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70" title="Mover para direita"><ChevronRight size={10} /></button>}
                     <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-full p-1 text-white", hasSchedule ? "bg-warning hover:bg-warning/80" : "bg-black/50 hover:bg-black/70")} title="Agendar"><Clock size={10} /></button>
                     <button type="button" onClick={() => removeItem(i)} className="rounded-full bg-black/50 p-1 text-white hover:bg-danger" title="Remover"><X size={10} /></button>
                   </div>

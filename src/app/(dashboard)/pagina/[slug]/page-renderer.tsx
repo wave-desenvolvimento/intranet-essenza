@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import DOMPurify from "dompurify";
-import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput } from "lucide-react";
+import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput, GripVertical } from "lucide-react";
 import { cn, isAssetVisible, getAssetScheduleStatus } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Sheet } from "@/components/ui/sheet";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { createItem, updateItem, deleteItem } from "@/app/(dashboard)/cms/actions";
-import { createFolder, updateFolder, deleteFolder, moveItemsToFolder, type Folder as FolderType } from "@/app/(dashboard)/cms/folder-actions";
+import { createFolder, updateFolder, deleteFolder, moveFolder, moveItemsToFolder, type Folder as FolderType } from "@/app/(dashboard)/cms/folder-actions";
 import { uploadToStorage } from "@/lib/upload";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -121,8 +121,28 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const [uploadingCover, setUploadingCover] = useState(false);
   const [moveSheet, setMoveSheet] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [dragFolderId, setDragFolderId] = useState<string | null>(null);
+  const [overFolderId, setOverFolderId] = useState<string | null>(null);
 
   const folders = initialFolders;
+
+  async function handleFolderDrop(targetFolderId: string) {
+    if (!dragFolderId || dragFolderId === targetFolderId) return;
+    // Prevent dropping into own child
+    const isChild = (parentId: string, checkId: string): boolean => {
+      const children = folders.filter((f) => f.parent_id === parentId);
+      return children.some((c) => c.id === checkId || isChild(c.id, checkId));
+    };
+    if (isChild(dragFolderId, targetFolderId)) {
+      toast.error("Não é possível mover uma pasta para dentro de si mesma.");
+      return;
+    }
+    startTransition(async () => {
+      const res = await moveFolder(dragFolderId, targetFolderId);
+      if (res.error) toast.error(res.error);
+      else toast.success("Pasta movida");
+    });
+  }
 
   // Deep-link: highlight item from search
   useEffect(() => {
@@ -330,16 +350,33 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
         const childCount = folders.filter((f) => f.parent_id === folder.id).length;
         const FolderIconComp = folder.icon === "folder" ? Folder : (getIconByName(folder.icon) || Folder);
         const hasCover = !!folder.cover_url;
+        const isDragging = dragFolderId === folder.id;
+        const isOver = overFolderId === folder.id && dragFolderId !== null && dragFolderId !== folder.id;
         return (
           <div
             key={folder.id}
-            className="group rounded-xl border border-ink-100 bg-white overflow-hidden cursor-pointer hover:border-brand-olive/30 hover:shadow-sm transition-all"
-            onClick={() => enterFolder(folder)}
+            draggable={canEdit}
+            onDragStart={(e) => { e.stopPropagation(); setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", folder.id); }}
+            onDragEnd={() => { setDragFolderId(null); setOverFolderId(null); }}
+            onDragOver={(e) => { if (dragFolderId && dragFolderId !== folder.id) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId(folder.id); } }}
+            onDragLeave={() => { if (overFolderId === folder.id) setOverFolderId(null); }}
+            onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(folder.id); setDragFolderId(null); }}
+            className={cn(
+              "group rounded-xl border bg-white overflow-hidden cursor-pointer transition-all",
+              isDragging && "opacity-40 scale-95",
+              isOver ? "border-brand-olive ring-2 ring-brand-olive shadow-md scale-105" : "border-ink-100 hover:border-brand-olive/30 hover:shadow-sm",
+            )}
+            onClick={() => { if (!dragFolderId) enterFolder(folder); }}
           >
             {hasCover ? (
               <div className="aspect-[16/9] bg-ink-50 relative">
                 <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" />
-                {canEdit && (
+                {isOver && (
+                  <div className="absolute inset-0 bg-brand-olive/20 flex items-center justify-center">
+                    <FolderInput size={24} className="text-brand-olive" />
+                  </div>
+                )}
+                {canEdit && !isOver && (
                   <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors" title="Editar"><Pencil size={10} /></button>
                     <button onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-danger transition-colors" title="Remover"><Trash2 size={10} /></button>
@@ -348,14 +385,20 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
               </div>
             ) : null}
             <div className={cn("flex items-center gap-3 px-3 py-2.5", !hasCover && "py-3 px-4")}>
-              <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+              {isOver ? (
+                <FolderInput size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+              ) : (
+                <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-ink-900 truncate">{folder.name}</p>
-                {childCount > 0 && (
+                <p className={cn("text-sm font-medium truncate", isOver ? "text-brand-olive" : "text-ink-900")}>
+                  {isOver ? "Soltar aqui" : folder.name}
+                </p>
+                {!isOver && childCount > 0 && (
                   <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
                 )}
               </div>
-              {!hasCover && canEdit && (
+              {!hasCover && canEdit && !isOver && (
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={12} /></button>
                   <button onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }} className="rounded-md p-1 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors" title="Remover"><Trash2 size={12} /></button>
@@ -561,6 +604,13 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
       {/* Item edit sheet */}
       <Sheet open={itemSheet} onClose={closeItemSheet} onSubmit={saveItem} title={editingItem ? "Editar" : "Novo Item"} wide>
         <div className="flex flex-col gap-4">
+          {/* Campo capa fixo quando dentro de pasta */}
+          {currentFolderId && (
+            <div>
+              <label className="text-sm font-medium text-ink-700 mb-1.5 block">Capa</label>
+              <PageFileField field={{ id: "_cover", name: "Capa", slug: "_cover", field_type: "image" }} value={itemData._cover} onChange={(val) => setItemData((prev) => ({ ...prev, _cover: val }))} />
+            </div>
+          )}
           {(activeCollection || mainCollection)?.fields.map((f) => (
             <div key={f.id}>
               <label className="text-sm font-medium text-ink-700 mb-1.5 block">{f.name}</label>
@@ -819,6 +869,8 @@ function PageImageArrayField({ field, value, onChange }: { field: Field; value: 
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [schedulingIdx, setSchedulingIdx] = useState<number | null>(null);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
 
   async function handleUpload(files: FileList) {
     setUploading(true);
@@ -851,6 +903,14 @@ function PageImageArrayField({ field, value, onChange }: { field: Field; value: 
     onChange(next);
   }
 
+  function handleDragEnd() {
+    if (dragIdx !== null && overIdx !== null && dragIdx !== overIdx) {
+      moveItem(dragIdx, overIdx);
+    }
+    setDragIdx(null);
+    setOverIdx(null);
+  }
+
   return (
     <div className="flex flex-col gap-2">
       {items.length > 0 && (
@@ -859,12 +919,22 @@ function PageImageArrayField({ field, value, onChange }: { field: Field; value: 
             const schedStatus = getAssetScheduleStatus(item);
             const hasSchedule = !!(item.published_at || item.expires_at);
             return (
-              <div key={i} className={cn(
-                "rounded-lg border overflow-hidden",
-                schedStatus === "scheduled" ? "border-warning bg-warning-soft/20" : schedStatus === "expired" ? "border-ink-200 opacity-60" : "border-ink-100 bg-ink-50/30",
-              )}>
+              <div
+                key={i}
+                draggable
+                onDragStart={(e) => { setDragIdx(i); e.dataTransfer.effectAllowed = "move"; }}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverIdx(i); }}
+                onDragLeave={() => { if (overIdx === i) setOverIdx(null); }}
+                className={cn(
+                  "rounded-lg border overflow-hidden group transition-all",
+                  dragIdx === i && "opacity-40 scale-95",
+                  overIdx === i && dragIdx !== null && dragIdx !== i && "ring-2 ring-brand-olive border-brand-olive",
+                  schedStatus === "scheduled" ? "border-warning bg-warning-soft/20" : schedStatus === "expired" ? "border-ink-200 opacity-60" : "border-ink-100 bg-ink-50/30",
+                )}
+              >
                 <div className="relative h-24">
-                  <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
+                  <img src={item.url} alt={item.title} className="w-full h-full object-cover cursor-grab active:cursor-grabbing" />
                   {schedStatus === "scheduled" && (
                     <span className="absolute top-1 left-1 rounded-full bg-warning px-1.5 py-0.5 text-[9px] font-semibold text-white flex items-center gap-0.5 shadow-sm">
                       <Clock size={8} />{item.published_at ? new Date(item.published_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Agendado"}
@@ -873,9 +943,10 @@ function PageImageArrayField({ field, value, onChange }: { field: Field; value: 
                   {schedStatus === "expired" && (
                     <span className="absolute top-1 left-1 rounded-full bg-ink-400 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-sm">Expirado</span>
                   )}
+                  <div className="absolute bottom-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical size={14} className="text-white drop-shadow-md" />
+                  </div>
                   <div className="absolute top-1 right-1 flex gap-0.5">
-                    {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70"><ChevronRight size={10} className="rotate-180" /></button>}
-                    {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70"><ChevronRight size={10} /></button>}
                     <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-full p-1 text-white", hasSchedule ? "bg-warning hover:bg-warning/80" : "bg-black/50 hover:bg-black/70")} title="Agendar"><Clock size={10} /></button>
                     <button type="button" onClick={() => removeItem(i)} className="rounded-full bg-black/50 p-1 text-white hover:bg-danger"><X size={10} /></button>
                   </div>
@@ -1238,7 +1309,8 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
             ? Object.entries(variantsData).filter(([, url]) => url).map(([label, url]) => ({ label, url }))
             : [];
           const imageArrayData = imageArrayField && Array.isArray(item.data[imageArrayField.slug]) ? (item.data[imageArrayField.slug] as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]).filter((a) => isAssetVisible(a)) : [];
-          const imgUrl = (imageField ? safeStr(item.data[imageField.slug]) : "") || itemVariants[0]?.url || imageArrayData[0]?.url || "";
+          const coverUrl = safeStr(item.data._cover);
+          const imgUrl = coverUrl || (imageField ? safeStr(item.data[imageField.slug]) : "") || itemVariants[0]?.url || imageArrayData[0]?.url || "";
 
           const descFieldLocal = collection.fields.find((f) => f.field_type === "textarea" || f.field_type === "rich_text");
           const rawDesc = descFieldLocal ? safeStr(item.data[descFieldLocal.slug]) : "";
@@ -1687,7 +1759,7 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
           return (
             <div key={item.id} data-item-id={item.id} className={cn("flex items-center gap-4 px-5 py-3.5 hover:bg-ink-50/50 transition-all group", i < paginatedFiles.length - 1 && "border-b border-ink-50", highlightedItemId === item.id && "bg-brand-olive-soft/40 ring-2 ring-inset ring-brand-olive/30 animate-pulse")}>
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-50">
-                {isImg ? <img src={fileUrl} alt="" className="h-10 w-10 rounded-lg object-cover" /> : <FileText size={18} className="text-ink-400" />}
+                {String(item.data._cover || "") ? <img src={String(item.data._cover)} alt="" className="h-10 w-10 rounded-lg object-cover" /> : isImg ? <img src={fileUrl} alt="" className="h-10 w-10 rounded-lg object-cover" /> : <FileText size={18} className="text-ink-400" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-ink-900 truncate">{title || "Arquivo"}</p>

@@ -14,7 +14,7 @@ interface Role {
   role_permissions: { permission_id: string }[];
 }
 interface PageModule { slug: string; label: string; icon?: string | null }
-interface Props { roles: Role[]; permissions: Permission[]; pageModules: PageModule[] }
+interface Props { roles: Role[]; permissions: Permission[]; pageModules: PageModule[]; currentUserRoleIds: string[] }
 
 const ACTION_LABELS: Record<string, string> = {
   view: "Ver", view_all: "Ver todos", create: "Criar", edit: "Editar",
@@ -40,17 +40,18 @@ function groupByModule(permissions: Permission[]) {
   return groups;
 }
 
-function ModuleRow({ module, perms, label, even, selectedPermissions, allActions, onToggleModule, onTogglePermission }: {
+function ModuleRow({ module, perms, label, even, selectedPermissions, allActions, onToggleModule, onTogglePermission, disabled }: {
   module: string; perms: Permission[]; label: string; even: boolean;
   selectedPermissions: Set<string>; allActions: string[];
   onToggleModule: (perms: Permission[]) => void; onTogglePermission: (id: string) => void;
+  disabled?: boolean;
 }) {
   const allChecked = perms.every((p) => selectedPermissions.has(p.id));
   const someChecked = perms.some((p) => selectedPermissions.has(p.id));
   return (
     <tr className={cn("border-b border-ink-50 last:border-0 hover:bg-brand-olive-soft/20 transition-colors", even ? "bg-white" : "bg-ink-50/30")}>
       <td className={cn("px-3 py-2 sticky left-0", even ? "bg-white" : "bg-ink-50/30")}>
-        <button type="button" onClick={() => onToggleModule(perms)} className="flex items-center gap-2.5">
+        <button type="button" onClick={() => !disabled && onToggleModule(perms)} disabled={disabled} className={cn("flex items-center gap-2.5", disabled && "opacity-50 cursor-not-allowed")}>
           <div className={cn("relative h-[18px] w-8 rounded-full transition-colors shrink-0", allChecked ? "bg-brand-olive" : someChecked ? "bg-brand-olive/40" : "bg-ink-200")}>
             <div className={cn("absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform", allChecked ? "translate-x-[14px]" : someChecked ? "translate-x-[7px]" : "translate-x-[2px]")} />
           </div>
@@ -63,7 +64,7 @@ function ModuleRow({ module, perms, label, even, selectedPermissions, allActions
         const isOn = selectedPermissions.has(perm.id);
         return (
           <td key={action} className="text-center px-1.5 py-2">
-            <button type="button" onClick={() => onTogglePermission(perm.id)} className="inline-flex items-center justify-center">
+            <button type="button" onClick={() => !disabled && onTogglePermission(perm.id)} disabled={disabled} className={cn("inline-flex items-center justify-center", disabled && "opacity-50 cursor-not-allowed")}>
               <div className={cn("h-4 w-4 rounded border-[1.5px] flex items-center justify-center transition-all", isOn ? "bg-brand-olive border-brand-olive" : "border-ink-300 hover:border-ink-400")}>
                 {isOn && <svg viewBox="0 0 12 12" className="text-white" width={9} height={9}><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
               </div>
@@ -75,7 +76,7 @@ function ModuleRow({ module, perms, label, even, selectedPermissions, allActions
   );
 }
 
-export function PermissionsManager({ roles, permissions, pageModules }: Props) {
+export function PermissionsManager({ roles, permissions, pageModules, currentUserRoleIds }: Props) {
   const [editingRole, setEditingRole] = useState<Role | null>(roles[0] || null);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(
@@ -148,6 +149,7 @@ export function PermissionsManager({ roles, permissions, pageModules }: Props) {
     startTransition(async () => { const r = await deleteRole(roleId); if (r?.error) setError(r.error); });
   }
 
+  const isOwnRole = editingRole ? currentUserRoleIds.includes(editingRole.id) : false;
   const isEditing = isCreating || editingRole !== null;
 
   return (
@@ -202,25 +204,30 @@ export function PermissionsManager({ roles, permissions, pageModules }: Props) {
           <div className="flex-1 flex flex-col rounded-xl border border-ink-100 bg-white overflow-hidden min-w-0">
             {/* Header fields */}
             <div className="px-5 py-4 border-b border-ink-100 shrink-0">
+              {isOwnRole && (
+                <div className="mb-3 rounded-lg bg-warning-soft px-3 py-2 text-xs font-medium text-warning-dark">
+                  Este é o seu tipo de acesso - não é possível editar suas próprias permissões.
+                </div>
+              )}
               <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                 <div>
                   <label className="text-xs font-medium text-ink-600 mb-1 block">Nome</label>
-                  <input value={name} onChange={(e) => setName(e.target.value)} autoFocus className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none" placeholder="Ex: Gerente" />
+                  <input value={name} onChange={(e) => setName(e.target.value)} autoFocus disabled={isOwnRole} className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed" placeholder="Ex: Gerente" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-ink-600 mb-1 block">Descrição</label>
-                  <input value={description} onChange={(e) => setDescription(e.target.value)} className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none" placeholder="Opcional" />
+                  <input value={description} onChange={(e) => setDescription(e.target.value)} disabled={isOwnRole} className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed" placeholder="Opcional" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-ink-600 mb-1 block">Escopo</label>
                   <div className="flex gap-1 h-8">
-                    <button type="button" onClick={() => setIsSystem(true)} className={cn("flex-1 rounded-lg text-xs font-medium transition-colors", isSystem ? "bg-brand-olive text-white" : "bg-ink-50 text-ink-500 hover:bg-ink-100")}>Sistema</button>
-                    <button type="button" onClick={() => setIsSystem(false)} className={cn("flex-1 rounded-lg text-xs font-medium transition-colors", !isSystem ? "bg-brand-olive text-white" : "bg-ink-50 text-ink-500 hover:bg-ink-100")}>Franquia</button>
+                    <button type="button" onClick={() => setIsSystem(true)} disabled={isOwnRole} className={cn("flex-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed", isSystem ? "bg-brand-olive text-white" : "bg-ink-50 text-ink-500 hover:bg-ink-100")}>Sistema</button>
+                    <button type="button" onClick={() => setIsSystem(false)} disabled={isOwnRole} className={cn("flex-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed", !isSystem ? "bg-brand-olive text-white" : "bg-ink-50 text-ink-500 hover:bg-ink-100")}>Franquia</button>
                   </div>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-ink-600 mb-1 block">Nível</label>
-                  <select value={level} onChange={(e) => setLevel(e.target.value)} className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none">
+                  <select value={level} onChange={(e) => setLevel(e.target.value)} disabled={isOwnRole} className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed">
                     <option value="100">100 - Super Admin</option>
                     <option value="90">90 - Owner</option>
                     <option value="80">80 - Admin</option>
@@ -247,7 +254,7 @@ export function PermissionsManager({ roles, permissions, pageModules }: Props) {
                 </thead>
                 <tbody>
                   {systemModuleEntries.map(([module, perms], i) => (
-                    <ModuleRow key={module} module={module} perms={perms} label={allModuleLabels[module] || module} even={i % 2 === 0} selectedPermissions={selectedPermissions} allActions={allActions} onToggleModule={toggleModule} onTogglePermission={togglePermission} />
+                    <ModuleRow key={module} module={module} perms={perms} label={allModuleLabels[module] || module} even={i % 2 === 0} selectedPermissions={selectedPermissions} allActions={allActions} onToggleModule={toggleModule} onTogglePermission={togglePermission} disabled={isOwnRole} />
                   ))}
                   {pageModuleEntries.length > 0 && (
                     <tr className="bg-ink-100/50">
@@ -257,7 +264,7 @@ export function PermissionsManager({ roles, permissions, pageModules }: Props) {
                     </tr>
                   )}
                   {pageModuleEntries.map(([module, perms], i) => (
-                    <ModuleRow key={module} module={module} perms={perms} label={allModuleLabels[module] || module} even={i % 2 === 0} selectedPermissions={selectedPermissions} allActions={allActions} onToggleModule={toggleModule} onTogglePermission={togglePermission} />
+                    <ModuleRow key={module} module={module} perms={perms} label={allModuleLabels[module] || module} even={i % 2 === 0} selectedPermissions={selectedPermissions} allActions={allActions} onToggleModule={toggleModule} onTogglePermission={togglePermission} disabled={isOwnRole} />
                   ))}
                 </tbody>
               </table>
@@ -267,14 +274,16 @@ export function PermissionsManager({ roles, permissions, pageModules }: Props) {
             <div className="flex items-center gap-2 px-5 py-3 border-t border-ink-100 shrink-0 bg-white">
               {error && <p className="text-xs text-danger flex-1">{error}</p>}
               <div className="flex-1" />
-              {editingRole && !isCreating && (
+              {!isOwnRole && editingRole && !isCreating && (
                 <button onClick={() => handleDelete(editingRole.id)} disabled={isPending} className="rounded-lg px-3 py-2 text-xs font-medium text-danger hover:bg-danger-soft transition-colors">
                   Remover
                 </button>
               )}
-              <button onClick={handleSave} disabled={isPending || !name} className="rounded-lg bg-brand-olive px-4 py-2 text-xs font-medium text-white hover:bg-brand-olive-dark disabled:opacity-50 transition-colors">
-                {isPending ? "Salvando..." : isCreating ? "Criar" : "Salvar"}
-              </button>
+              {!isOwnRole && (
+                <button onClick={handleSave} disabled={isPending || !name} className="rounded-lg bg-brand-olive px-4 py-2 text-xs font-medium text-white hover:bg-brand-olive-dark disabled:opacity-50 transition-colors">
+                  {isPending ? "Salvando..." : isCreating ? "Criar" : "Salvar"}
+                </button>
+              )}
             </div>
           </div>
         )}

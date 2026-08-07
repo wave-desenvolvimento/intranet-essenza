@@ -139,6 +139,12 @@ export async function updateRole(formData: FormData) {
 
   if (!roleId || !name) return { error: "Dados inválidos." };
 
+  // Prevent editing own role
+  const { data: userRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", p.user!.id);
+  if (userRoles?.some((ur) => ur.role_id === roleId)) {
+    return { error: "Não é possível editar o tipo de acesso ao qual você pertence." };
+  }
+
   const userLevel = await getUserRoleLevel(p.user!.id);
   if (level > userLevel) return { error: "Não é possível definir um nível superior ao seu." };
 
@@ -168,6 +174,12 @@ export async function updateRole(formData: FormData) {
 export async function deleteRole(roleId: string) {
   const p = await requirePermission("configuracoes", "edit"); if (p.error) return p;
   const supabase = await createClient();
+
+  // Prevent deleting own role
+  const { data: userRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", p.user!.id);
+  if (userRoles?.some((ur) => ur.role_id === roleId)) {
+    return { error: "Não é possível remover o tipo de acesso ao qual você pertence." };
+  }
 
   // Prevent deleting system roles
   const { data: role } = await supabase.from("roles").select("is_system").eq("id", roleId).single();

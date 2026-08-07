@@ -4,7 +4,8 @@ import { PermissionsManager } from "./permissions-manager";
 
 export default async function ConfiguracoesPage() {
   const supabase = await createClient();
-  const [roles, permissions, { data: cmsPages }] = await Promise.all([
+  const { data: { user } } = await supabase.auth.getUser();
+  const [roles, permissions, { data: cmsPages }, { data: userRoles }] = await Promise.all([
     getRoles(),
     getPermissions(),
     supabase
@@ -13,6 +14,10 @@ export default async function ConfiguracoesPage() {
       .eq("page_type", "cms")
       .eq("is_group", false)
       .order("sort_order"),
+    supabase
+      .from("user_roles")
+      .select("role_id")
+      .eq("user_id", user!.id),
   ]);
 
   const pageModules = (cmsPages || []).map((p) => ({
@@ -21,5 +26,7 @@ export default async function ConfiguracoesPage() {
     icon: p.icon,
   }));
 
-  return <PermissionsManager roles={roles} permissions={permissions} pageModules={pageModules} />;
+  const currentUserRoleIds = (userRoles || []).map((ur) => ur.role_id);
+
+  return <PermissionsManager roles={roles} permissions={permissions} pageModules={pageModules} currentUserRoleIds={currentUserRoleIds} />;
 }
