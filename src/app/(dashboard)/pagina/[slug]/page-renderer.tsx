@@ -125,19 +125,26 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
   const [overFolderId, setOverFolderId] = useState<string | null>(null);
+  const [moveFolderSheet, setMoveFolderSheet] = useState(false);
+  const [movingFolderId, setMovingFolderId] = useState<string | null>(null);
 
   const folders = initialFolders;
 
-  async function handleFolderDrop(targetFolderId: string) {
+  async function handleFolderDrop(targetFolderId: string | null) {
     if (!dragFolderId || dragFolderId === targetFolderId) return;
+    // If moving to null (root) or to parent, check the folder isn't already there
+    const draggedFolder = folders.find((f) => f.id === dragFolderId);
+    if (draggedFolder?.parent_id === targetFolderId) return; // already in this location
     // Prevent dropping into own child
-    const isChild = (parentId: string, checkId: string): boolean => {
-      const children = folders.filter((f) => f.parent_id === parentId);
-      return children.some((c) => c.id === checkId || isChild(c.id, checkId));
-    };
-    if (isChild(dragFolderId, targetFolderId)) {
-      toast.error("Não é possível mover uma pasta para dentro de si mesma.");
-      return;
+    if (targetFolderId) {
+      const isChild = (parentId: string, checkId: string): boolean => {
+        const children = folders.filter((f) => f.parent_id === parentId);
+        return children.some((c) => c.id === checkId || isChild(c.id, checkId));
+      };
+      if (isChild(dragFolderId, targetFolderId)) {
+        toast.error("Não é possível mover uma pasta para dentro de si mesma.");
+        return;
+      }
     }
     startTransition(async () => {
       const res = await moveFolder(dragFolderId, targetFolderId);
@@ -288,6 +295,41 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
     });
   }
 
+  function openMoveFolderSheet(folderId: string) {
+    setMovingFolderId(folderId);
+    setMoveFolderSheet(true);
+  }
+
+  async function handleMoveFolderTo(targetId: string | null) {
+    if (!movingFolderId) return;
+    if (movingFolderId === targetId) return;
+    const movingFolder = folders.find((f) => f.id === movingFolderId);
+    if (movingFolder?.parent_id === targetId) {
+      toast.error("A pasta ja esta neste local.");
+      return;
+    }
+    // Prevent circular: can't move into own child
+    if (targetId) {
+      const isChild = (parentId: string, checkId: string): boolean => {
+        const children = folders.filter((f) => f.parent_id === parentId);
+        return children.some((c) => c.id === checkId || isChild(c.id, checkId));
+      };
+      if (isChild(movingFolderId, targetId)) {
+        toast.error("Nao e possivel mover uma pasta para dentro de si mesma.");
+        return;
+      }
+    }
+    startTransition(async () => {
+      const res = await moveFolder(movingFolderId, targetId);
+      if (res.error) toast.error(res.error);
+      else {
+        toast.success("Pasta movida");
+        setMoveFolderSheet(false);
+        setMovingFolderId(null);
+      }
+    });
+  }
+
   async function handleMoveItems(targetFolderId: string | null) {
     const ids = Array.from(selectedItemIds);
     if (ids.length === 0) return;
@@ -400,6 +442,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
                 )}
                 {canEdit && !isOver && (
                   <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); openMoveFolderSheet(folder.id); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors" title="Mover pasta"><FolderInput size={10} /></button>
                     <button onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors" title="Editar"><Pencil size={10} /></button>
                     <button onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-danger transition-colors" title="Remover"><Trash2 size={10} /></button>
                   </div>
@@ -422,6 +465,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
               </div>
               {!hasCover && canEdit && !isOver && (
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={(e) => { e.stopPropagation(); openMoveFolderSheet(folder.id); }} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Mover pasta"><FolderInput size={12} /></button>
                   <button onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={12} /></button>
                   <button onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }} className="rounded-md p-1 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors" title="Remover"><Trash2 size={12} /></button>
                 </div>
@@ -478,23 +522,52 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
         <div className="flex items-center gap-1 mb-4 text-sm">
           <button
             onClick={() => navigateTo(-1)}
-            className="flex items-center gap-1 text-ink-500 hover:text-ink-900 transition-colors"
+            onDragOver={(e) => { if (dragFolderId) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId("__root__"); } }}
+            onDragLeave={() => { if (overFolderId === "__root__") setOverFolderId(null); }}
+            onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(null); setDragFolderId(null); }}
+            className={cn(
+              "flex items-center gap-1 transition-colors",
+              dragFolderId && overFolderId === "__root__"
+                ? "text-brand-olive font-medium rounded bg-brand-olive-soft/30 px-2 py-0.5 ring-1 ring-brand-olive"
+                : dragFolderId
+                  ? "text-ink-500 hover:text-brand-olive"
+                  : "text-ink-500 hover:text-ink-900",
+            )}
           >
             <ArrowLeft size={14} />
             {page.title}
           </button>
-          {folderPath.map((crumb, i) => (
-            <span key={crumb.id} className="flex items-center gap-1">
-              <ChevronRight size={12} className="text-ink-300" />
-              {i === folderPath.length - 1 ? (
-                <span className="font-medium text-ink-900">{crumb.name}</span>
-              ) : (
-                <button onClick={() => navigateTo(i)} className="text-ink-500 hover:text-ink-900 transition-colors">
-                  {crumb.name}
-                </button>
-              )}
-            </span>
-          ))}
+          {folderPath.map((crumb, i) => {
+            const isLast = i === folderPath.length - 1;
+            // Drop target: move the dragged folder INTO this crumb's folder
+            const dropTargetId = crumb.id;
+            const isCrumbOver = overFolderId === `__crumb_${i}__`;
+            // Don't allow drop on the last crumb (folder is already there) or on itself
+            const canDropHere = dragFolderId && dragFolderId !== dropTargetId && !isLast;
+            return (
+              <span key={crumb.id} className="flex items-center gap-1">
+                <ChevronRight size={12} className="text-ink-300" />
+                {isLast ? (
+                  <span className="font-medium text-ink-900">{crumb.name}</span>
+                ) : (
+                  <button
+                    onClick={() => navigateTo(i)}
+                    onDragOver={(e) => { if (canDropHere) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId(`__crumb_${i}__`); } }}
+                    onDragLeave={() => { if (isCrumbOver) setOverFolderId(null); }}
+                    onDrop={(e) => { e.preventDefault(); setOverFolderId(null); if (canDropHere) { handleFolderDrop(dropTargetId); setDragFolderId(null); } }}
+                    className={cn(
+                      "transition-colors",
+                      isCrumbOver
+                        ? "text-brand-olive font-medium rounded bg-brand-olive-soft/30 px-2 py-0.5 ring-1 ring-brand-olive"
+                        : "text-ink-500 hover:text-ink-900",
+                    )}
+                  >
+                    {crumb.name}
+                  </button>
+                )}
+              </span>
+            );
+          })}
         </div>
       )}
 
@@ -596,30 +669,128 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
       {/* Move items sheet */}
       <Sheet open={moveSheet} onClose={() => setMoveSheet(false)} title={`Mover ${selectedItemIds.size} ${selectedItemIds.size === 1 ? "item" : "itens"}`}>
         <div className="flex flex-col gap-2">
-          {currentFolderId && (
-            <button
-              onClick={() => handleMoveItems(null)}
-              className="flex items-center gap-3 rounded-lg border border-ink-100 px-4 py-3 hover:bg-ink-50 transition-colors text-left"
-            >
-              <ArrowLeft size={16} className="text-ink-400" />
-              <span className="text-sm text-ink-700">Raiz da página</span>
-            </button>
-          )}
-          {folders
-            .filter((f) => f.id !== currentFolderId && !selectedItemIds.has(f.id))
-            .map((folder) => (
-              <button
-                key={folder.id}
-                onClick={() => handleMoveItems(folder.id)}
-                className="flex items-center gap-3 rounded-lg border border-ink-100 px-4 py-3 hover:bg-brand-olive-soft/20 hover:border-brand-olive/30 transition-colors text-left"
-              >
-                <Folder size={16} className="text-brand-olive" />
-                <span className="text-sm text-ink-900">{folder.name}</span>
-              </button>
-            ))}
-          {folders.length === 0 && !currentFolderId && (
-            <p className="text-sm text-ink-400 text-center py-4">Nenhuma pasta disponível</p>
-          )}
+          {(() => {
+            const isCurrentFolder = currentFolderId === null;
+            const renderItemFolderTree = (parentId: string | null, depth: number): React.ReactNode[] => {
+              return folders
+                .filter((f) => f.parent_id === parentId)
+                .map((f) => {
+                  const isCurrent = f.id === currentFolderId;
+                  const FIcon = f.icon === "folder" ? Folder : (getIconByName(f.icon) || Folder);
+                  return (
+                    <div key={f.id}>
+                      <button
+                        onClick={() => handleMoveItems(f.id)}
+                        disabled={isCurrent || isPending}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors",
+                          isCurrent
+                            ? "border-ink-100 bg-ink-50 opacity-50 cursor-not-allowed"
+                            : "border-ink-100 hover:bg-brand-olive-soft/20 hover:border-brand-olive/30",
+                        )}
+                        style={{ paddingLeft: `${16 + depth * 20}px` }}
+                      >
+                        <FIcon size={16} className="text-brand-olive shrink-0" />
+                        <span className="text-sm text-ink-900 truncate">{f.name}</span>
+                        {isCurrent && <span className="text-[10px] text-ink-400 shrink-0">(atual)</span>}
+                      </button>
+                      {renderItemFolderTree(f.id, depth + 1)}
+                    </div>
+                  );
+                });
+            };
+
+            return (
+              <>
+                <button
+                  onClick={() => handleMoveItems(null)}
+                  disabled={isCurrentFolder || isPending}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors",
+                    isCurrentFolder
+                      ? "border-ink-100 bg-ink-50 opacity-50 cursor-not-allowed"
+                      : "border-ink-100 hover:bg-ink-50",
+                  )}
+                >
+                  <ArrowLeft size={16} className="text-ink-400" />
+                  <span className="text-sm text-ink-700">Raiz da pagina</span>
+                  {isCurrentFolder && <span className="text-[10px] text-ink-400 shrink-0">(atual)</span>}
+                </button>
+                {renderItemFolderTree(null, 0)}
+                {folders.length === 0 && (
+                  <p className="text-sm text-ink-400 text-center py-4">Nenhuma pasta disponivel</p>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      </Sheet>
+
+      {/* Move folder sheet */}
+      <Sheet open={moveFolderSheet} onClose={() => { setMoveFolderSheet(false); setMovingFolderId(null); }} title="Mover pasta">
+        <div className="flex flex-col gap-2">
+          {(() => {
+            const movingFolder = folders.find((f) => f.id === movingFolderId);
+            if (!movingFolder) return null;
+
+            // Build tree of valid destinations
+            const isDescendant = (parentId: string, checkId: string): boolean => {
+              const children = folders.filter((f) => f.parent_id === parentId);
+              return children.some((c) => c.id === checkId || isDescendant(c.id, checkId));
+            };
+
+            const renderFolderTree = (parentId: string | null, depth: number): React.ReactNode[] => {
+              return folders
+                .filter((f) => f.parent_id === parentId)
+                .filter((f) => f.id !== movingFolderId && !isDescendant(movingFolderId, f.id))
+                .map((f) => {
+                  const isCurrentLocation = movingFolder.parent_id === f.id;
+                  const FIcon = f.icon === "folder" ? Folder : (getIconByName(f.icon) || Folder);
+                  return (
+                    <div key={f.id}>
+                      <button
+                        onClick={() => handleMoveFolderTo(f.id)}
+                        disabled={isCurrentLocation || isPending}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors",
+                          isCurrentLocation
+                            ? "border-ink-100 bg-ink-50 opacity-50 cursor-not-allowed"
+                            : "border-ink-100 hover:bg-brand-olive-soft/20 hover:border-brand-olive/30",
+                        )}
+                        style={{ paddingLeft: `${16 + depth * 20}px` }}
+                      >
+                        <FIcon size={16} className="text-brand-olive shrink-0" />
+                        <span className="text-sm text-ink-900 truncate">{f.name}</span>
+                        {isCurrentLocation && <span className="text-[10px] text-ink-400 shrink-0">(local atual)</span>}
+                      </button>
+                      {renderFolderTree(f.id, depth + 1)}
+                    </div>
+                  );
+                });
+            };
+
+            const isAtRoot = movingFolder.parent_id === null;
+
+            return (
+              <>
+                <button
+                  onClick={() => handleMoveFolderTo(null)}
+                  disabled={isAtRoot || isPending}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors",
+                    isAtRoot
+                      ? "border-ink-100 bg-ink-50 opacity-50 cursor-not-allowed"
+                      : "border-ink-100 hover:bg-ink-50",
+                  )}
+                >
+                  <ArrowLeft size={16} className="text-ink-400" />
+                  <span className="text-sm text-ink-700">Raiz da pagina</span>
+                  {isAtRoot && <span className="text-[10px] text-ink-400 shrink-0">(local atual)</span>}
+                </button>
+                {renderFolderTree(null, 0)}
+              </>
+            );
+          })()}
         </div>
       </Sheet>
 
@@ -1953,6 +2124,8 @@ function CoursePageView({ collection }: { collection: CollectionData }) {
   const [currentPct, setCurrentPct] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(true);
   const [showPdf, setShowPdf] = useState(false);
+  const [activeUrl, setActiveUrl] = useState("");
+  const [loadingUrl, setLoadingUrl] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxPctRef = useRef(0);
   const ytPlayingRef = useRef(false);
@@ -1961,7 +2134,6 @@ function CoursePageView({ collection }: { collection: CollectionData }) {
   const activeLesson = lessons[activeIndex];
   const activeTitle = activeLesson && titleField ? String(activeLesson.data[titleField.slug] || "") : "";
   const activeDesc = activeLesson && descField ? String(activeLesson.data[descField.slug] || "") : "";
-  const activeUrl = activeLesson && urlField ? String(activeLesson.data[urlField.slug] || "") : "";
   const activePdf = activeLesson && fileField ? String(activeLesson.data[fileField.slug] || "") : "";
 
   // Detect video source type
@@ -2029,6 +2201,28 @@ function CoursePageView({ collection }: { collection: CollectionData }) {
     }
     load();
   }, [collection.id]);
+
+  // Fetch video URL from server when lesson changes (server-side unlock validation)
+  useEffect(() => {
+    if (!activeLesson || loadingProgress) return;
+    setActiveUrl("");
+    setLoadingUrl(true);
+    let cancelled = false;
+    async function fetchUrl() {
+      const { getVideoUrl } = await import("./course-actions");
+      const res = await getVideoUrl(activeLesson.id, collection.id);
+      if (cancelled) return;
+      if ("url" in res) setActiveUrl(res.url);
+      else {
+        setActiveUrl("");
+        if (res.error && res.error !== "URL nao definida") toast.error(res.error);
+      }
+      setLoadingUrl(false);
+    }
+    fetchUrl();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, activeLesson?.id, loadingProgress, collection.id]);
 
   // Reset maxPct when changing lesson
   useEffect(() => {
@@ -2168,11 +2362,7 @@ function CoursePageView({ collection }: { collection: CollectionData }) {
     }
   }
 
-  // YouTube = livre pra navegar, Bunny/nativo = sequencial
-  const isFreeNavigation = videoSource.type === "youtube";
-
   function isLessonUnlocked(index: number): boolean {
-    if (isFreeNavigation) return true;
     if (index === 0) return true;
     const prevLesson = lessons[index - 1];
     return completedSet.has(prevLesson.id);
@@ -2200,7 +2390,12 @@ function CoursePageView({ collection }: { collection: CollectionData }) {
         <div className="w-full lg:flex-1 lg:min-w-0 rounded-xl border border-ink-100 bg-white overflow-hidden">
           {/* Video area */}
           <div className="relative aspect-video bg-black overflow-hidden">
-            {activeUrl ? (
+            {loadingUrl ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                <span className="text-xs text-white/60">Carregando aula...</span>
+              </div>
+            ) : activeUrl ? (
               isIframe ? (
                 <iframe
                   data-course-iframe
@@ -2226,7 +2421,10 @@ function CoursePageView({ collection }: { collection: CollectionData }) {
               )
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-ink-400 text-sm">
-                Nenhum vídeo disponível
+                <div className="flex flex-col items-center gap-2">
+                  <Lock size={24} className="text-white/30" />
+                  <span className="text-white/50">Nenhum video disponivel</span>
+                </div>
               </div>
             )}
           </div>

@@ -60,6 +60,22 @@ export default async function DynamicPage({
     };
   }).filter(Boolean);
 
+  // Course pages: strip video URLs from items to prevent client-side inspection
+  if (page.view_type === "course") {
+    for (const col of validCollections) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const urlField = (col as any).fields?.find((f: { field_type: string }) => f.field_type === "url");
+      if (urlField) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const item of (col as any).items || []) {
+          if (item.data?.[urlField.slug]) {
+            item.data[urlField.slug] = "__protected__";
+          }
+        }
+      }
+    }
+  }
+
   // Fetch folders for this page
   const { data: folders } = await supabase
     .from("cms_folders")
