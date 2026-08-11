@@ -410,6 +410,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   // Build folders grid node (passed into views to render below search bar)
   const [folderMenuId, setFolderMenuId] = useState<string | null>(null);
 
+  const didDragRef = useRef(false);
+
   const foldersGrid = currentSubfolders.length > 0 ? (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-4">
       {currentSubfolders.map((folder) => {
@@ -422,18 +424,31 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
         return (
           <div
             key={folder.id}
+            draggable={canEdit}
+            onDragStart={(e) => {
+              e.stopPropagation();
+              didDragRef.current = true;
+              setFolderMenuId(null);
+              setDragFolderId(folder.id);
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", folder.id);
+              // Ghost image: use the card itself
+              const rect = e.currentTarget.getBoundingClientRect();
+              e.dataTransfer.setDragImage(e.currentTarget, e.clientX - rect.left, e.clientY - rect.top);
+            }}
+            onDragEnd={() => { setDragFolderId(null); setOverFolderId(null); setTimeout(() => { didDragRef.current = false; }, 0); }}
             onDragOver={(e) => { if (dragFolderId && dragFolderId !== folder.id) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId(folder.id); } }}
             onDragLeave={() => { if (overFolderId === folder.id) setOverFolderId(null); }}
             onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(folder.id); setDragFolderId(null); }}
             className={cn(
-              "group relative rounded-xl border bg-white cursor-pointer transition-all",
+              "group relative rounded-xl border bg-white cursor-pointer transition-all select-none",
               isDragging && "opacity-40 scale-95",
               isOver ? "border-brand-olive ring-2 ring-brand-olive shadow-md scale-105" : "border-ink-100 hover:border-brand-olive/30 hover:shadow-sm",
             )}
-            onClick={() => { if (!dragFolderId) enterFolder(folder); }}
+            onClick={() => { if (!didDragRef.current && !dragFolderId) enterFolder(folder); }}
           >
             {hasCover ? (
-              <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-xl">
+              <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-xl pointer-events-none">
                 <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
                 {isOver && (
                   <div className="absolute inset-0 bg-brand-olive/20 flex items-center justify-center">
@@ -442,22 +457,13 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
                 )}
               </div>
             ) : null}
-            <div className={cn("flex items-center gap-3 px-3 py-2.5", !hasCover && "py-3 px-4")}>
+            <div className={cn("flex items-center gap-3 px-3 py-2.5 pointer-events-none", !hasCover && "py-3 px-4")}>
               {isOver ? (
                 <FolderInput size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
               ) : (
                 <>
                   {canEdit && !isDragging && (
-                    <div
-                      draggable
-                      onDragStart={(e) => { e.stopPropagation(); setFolderMenuId(null); setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", folder.id); }}
-                      onDragEnd={() => { setDragFolderId(null); setOverFolderId(null); }}
-                      className="shrink-0 cursor-grab active:cursor-grabbing -ml-1 -mr-1 p-1 rounded hover:bg-ink-100 transition-colors"
-                      onClick={(e) => e.stopPropagation()}
-                      title="Arrastar para mover"
-                    >
-                      <GripVertical size={14} className="text-ink-400" />
-                    </div>
+                    <GripVertical size={14} className="text-ink-400 shrink-0 cursor-grab -ml-1 -mr-1" />
                   )}
                   <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
                 </>
@@ -470,7 +476,9 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
                   <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
                 )}
               </div>
-              {canEdit && !isOver && (
+            </div>
+            {canEdit && !isOver && (
+              <div className="absolute top-0 right-0 p-1.5" style={{ pointerEvents: "auto" }}>
                 <FolderContextMenu
                   isOpen={isMenuOpen}
                   onToggle={(e) => { e.stopPropagation(); setFolderMenuId(isMenuOpen ? null : folder.id); }}
@@ -479,8 +487,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
                   onEdit={(e) => { e.stopPropagation(); setFolderMenuId(null); openFolderSheet(folder); }}
                   onDelete={(e) => { e.stopPropagation(); setFolderMenuId(null); removeFolder(folder.id); }}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         );
       })}
