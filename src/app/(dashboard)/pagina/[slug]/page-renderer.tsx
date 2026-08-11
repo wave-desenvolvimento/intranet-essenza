@@ -422,21 +422,18 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
         return (
           <div
             key={folder.id}
-            draggable={canEdit}
-            onDragStart={(e) => { e.stopPropagation(); setFolderMenuId(null); setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", folder.id); }}
-            onDragEnd={() => { setDragFolderId(null); setOverFolderId(null); }}
             onDragOver={(e) => { if (dragFolderId && dragFolderId !== folder.id) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId(folder.id); } }}
             onDragLeave={() => { if (overFolderId === folder.id) setOverFolderId(null); }}
             onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(folder.id); setDragFolderId(null); }}
             className={cn(
-              "group relative rounded-xl border bg-white cursor-pointer transition-all select-none",
+              "group relative rounded-xl border bg-white cursor-pointer transition-all",
               isDragging && "opacity-40 scale-95",
               isOver ? "border-brand-olive ring-2 ring-brand-olive shadow-md scale-105" : "border-ink-100 hover:border-brand-olive/30 hover:shadow-sm",
             )}
             onClick={() => { if (!dragFolderId) enterFolder(folder); }}
           >
             {hasCover ? (
-              <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-xl pointer-events-none">
+              <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-xl">
                 <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
                 {isOver && (
                   <div className="absolute inset-0 bg-brand-olive/20 flex items-center justify-center">
@@ -446,25 +443,32 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
               </div>
             ) : null}
             <div className={cn("flex items-center gap-3 px-3 py-2.5", !hasCover && "py-3 px-4")}>
-              <div className="flex items-center gap-3 flex-1 min-w-0 pointer-events-none">
-                {isOver ? (
-                  <FolderInput size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
-                ) : (
-                  <>
-                    {canEdit && !isDragging && (
-                      <GripVertical size={14} className="text-ink-300 shrink-0 cursor-grab active:cursor-grabbing -ml-1 -mr-1" />
-                    )}
-                    <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
-                  </>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className={cn("text-sm font-medium truncate", isOver ? "text-brand-olive" : "text-ink-900")}>
-                    {isOver ? "Soltar aqui" : folder.name}
-                  </p>
-                  {!isOver && childCount > 0 && (
-                    <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
+              {isOver ? (
+                <FolderInput size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+              ) : (
+                <>
+                  {canEdit && !isDragging && (
+                    <div
+                      draggable
+                      onDragStart={(e) => { e.stopPropagation(); setFolderMenuId(null); setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", folder.id); }}
+                      onDragEnd={() => { setDragFolderId(null); setOverFolderId(null); }}
+                      className="shrink-0 cursor-grab active:cursor-grabbing -ml-1 -mr-1 p-1 rounded hover:bg-ink-100 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                      title="Arrastar para mover"
+                    >
+                      <GripVertical size={14} className="text-ink-400" />
+                    </div>
                   )}
-                </div>
+                  <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+                </>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className={cn("text-sm font-medium truncate", isOver ? "text-brand-olive" : "text-ink-900")}>
+                  {isOver ? "Soltar aqui" : folder.name}
+                </p>
+                {!isOver && childCount > 0 && (
+                  <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
+                )}
               </div>
               {canEdit && !isOver && (
                 <FolderContextMenu
