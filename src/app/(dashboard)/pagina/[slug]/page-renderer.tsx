@@ -436,7 +436,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
             onClick={() => { if (!dragFolderId) enterFolder(folder); }}
           >
             {hasCover ? (
-              <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-xl">
+              <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-xl pointer-events-none">
                 <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
                 {isOver && (
                   <div className="absolute inset-0 bg-brand-olive/20 flex items-center justify-center">
@@ -446,23 +446,25 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
               </div>
             ) : null}
             <div className={cn("flex items-center gap-3 px-3 py-2.5", !hasCover && "py-3 px-4")}>
-              {isOver ? (
-                <FolderInput size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
-              ) : (
-                <>
-                  {canEdit && !isDragging && (
-                    <GripVertical size={14} className="text-ink-300 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing -ml-1 -mr-1" />
-                  )}
-                  <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
-                </>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className={cn("text-sm font-medium truncate", isOver ? "text-brand-olive" : "text-ink-900")}>
-                  {isOver ? "Soltar aqui" : folder.name}
-                </p>
-                {!isOver && childCount > 0 && (
-                  <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
+              <div className="flex items-center gap-3 flex-1 min-w-0 pointer-events-none">
+                {isOver ? (
+                  <FolderInput size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+                ) : (
+                  <>
+                    {canEdit && !isDragging && (
+                      <GripVertical size={14} className="text-ink-300 shrink-0 cursor-grab active:cursor-grabbing -ml-1 -mr-1" />
+                    )}
+                    <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+                  </>
                 )}
+                <div className="flex-1 min-w-0">
+                  <p className={cn("text-sm font-medium truncate", isOver ? "text-brand-olive" : "text-ink-900")}>
+                    {isOver ? "Soltar aqui" : folder.name}
+                  </p>
+                  {!isOver && childCount > 0 && (
+                    <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
+                  )}
+                </div>
               </div>
               {canEdit && !isOver && (
                 <FolderContextMenu
@@ -906,7 +908,7 @@ function FolderContextMenu({ isOpen, onToggle, onClose, onMove, onEdit, onDelete
         draggable={false}
         className={cn(
           "rounded-md p-1.5 transition-colors",
-          isOpen ? "bg-ink-100 text-ink-700" : "text-ink-400 hover:text-ink-700 hover:bg-ink-100 opacity-0 group-hover:opacity-100",
+          isOpen ? "bg-ink-100 text-ink-700" : "text-ink-400 hover:text-ink-700 hover:bg-ink-100",
         )}
         title="Opcoes"
       >
