@@ -87,10 +87,25 @@ export async function getVideoUrl(
 
   const item = items[targetIndex];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const url = (item.data as any)?.[fields.slug];
-  if (!url) return { error: "URL nao definida" };
+  const rawUrl = (item.data as any)?.[fields.slug];
+  if (!rawUrl) return { error: "URL nao definida" };
 
-  return { url: String(url) };
+  const urlStr = String(rawUrl);
+
+  // If it's a storage path (no protocol), generate a signed URL from course-videos bucket
+  if (!urlStr.startsWith("http") && !urlStr.startsWith("//")) {
+    const { data: signedData, error: signErr } = await supabase.storage
+      .from("course-videos")
+      .createSignedUrl(urlStr, 7200); // 2 hours
+
+    if (signErr || !signedData?.signedUrl) {
+      return { error: "Erro ao gerar URL do video" };
+    }
+    return { url: signedData.signedUrl };
+  }
+
+  // External URL (YouTube, Bunny, etc) - return as-is
+  return { url: urlStr };
 }
 
 export async function updateLessonProgress(

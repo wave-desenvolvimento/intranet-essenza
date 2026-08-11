@@ -61,3 +61,52 @@ export async function uploadToStorage(
 
   return { url: urlData.publicUrl };
 }
+
+/** Upload video to private course-videos bucket with progress callback.
+ *  Returns the storage path (not a public URL - use signed URLs to access). */
+export async function uploadVideoWithProgress(
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<{ path: string } | { error: string }> {
+  const supabase = createClient();
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return { error: "Nao autenticado" };
+
+  const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
+  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const url = `${SUPABASE_URL}/storage/v1/object/course-videos/${fileName}`;
+
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve({ path: fileName });
+      } else {
+        resolve({ error: `Erro no upload (${xhr.status})` });
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      resolve({ error: "Erro de rede no upload" });
+    });
+
+    xhr.addEventListener("abort", () => {
+      resolve({ error: "Upload cancelado" });
+    });
+
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
+    xhr.setRequestHeader("x-upsert", "false");
+    xhr.send(file);
+  });
+}

@@ -10,7 +10,7 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { createItem, updateItem, deleteItem } from "@/app/(dashboard)/cms/actions";
 import { createFolder, updateFolder, deleteFolder, moveFolder, moveItemsToFolder, type Folder as FolderType } from "@/app/(dashboard)/cms/folder-actions";
-import { uploadToStorage } from "@/lib/upload";
+import { uploadToStorage, uploadVideoWithProgress } from "@/lib/upload";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
@@ -808,7 +808,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
               <div key={f.id} {...(hasError ? { "data-field-error": true } : {})}>
                 <label className={cn("text-sm font-medium mb-1.5 block", hasError ? "text-danger" : "text-ink-700")}>{f.name}{f.required && <span className="text-danger ml-0.5">*</span>}</label>
                 <div className={hasError ? "rounded-lg ring-2 ring-danger/30" : ""}>
-                  <PageDynamicField field={f} value={itemData[f.slug]} onChange={(val) => { setItemData((prev) => ({ ...prev, [f.slug]: val })); if (hasError) setFieldErrors((prev) => { const next = { ...prev }; delete next[f.slug]; return next; }); }} />
+                  <PageDynamicField field={f} value={itemData[f.slug]} onChange={(val) => { setItemData((prev) => ({ ...prev, [f.slug]: val })); if (hasError) setFieldErrors((prev) => { const next = { ...prev }; delete next[f.slug]; return next; }); }} isCourse={page.view_type === "course"} />
                 </div>
                 {hasError && <p className="text-xs text-danger mt-1">{fieldErrors[f.slug]}</p>}
               </div>
@@ -844,11 +844,12 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 }
 
 // === Dynamic field for page editor ===
-function PageDynamicField({ field, value, onChange }: { field: Field; value: unknown; onChange: (val: unknown) => void }) {
+function PageDynamicField({ field, value, onChange, isCourse }: { field: Field; value: unknown; onChange: (val: unknown) => void; isCourse?: boolean }) {
   const cls = "h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10";
   switch (field.field_type) {
     case "text": case "email": case "url":
       if (field.field_type === "text" && field.slug.includes("tag")) return <TagsInput value={String(value || "")} onChange={(v) => onChange(v)} />;
+      if (field.field_type === "url" && isCourse) return <VideoUrlField value={String(value || "")} onChange={(v) => onChange(v)} />;
       return <input type={field.field_type === "url" ? "url" : field.field_type === "email" ? "email" : "text"} value={String(value || "")} onChange={(e) => onChange(e.target.value)} className={cls} />;
     case "textarea": return <textarea value={String(value || "")} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2.5 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10 resize-y" />;
     case "rich_text": return <RichTextEditor value={String(value || "")} onChange={(html) => onChange(html)} />;
@@ -2107,6 +2108,113 @@ function FileListModal({ title, files, onClose }: { title: string; files: { titl
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+// === Video URL field with upload support for course pages ===
+function VideoUrlField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cls = "h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10";
+
+  const isStoragePath = value && !value.startsWith("http") && !value.startsWith("//") && value !== "__protected__";
+  const hasValue = !!value && value !== "__protected__";
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("video/")) {
+      toast.error("Selecione um arquivo de video");
+      return;
+    }
+
+    if (file.size > 500 * 1024 * 1024) {
+      toast.error("O video deve ter no maximo 500MB");
+      return;
+    }
+
+    setUploading(true);
+    setProgress(0);
+
+    const result = await uploadVideoWithProgress(file, setProgress);
+
+    if ("error" in result) {
+      toast.error(result.error);
+    } else {
+      onChange(result.path);
+      toast.success("Video enviado");
+    }
+
+    setUploading(false);
+    setProgress(0);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <input
+          type="url"
+          value={value === "__protected__" ? "" : value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Cole a URL (YouTube, Bunny) ou envie um video"
+          className={cn(cls, "flex-1")}
+          disabled={uploading}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-1.5 rounded-lg border border-ink-100 px-3 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors disabled:opacity-50 shrink-0"
+        >
+          <Upload size={14} />
+          Enviar
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/*"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+      </div>
+
+      {uploading && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs text-ink-500">
+            <span>Enviando video...</span>
+            <span className="font-medium">{progress}%</span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-ink-100 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-brand-olive transition-all duration-300 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {hasValue && !uploading && (
+        <div className="flex items-center gap-2 text-xs text-ink-500">
+          {isStoragePath ? (
+            <>
+              <Play size={12} className="text-brand-olive" />
+              <span className="truncate">Video hospedado: {value}</span>
+            </>
+          ) : (
+            <>
+              <Play size={12} className="text-ink-400" />
+              <span className="truncate">URL externa: {value}</span>
+            </>
+          )}
+          <button type="button" onClick={() => onChange("")} className="ml-auto text-ink-400 hover:text-danger transition-colors" title="Remover">
+            <X size={12} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
