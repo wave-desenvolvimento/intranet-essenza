@@ -742,7 +742,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
             const renderFolderTree = (parentId: string | null, depth: number): React.ReactNode[] => {
               return folders
                 .filter((f) => f.parent_id === parentId)
-                .filter((f) => f.id !== movingFolderId && !isDescendant(movingFolderId, f.id))
+                .filter((f) => f.id !== movingFolderId && !(movingFolderId && isDescendant(movingFolderId, f.id)))
                 .map((f) => {
                   const isCurrentLocation = movingFolder.parent_id === f.id;
                   const FIcon = f.icon === "folder" ? Folder : (getIconByName(f.icon) || Folder);
