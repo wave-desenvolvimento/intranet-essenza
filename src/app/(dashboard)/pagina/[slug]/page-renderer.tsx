@@ -429,7 +429,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
             onDragLeave={() => { if (overFolderId === folder.id) setOverFolderId(null); }}
             onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(folder.id); setDragFolderId(null); }}
             className={cn(
-              "group relative rounded-xl border bg-white cursor-pointer transition-all",
+              "group relative rounded-xl border bg-white cursor-pointer transition-all select-none",
               isDragging && "opacity-40 scale-95",
               isOver ? "border-brand-olive ring-2 ring-brand-olive shadow-md scale-105" : "border-ink-100 hover:border-brand-olive/30 hover:shadow-sm",
             )}
