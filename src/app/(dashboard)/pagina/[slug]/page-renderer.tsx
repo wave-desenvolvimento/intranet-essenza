@@ -408,6 +408,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   }
 
   // Build folders grid node (passed into views to render below search bar)
+  const [folderMenuId, setFolderMenuId] = useState<string | null>(null);
+
   const foldersGrid = currentSubfolders.length > 0 ? (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-4">
       {currentSubfolders.map((folder) => {
@@ -416,17 +418,18 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
         const hasCover = !!folder.cover_url;
         const isDragging = dragFolderId === folder.id;
         const isOver = overFolderId === folder.id && dragFolderId !== null && dragFolderId !== folder.id;
+        const isMenuOpen = folderMenuId === folder.id;
         return (
           <div
             key={folder.id}
             draggable={canEdit}
-            onDragStart={(e) => { e.stopPropagation(); setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", folder.id); }}
+            onDragStart={(e) => { e.stopPropagation(); setFolderMenuId(null); setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", folder.id); }}
             onDragEnd={() => { setDragFolderId(null); setOverFolderId(null); }}
             onDragOver={(e) => { if (dragFolderId && dragFolderId !== folder.id) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId(folder.id); } }}
             onDragLeave={() => { if (overFolderId === folder.id) setOverFolderId(null); }}
             onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(folder.id); setDragFolderId(null); }}
             className={cn(
-              "group rounded-xl border bg-white overflow-hidden cursor-pointer transition-all",
+              "group relative rounded-xl border bg-white overflow-hidden cursor-pointer transition-all",
               isDragging && "opacity-40 scale-95",
               isOver ? "border-brand-olive ring-2 ring-brand-olive shadow-md scale-105" : "border-ink-100 hover:border-brand-olive/30 hover:shadow-sm",
             )}
@@ -440,20 +443,18 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
                     <FolderInput size={24} className="text-brand-olive" />
                   </div>
                 )}
-                {canEdit && !isOver && (
-                  <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); openMoveFolderSheet(folder.id); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors" title="Mover pasta"><FolderInput size={10} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors" title="Editar"><Pencil size={10} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }} className="rounded-full bg-black/50 p-1 text-white hover:bg-danger transition-colors" title="Remover"><Trash2 size={10} /></button>
-                  </div>
-                )}
               </div>
             ) : null}
             <div className={cn("flex items-center gap-3 px-3 py-2.5", !hasCover && "py-3 px-4")}>
               {isOver ? (
                 <FolderInput size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
               ) : (
-                <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+                <>
+                  {canEdit && !isDragging && (
+                    <GripVertical size={14} className="text-ink-300 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing -ml-1 mr--1" />
+                  )}
+                  <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+                </>
               )}
               <div className="flex-1 min-w-0">
                 <p className={cn("text-sm font-medium truncate", isOver ? "text-brand-olive" : "text-ink-900")}>
@@ -463,11 +464,47 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
                   <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
                 )}
               </div>
-              {!hasCover && canEdit && !isOver && (
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); openMoveFolderSheet(folder.id); }} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Mover pasta"><FolderInput size={12} /></button>
-                  <button onClick={(e) => { e.stopPropagation(); openFolderSheet(folder); }} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={12} /></button>
-                  <button onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }} className="rounded-md p-1 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors" title="Remover"><Trash2 size={12} /></button>
+              {canEdit && !isOver && (
+                <div className="relative">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setFolderMenuId(isMenuOpen ? null : folder.id); }}
+                    className={cn(
+                      "rounded-md p-1.5 transition-colors",
+                      isMenuOpen ? "bg-ink-100 text-ink-700" : "text-ink-400 hover:text-ink-700 hover:bg-ink-100 opacity-0 group-hover:opacity-100",
+                    )}
+                    title="Opcoes"
+                  >
+                    <MoreVertical size={14} />
+                  </button>
+                  {isMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setFolderMenuId(null); }} />
+                      <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-ink-100 bg-white py-1 shadow-lg">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setFolderMenuId(null); openMoveFolderSheet(folder.id); }}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+                        >
+                          <FolderInput size={14} className="text-ink-400" />
+                          Mover para...
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setFolderMenuId(null); openFolderSheet(folder); }}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+                        >
+                          <Pencil size={14} className="text-ink-400" />
+                          Editar
+                        </button>
+                        <div className="my-1 border-t border-ink-100" />
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setFolderMenuId(null); removeFolder(folder.id); }}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-danger hover:bg-danger-soft transition-colors"
+                        >
+                          <Trash2 size={14} className="text-danger/70" />
+                          Remover
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -519,55 +556,72 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 
       {/* Breadcrumb */}
       {folderPath.length > 0 && (
-        <div className="flex items-center gap-1 mb-4 text-sm">
-          <button
-            onClick={() => navigateTo(-1)}
-            onDragOver={(e) => { if (dragFolderId) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId("__root__"); } }}
-            onDragLeave={() => { if (overFolderId === "__root__") setOverFolderId(null); }}
-            onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(null); setDragFolderId(null); }}
-            className={cn(
-              "flex items-center gap-1 transition-colors",
-              dragFolderId && overFolderId === "__root__"
-                ? "text-brand-olive font-medium rounded bg-brand-olive-soft/30 px-2 py-0.5 ring-1 ring-brand-olive"
-                : dragFolderId
-                  ? "text-ink-500 hover:text-brand-olive"
-                  : "text-ink-500 hover:text-ink-900",
-            )}
-          >
-            <ArrowLeft size={14} />
-            {page.title}
-          </button>
-          {folderPath.map((crumb, i) => {
-            const isLast = i === folderPath.length - 1;
-            // Drop target: move the dragged folder INTO this crumb's folder
-            const dropTargetId = crumb.id;
-            const isCrumbOver = overFolderId === `__crumb_${i}__`;
-            // Don't allow drop on the last crumb (folder is already there) or on itself
-            const canDropHere = dragFolderId && dragFolderId !== dropTargetId && !isLast;
-            return (
-              <span key={crumb.id} className="flex items-center gap-1">
-                <ChevronRight size={12} className="text-ink-300" />
-                {isLast ? (
-                  <span className="font-medium text-ink-900">{crumb.name}</span>
-                ) : (
-                  <button
-                    onClick={() => navigateTo(i)}
-                    onDragOver={(e) => { if (canDropHere) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId(`__crumb_${i}__`); } }}
-                    onDragLeave={() => { if (isCrumbOver) setOverFolderId(null); }}
-                    onDrop={(e) => { e.preventDefault(); setOverFolderId(null); if (canDropHere) { handleFolderDrop(dropTargetId); setDragFolderId(null); } }}
-                    className={cn(
-                      "transition-colors",
-                      isCrumbOver
-                        ? "text-brand-olive font-medium rounded bg-brand-olive-soft/30 px-2 py-0.5 ring-1 ring-brand-olive"
-                        : "text-ink-500 hover:text-ink-900",
-                    )}
-                  >
-                    {crumb.name}
-                  </button>
-                )}
-              </span>
-            );
-          })}
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="flex items-center gap-1 text-sm">
+            <button
+              onClick={() => navigateTo(-1)}
+              onDragOver={(e) => { if (dragFolderId) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId("__root__"); } }}
+              onDragLeave={() => { if (overFolderId === "__root__") setOverFolderId(null); }}
+              onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(null); setDragFolderId(null); }}
+              className={cn(
+                "flex items-center gap-1 transition-colors",
+                dragFolderId && overFolderId === "__root__"
+                  ? "text-brand-olive font-medium rounded bg-brand-olive-soft/30 px-2 py-0.5 ring-1 ring-brand-olive"
+                  : dragFolderId
+                    ? "text-ink-500 hover:text-brand-olive"
+                    : "text-ink-500 hover:text-ink-900",
+              )}
+            >
+              <ArrowLeft size={14} />
+              {page.title}
+            </button>
+            {folderPath.map((crumb, i) => {
+              const isLast = i === folderPath.length - 1;
+              const dropTargetId = crumb.id;
+              const isCrumbOver = overFolderId === `__crumb_${i}__`;
+              const canDropHere = dragFolderId && dragFolderId !== dropTargetId && !isLast;
+              return (
+                <span key={crumb.id} className="flex items-center gap-1">
+                  <ChevronRight size={12} className="text-ink-300" />
+                  {isLast ? (
+                    <span className="font-medium text-ink-900">{crumb.name}</span>
+                  ) : (
+                    <button
+                      onClick={() => navigateTo(i)}
+                      onDragOver={(e) => { if (canDropHere) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId(`__crumb_${i}__`); } }}
+                      onDragLeave={() => { if (isCrumbOver) setOverFolderId(null); }}
+                      onDrop={(e) => { e.preventDefault(); setOverFolderId(null); if (canDropHere) { handleFolderDrop(dropTargetId); setDragFolderId(null); } }}
+                      className={cn(
+                        "transition-colors",
+                        isCrumbOver
+                          ? "text-brand-olive font-medium rounded bg-brand-olive-soft/30 px-2 py-0.5 ring-1 ring-brand-olive"
+                          : "text-ink-500 hover:text-ink-900",
+                      )}
+                    >
+                      {crumb.name}
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+          {/* Drop zone explicita quando arrastando */}
+          {dragFolderId && (
+            <div
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverFolderId("__root__"); }}
+              onDragLeave={() => { if (overFolderId === "__root__") setOverFolderId(null); }}
+              onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(null); setDragFolderId(null); }}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-lg border-2 border-dashed py-2.5 text-sm font-medium transition-all",
+                overFolderId === "__root__"
+                  ? "border-brand-olive bg-brand-olive-soft/20 text-brand-olive"
+                  : "border-ink-200 text-ink-400",
+              )}
+            >
+              <ArrowLeft size={14} />
+              Soltar aqui para mover para a raiz
+            </div>
+          )}
         </div>
       )}
 
