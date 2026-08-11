@@ -465,48 +465,14 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
                 )}
               </div>
               {canEdit && !isOver && (
-                <div className="relative" draggable={false} onDragStart={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setFolderMenuId(isMenuOpen ? null : folder.id); }}
-                    draggable={false}
-                    className={cn(
-                      "rounded-md p-1.5 transition-colors",
-                      isMenuOpen ? "bg-ink-100 text-ink-700" : "text-ink-400 hover:text-ink-700 hover:bg-ink-100 opacity-0 group-hover:opacity-100",
-                    )}
-                    title="Opcoes"
-                  >
-                    <MoreVertical size={14} />
-                  </button>
-                  {isMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setFolderMenuId(null); }} />
-                      <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-ink-100 bg-white py-1 shadow-lg">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setFolderMenuId(null); openMoveFolderSheet(folder.id); }}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
-                        >
-                          <FolderInput size={14} className="text-ink-400" />
-                          Mover para...
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setFolderMenuId(null); openFolderSheet(folder); }}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
-                        >
-                          <Pencil size={14} className="text-ink-400" />
-                          Editar
-                        </button>
-                        <div className="my-1 border-t border-ink-100" />
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setFolderMenuId(null); removeFolder(folder.id); }}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-danger hover:bg-danger-soft transition-colors"
-                        >
-                          <Trash2 size={14} className="text-danger/70" />
-                          Remover
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
+                <FolderContextMenu
+                  isOpen={isMenuOpen}
+                  onToggle={(e) => { e.stopPropagation(); setFolderMenuId(isMenuOpen ? null : folder.id); }}
+                  onClose={() => setFolderMenuId(null)}
+                  onMove={(e) => { e.stopPropagation(); setFolderMenuId(null); openMoveFolderSheet(folder.id); }}
+                  onEdit={(e) => { e.stopPropagation(); setFolderMenuId(null); openFolderSheet(folder); }}
+                  onDelete={(e) => { e.stopPropagation(); setFolderMenuId(null); removeFolder(folder.id); }}
+                />
               )}
             </div>
           </div>
@@ -899,6 +865,80 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 }
 
 // === Dynamic field for page editor ===
+// === Folder context menu with auto-positioning ===
+function FolderContextMenu({ isOpen, onToggle, onClose, onMove, onEdit, onDelete }: {
+  isOpen: boolean;
+  onToggle: (e: React.MouseEvent) => void;
+  onClose: () => void;
+  onMove: (e: React.MouseEvent) => void;
+  onEdit: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+}) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [openUp, setOpenUp] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    // Calculate if menu should open upward
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const menuHeight = 140; // approximate height of the 3-item menu
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setOpenUp(spaceBelow < menuHeight);
+    }
+    // Close on click outside
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node) &&
+          btnRef.current && !btnRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [isOpen, onClose]);
+
+  return (
+    <div className="relative" draggable={false} onDragStart={(e) => e.stopPropagation()}>
+      <button
+        ref={btnRef}
+        onClick={onToggle}
+        draggable={false}
+        className={cn(
+          "rounded-md p-1.5 transition-colors",
+          isOpen ? "bg-ink-100 text-ink-700" : "text-ink-400 hover:text-ink-700 hover:bg-ink-100 opacity-0 group-hover:opacity-100",
+        )}
+        title="Opcoes"
+      >
+        <MoreVertical size={14} />
+      </button>
+      {isOpen && (
+        <div
+          ref={menuRef}
+          className={cn(
+            "absolute right-0 z-50 w-40 rounded-lg border border-ink-100 bg-white py-1 shadow-lg",
+            openUp ? "bottom-full mb-1" : "top-full mt-1",
+          )}
+        >
+          <button onClick={onMove} className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors">
+            <FolderInput size={14} className="text-ink-400" />
+            Mover para...
+          </button>
+          <button onClick={onEdit} className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors">
+            <Pencil size={14} className="text-ink-400" />
+            Editar
+          </button>
+          <div className="my-1 border-t border-ink-100" />
+          <button onClick={onDelete} className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-danger hover:bg-danger-soft transition-colors">
+            <Trash2 size={14} className="text-danger/70" />
+            Remover
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PageDynamicField({ field, value, onChange, isCourse }: { field: Field; value: unknown; onChange: (val: unknown) => void; isCourse?: boolean }) {
   const cls = "h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10";
   switch (field.field_type) {
