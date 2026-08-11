@@ -437,7 +437,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
           >
             {hasCover ? (
               <div className="aspect-[16/9] bg-ink-50 relative">
-                <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" />
+                <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
                 {isOver && (
                   <div className="absolute inset-0 bg-brand-olive/20 flex items-center justify-center">
                     <FolderInput size={24} className="text-brand-olive" />
@@ -451,7 +451,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
               ) : (
                 <>
                   {canEdit && !isDragging && (
-                    <GripVertical size={14} className="text-ink-300 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing -ml-1 mr--1" />
+                    <GripVertical size={14} className="text-ink-300 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing -ml-1 -mr-1" />
                   )}
                   <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
                 </>
@@ -465,9 +465,10 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
                 )}
               </div>
               {canEdit && !isOver && (
-                <div className="relative">
+                <div className="relative" draggable={false} onDragStart={(e) => e.stopPropagation()}>
                   <button
                     onClick={(e) => { e.stopPropagation(); setFolderMenuId(isMenuOpen ? null : folder.id); }}
+                    draggable={false}
                     className={cn(
                       "rounded-md p-1.5 transition-colors",
                       isMenuOpen ? "bg-ink-100 text-ink-700" : "text-ink-400 hover:text-ink-700 hover:bg-ink-100 opacity-0 group-hover:opacity-100",
