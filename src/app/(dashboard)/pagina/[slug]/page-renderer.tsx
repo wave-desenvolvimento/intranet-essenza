@@ -429,14 +429,14 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
             onDragLeave={() => { if (overFolderId === folder.id) setOverFolderId(null); }}
             onDrop={(e) => { e.preventDefault(); setOverFolderId(null); handleFolderDrop(folder.id); setDragFolderId(null); }}
             className={cn(
-              "group relative rounded-xl border bg-white overflow-hidden cursor-pointer transition-all",
+              "group relative rounded-xl border bg-white cursor-pointer transition-all",
               isDragging && "opacity-40 scale-95",
               isOver ? "border-brand-olive ring-2 ring-brand-olive shadow-md scale-105" : "border-ink-100 hover:border-brand-olive/30 hover:shadow-sm",
             )}
             onClick={() => { if (!dragFolderId) enterFolder(folder); }}
           >
             {hasCover ? (
-              <div className="aspect-[16/9] bg-ink-50 relative">
+              <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-xl">
                 <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
                 {isOver && (
                   <div className="absolute inset-0 bg-brand-olive/20 flex items-center justify-center">
@@ -1662,7 +1662,7 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
 
               {/* Info + Actions */}
               <div className="px-2.5 py-2">
-                {title && <p className="text-xs font-medium text-ink-900 truncate leading-snug">{title}</p>}
+                <p className="text-xs font-medium truncate leading-snug">{title ? <span className="text-ink-900">{title}</span> : <span className="text-ink-400 italic">Sem titulo</span>}</p>
                 {descText && <p className="text-[10px] text-ink-400 truncate mt-0.5 leading-snug">{descText}</p>}
                 {tags && (
                   <div className="flex flex-wrap gap-1 mt-1">
