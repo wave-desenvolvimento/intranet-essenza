@@ -61,6 +61,60 @@ export async function getModules(): Promise<CourseModule[]> {
   })) as CourseModule[];
 }
 
+export interface PublishedModule {
+  id: string;
+  title: string;
+  description: string | null;
+  cover_url: string | null;
+  slug: string;
+  video_count: number;
+  completed_count: number;
+}
+
+export async function getPublishedModulesWithProgress(): Promise<PublishedModule[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: modules } = await supabase
+    .from("course_modules")
+    .select("id, title, description, cover_url, slug, course_videos(id)")
+    .eq("status", "published")
+    .order("sort_order");
+
+  if (!modules?.length) return [];
+
+  // Fetch all lesson progress for this user across all modules
+  let completedByModule: Record<string, number> = {};
+  if (user) {
+    const moduleIds = modules.map((m) => m.id);
+    const { data: progress } = await supabase
+      .from("lesson_progress")
+      .select("module_id, video_id, completed_at")
+      .eq("user_id", user.id)
+      .in("module_id", moduleIds)
+      .not("completed_at", "is", null);
+
+    for (const p of progress || []) {
+      if (p.module_id) {
+        completedByModule[p.module_id] = (completedByModule[p.module_id] || 0) + 1;
+      }
+    }
+  }
+
+  return modules.map((m) => {
+    const publishedVideos = m.course_videos?.length || 0;
+    return {
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      cover_url: m.cover_url,
+      slug: m.slug,
+      video_count: publishedVideos,
+      completed_count: completedByModule[m.id] || 0,
+    };
+  });
+}
+
 export async function getModule(id: string): Promise<CourseModule | null> {
   const supabase = await createClient();
   const { data } = await supabase

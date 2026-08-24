@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { getModules } from "./course-actions";
+import { getModules, getPublishedModulesWithProgress } from "./course-actions";
 import { CourseManager } from "./course-manager";
+import { CourseCatalog } from "./course-catalog";
 import { getEffectivePermissions } from "@/lib/dev-mode-server";
 
 export default async function CursosPage() {
@@ -14,7 +15,13 @@ export default async function CursosPage() {
   const canEdit = effectivePerms.includes("universo-da-marca.edit") || effectivePerms.includes("universo-da-marca.create");
   const canView = effectivePerms.some((k) => k.startsWith("universo-da-marca."));
 
-  const modules = await getModules();
+  // Admin: gerenciamento completo de modulos e videos
+  if (canEdit) {
+    const modules = await getModules();
+    return <CourseManager modules={modules} canEdit={canEdit} canView={canView} />;
+  }
 
-  return <CourseManager modules={modules} canEdit={canEdit} canView={canView} />;
+  // Franqueado: catalogo de cursos com progresso
+  const modules = await getPublishedModulesWithProgress();
+  return <CourseCatalog modules={modules} />;
 }
