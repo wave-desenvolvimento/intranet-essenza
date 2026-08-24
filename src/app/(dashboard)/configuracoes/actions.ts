@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { requireAuth, requirePermission, getUserRoleLevel } from "@/lib/permissions";
+import { requireAuth, requirePermission, getUserRoleLevel, isOwner } from "@/lib/permissions";
 
 // Ações pertinentes por módulo - só cria o que cada módulo realmente usa
 const MODULE_ACTIONS: Record<string, string[]> = {
@@ -20,6 +20,7 @@ const MODULE_ACTIONS: Record<string, string[]> = {
   pesquisas:            ["view", "create", "edit", "delete"],
   leads:                ["view", "edit", "delete", "export"],
   biblioteca:           ["view", "download"],
+  "universo-da-marca":  ["view", "create", "edit", "download"],
   configuracoes:        ["view", "edit"],
 };
 
@@ -101,8 +102,11 @@ export async function createRole(formData: FormData) {
 
   if (!name) return { error: "Nome é obrigatório." };
 
-  const userLevel = await getUserRoleLevel(p.user!.id);
-  if (level > userLevel) return { error: "Não é possível criar um tipo de acesso com nível superior ao seu." };
+  const ownerUser = await isOwner(p.user!.id);
+  if (!ownerUser) {
+    const userLevel = await getUserRoleLevel(p.user!.id);
+    if (level > userLevel) return { error: "Não é possível criar um tipo de acesso com nível superior ao seu." };
+  }
 
   const slug = generateSlug(name);
 
@@ -139,14 +143,17 @@ export async function updateRole(formData: FormData) {
 
   if (!roleId || !name) return { error: "Dados inválidos." };
 
-  // Prevent editing own role
-  const { data: userRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", p.user!.id);
-  if (userRoles?.some((ur) => ur.role_id === roleId)) {
-    return { error: "Não é possível editar o tipo de acesso ao qual você pertence." };
-  }
+  const ownerUser = await isOwner(p.user!.id);
+  if (!ownerUser) {
+    // Prevent editing own role
+    const { data: userRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", p.user!.id);
+    if (userRoles?.some((ur) => ur.role_id === roleId)) {
+      return { error: "Não é possível editar o tipo de acesso ao qual você pertence." };
+    }
 
-  const userLevel = await getUserRoleLevel(p.user!.id);
-  if (level > userLevel) return { error: "Não é possível definir um nível superior ao seu." };
+    const userLevel = await getUserRoleLevel(p.user!.id);
+    if (level > userLevel) return { error: "Não é possível definir um nível superior ao seu." };
+  }
 
   // Prevent changing is_system on existing system roles
   const { data: existingRole } = await supabase.from("roles").select("is_system").eq("id", roleId).single();
@@ -175,15 +182,18 @@ export async function deleteRole(roleId: string) {
   const p = await requirePermission("configuracoes", "edit"); if (p.error) return p;
   const supabase = await createClient();
 
-  // Prevent deleting own role
-  const { data: userRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", p.user!.id);
-  if (userRoles?.some((ur) => ur.role_id === roleId)) {
-    return { error: "Não é possível remover o tipo de acesso ao qual você pertence." };
-  }
+  const ownerUser = await isOwner(p.user!.id);
+  if (!ownerUser) {
+    // Prevent deleting own role
+    const { data: userRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", p.user!.id);
+    if (userRoles?.some((ur) => ur.role_id === roleId)) {
+      return { error: "Não é possível remover o tipo de acesso ao qual você pertence." };
+    }
 
-  // Prevent deleting system roles
-  const { data: role } = await supabase.from("roles").select("is_system").eq("id", roleId).single();
-  if (role?.is_system) return { error: "Tipos de acesso do sistema não podem ser removidos." };
+    // Prevent deleting system roles
+    const { data: role } = await supabase.from("roles").select("is_system").eq("id", roleId).single();
+    if (role?.is_system) return { error: "Tipos de acesso do sistema não podem ser removidos." };
+  }
 
   const { error } = await supabase.from("roles").delete().eq("id", roleId);
   if (error) return { error: "Erro ao remover. Verifique se não há usuários vinculados." };
