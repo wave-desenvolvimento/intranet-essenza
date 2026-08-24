@@ -115,23 +115,27 @@ export async function updateUser(formData: FormData) {
 
   if (!userId || !fullName) return { error: "Dados inválidos." };
 
-  // Prevent changing own roles
-  if (userId === p.user!.id) {
-    const { data: currentRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", userId);
-    const currentIds = (currentRoles || []).map((r) => r.role_id).sort();
-    const newIds = [...roleIds].sort();
-    if (currentIds.length !== newIds.length || currentIds.some((id, i) => id !== newIds[i])) {
-      return { error: "Não é possível alterar suas próprias permissões." };
-    }
-  }
+  const callerLevel = await getUserRoleLevel(p.user!.id);
 
-  // Prevent assigning roles with level above caller's
-  if (roleIds.length > 0) {
-    const callerLevel = await getUserRoleLevel(p.user!.id);
-    const { data: targetRoles } = await supabase.from("roles").select("id, level").in("id", roleIds);
-    const maxTargetLevel = Math.max(...(targetRoles || []).map((r) => r.level));
-    if (maxTargetLevel > callerLevel) {
-      return { error: "Não é possível atribuir um tipo de acesso com nível superior ao seu." };
+  // Owner (max level via RPC) bypasses these checks
+  if (callerLevel < 1000) {
+    // Prevent changing own roles
+    if (userId === p.user!.id) {
+      const { data: currentRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", userId);
+      const currentIds = (currentRoles || []).map((r) => r.role_id).sort();
+      const newIds = [...roleIds].sort();
+      if (currentIds.length !== newIds.length || currentIds.some((id, i) => id !== newIds[i])) {
+        return { error: "Não é possível alterar suas próprias permissões." };
+      }
+    }
+
+    // Prevent assigning roles with level above caller's
+    if (roleIds.length > 0) {
+      const { data: targetRoles } = await supabase.from("roles").select("id, level").in("id", roleIds);
+      const maxTargetLevel = Math.max(...(targetRoles || []).map((r) => r.level));
+      if (maxTargetLevel > callerLevel) {
+        return { error: "Não é possível atribuir um tipo de acesso com nível superior ao seu." };
+      }
     }
   }
 
@@ -173,6 +177,7 @@ export async function toggleUserStatus(userId: string) {
   if (userId === p.user!.id) return { error: "Não é possível alterar seu próprio status." };
 
   // IDOR: não pode alterar status de usuário com nível igual ou superior
+  // Owner (max level via RPC) bypasses naturalmente
   const [callerLevel, targetLevel] = await Promise.all([
     getUserRoleLevel(p.user!.id),
     getUserRoleLevel(userId),
@@ -201,6 +206,7 @@ export async function deleteUser(userId: string) {
   if (userId === p.user!.id) return { error: "Não é possível remover seu próprio usuário." };
 
   // IDOR: não pode remover usuário com nível igual ou superior
+  // Owner (max level via RPC) bypasses naturalmente
   const [callerLevel, targetLevel] = await Promise.all([
     getUserRoleLevel(p.user!.id),
     getUserRoleLevel(userId),

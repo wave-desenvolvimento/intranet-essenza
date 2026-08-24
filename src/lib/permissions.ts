@@ -46,6 +46,7 @@ export async function getUserRoleLevel(userId: string): Promise<number> {
 }
 
 // Get roles the current user can assign (only roles at or below their level)
+// Owner bypasses via RPC returning max level
 export async function getAssignableRoles(userId: string) {
   const supabase = await createClient();
   const userLevel = await getUserRoleLevel(userId);

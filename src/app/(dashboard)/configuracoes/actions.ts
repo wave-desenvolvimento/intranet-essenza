@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { requireAuth, requirePermission, getUserRoleLevel, isOwner } from "@/lib/permissions";
+import { requireAuth, requirePermission, getUserRoleLevel } from "@/lib/permissions";
 
 // Ações pertinentes por módulo - só cria o que cada módulo realmente usa
 const MODULE_ACTIONS: Record<string, string[]> = {
@@ -102,11 +102,8 @@ export async function createRole(formData: FormData) {
 
   if (!name) return { error: "Nome é obrigatório." };
 
-  const ownerUser = await isOwner(p.user!.id);
-  if (!ownerUser) {
-    const userLevel = await getUserRoleLevel(p.user!.id);
-    if (level > userLevel) return { error: "Não é possível criar um tipo de acesso com nível superior ao seu." };
-  }
+  const userLevel = await getUserRoleLevel(p.user!.id);
+  if (level > userLevel) return { error: "Não é possível criar um tipo de acesso com nível superior ao seu." };
 
   const slug = generateSlug(name);
 
@@ -143,17 +140,18 @@ export async function updateRole(formData: FormData) {
 
   if (!roleId || !name) return { error: "Dados inválidos." };
 
-  const ownerUser = await isOwner(p.user!.id);
-  if (!ownerUser) {
+  const userLevel = await getUserRoleLevel(p.user!.id);
+
+  // Owner (max level via RPC) bypasses these checks
+  if (userLevel < 1000) {
     // Prevent editing own role
     const { data: userRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", p.user!.id);
     if (userRoles?.some((ur) => ur.role_id === roleId)) {
       return { error: "Não é possível editar o tipo de acesso ao qual você pertence." };
     }
-
-    const userLevel = await getUserRoleLevel(p.user!.id);
-    if (level > userLevel) return { error: "Não é possível definir um nível superior ao seu." };
   }
+
+  if (level > userLevel) return { error: "Não é possível definir um nível superior ao seu." };
 
   // Prevent changing is_system on existing system roles
   const { data: existingRole } = await supabase.from("roles").select("is_system").eq("id", roleId).single();
@@ -182,8 +180,10 @@ export async function deleteRole(roleId: string) {
   const p = await requirePermission("configuracoes", "edit"); if (p.error) return p;
   const supabase = await createClient();
 
-  const ownerUser = await isOwner(p.user!.id);
-  if (!ownerUser) {
+  const userLevel = await getUserRoleLevel(p.user!.id);
+
+  // Owner (max level via RPC) bypasses these checks
+  if (userLevel < 1000) {
     // Prevent deleting own role
     const { data: userRoles } = await supabase.from("user_roles").select("role_id").eq("user_id", p.user!.id);
     if (userRoles?.some((ur) => ur.role_id === roleId)) {
