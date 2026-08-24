@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getModules, getPublishedModulesWithProgress } from "./course-actions";
+import { getModules, getCourseCatalogData } from "./course-actions";
 import { CourseManagerWithToggle } from "./course-manager-wrapper";
 import { CourseCatalog } from "./course-catalog";
 import { getEffectivePermissions } from "@/lib/dev-mode-server";
@@ -13,25 +13,26 @@ export default async function CursosPage() {
   const effectivePerms = await getEffectivePermissions(realPermKeys);
 
   const canEdit = effectivePerms.includes("universo-da-marca.edit") || effectivePerms.includes("universo-da-marca.create");
-  const canView = effectivePerms.some((k) => k.startsWith("universo-da-marca."));
+
+  const catalogData = await getCourseCatalogData();
+  const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Aluno";
+  const userAvatar = user?.user_metadata?.avatar_url || "";
 
   // Admin: ambas as views com toggle
   if (canEdit) {
-    const [modules, publishedModules] = await Promise.all([
-      getModules(),
-      getPublishedModulesWithProgress(),
-    ]);
+    const modules = await getModules();
     return (
       <CourseManagerWithToggle
         modules={modules}
-        publishedModules={publishedModules}
+        catalogData={catalogData}
+        userName={userName}
+        userAvatar={userAvatar}
         canEdit={canEdit}
-        canView={canView}
+        canView={true}
       />
     );
   }
 
   // Franqueado: catalogo de cursos com progresso
-  const modules = await getPublishedModulesWithProgress();
-  return <CourseCatalog modules={modules} />;
+  return <CourseCatalog data={catalogData} userName={userName} userAvatar={userAvatar} />;
 }

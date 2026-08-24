@@ -69,50 +69,132 @@ export interface PublishedModule {
   slug: string;
   video_count: number;
   completed_count: number;
+  total_duration_seconds: number;
 }
 
-export async function getPublishedModulesWithProgress(): Promise<PublishedModule[]> {
+export interface ContinueWatching {
+  module_id: string;
+  module_title: string;
+  module_slug: string;
+  module_cover_url: string | null;
+  video_title: string;
+  video_index: number;
+  video_total: number;
+  watched_pct: number;
+}
+
+export interface CourseCatalogData {
+  modules: PublishedModule[];
+  continueWatching: ContinueWatching | null;
+  totalCompleted: number;
+  totalVideos: number;
+  totalDurationSeconds: number;
+}
+
+export async function getCourseCatalogData(): Promise<CourseCatalogData> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: modules } = await supabase
     .from("course_modules")
-    .select("id, title, description, cover_url, slug, course_videos(id)")
+    .select("id, title, description, cover_url, slug, course_videos(id, duration_seconds, sort_order, title, status)")
     .eq("status", "published")
     .order("sort_order");
 
-  if (!modules?.length) return [];
+  if (!modules?.length) {
+    return { modules: [], continueWatching: null, totalCompleted: 0, totalVideos: 0, totalDurationSeconds: 0 };
+  }
 
-  // Fetch all lesson progress for this user across all modules
   let completedByModule: Record<string, number> = {};
+  let continueWatching: ContinueWatching | null = null;
+
   if (user) {
     const moduleIds = modules.map((m) => m.id);
-    const { data: progress } = await supabase
+
+    // Fetch all progress (completed + in-progress)
+    const { data: allProgress } = await supabase
       .from("lesson_progress")
-      .select("module_id, video_id, completed_at")
+      .select("module_id, video_id, completed_at, watched_pct, updated_at")
       .eq("user_id", user.id)
       .in("module_id", moduleIds)
-      .not("completed_at", "is", null);
+      .not("video_id", "is", null)
+      .order("updated_at", { ascending: false });
 
-    for (const p of progress || []) {
-      if (p.module_id) {
+    for (const p of allProgress || []) {
+      if (p.module_id && p.completed_at) {
         completedByModule[p.module_id] = (completedByModule[p.module_id] || 0) + 1;
+      }
+    }
+
+    // Find "continue watching": most recently updated non-completed progress
+    const lastInProgress = (allProgress || []).find((p) => !p.completed_at && p.watched_pct > 0);
+    if (lastInProgress) {
+      const mod = modules.find((m) => m.id === lastInProgress.module_id);
+      if (mod) {
+        const publishedVideos = (mod.course_videos || [])
+          .filter((v: { status: string }) => v.status === "published")
+          .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order);
+        const vidIndex = publishedVideos.findIndex((v: { id: string }) => v.id === lastInProgress.video_id);
+        const vid = publishedVideos[vidIndex];
+        if (vid) {
+          continueWatching = {
+            module_id: mod.id,
+            module_title: mod.title,
+            module_slug: mod.slug,
+            module_cover_url: mod.cover_url,
+            video_title: vid.title,
+            video_index: vidIndex,
+            video_total: publishedVideos.length,
+            watched_pct: lastInProgress.watched_pct,
+          };
+        }
+      }
+    }
+
+    // If no in-progress, find first module not fully completed
+    if (!continueWatching) {
+      for (const mod of modules) {
+        const publishedVideos = (mod.course_videos || [])
+          .filter((v: { status: string }) => v.status === "published");
+        const completed = completedByModule[mod.id] || 0;
+        if (completed < publishedVideos.length) {
+          const sorted = publishedVideos.sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order);
+          continueWatching = {
+            module_id: mod.id,
+            module_title: mod.title,
+            module_slug: mod.slug,
+            module_cover_url: mod.cover_url,
+            video_title: sorted[completed]?.title || sorted[0]?.title || "",
+            video_index: completed,
+            video_total: publishedVideos.length,
+            watched_pct: 0,
+          };
+          break;
+        }
       }
     }
   }
 
-  return modules.map((m) => {
-    const publishedVideos = m.course_videos?.length || 0;
+  const publishedModules: PublishedModule[] = modules.map((m) => {
+    const pubVids = (m.course_videos || []).filter((v: { status: string }) => v.status === "published");
+    const totalDur = pubVids.reduce((sum: number, v: { duration_seconds: number | null }) => sum + (v.duration_seconds || 0), 0);
     return {
       id: m.id,
       title: m.title,
       description: m.description,
       cover_url: m.cover_url,
       slug: m.slug,
-      video_count: publishedVideos,
+      video_count: pubVids.length,
       completed_count: completedByModule[m.id] || 0,
+      total_duration_seconds: totalDur,
     };
   });
+
+  const totalVideos = publishedModules.reduce((s, m) => s + m.video_count, 0);
+  const totalCompleted = publishedModules.reduce((s, m) => s + m.completed_count, 0);
+  const totalDurationSeconds = publishedModules.reduce((s, m) => s + m.total_duration_seconds, 0);
+
+  return { modules: publishedModules, continueWatching, totalCompleted, totalVideos, totalDurationSeconds };
 }
 
 export async function getModule(id: string): Promise<CourseModule | null> {
