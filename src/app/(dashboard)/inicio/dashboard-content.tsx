@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Megaphone,
@@ -167,8 +167,18 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
 
   const contextText = "Confira as novidades e acesse seus materiais.";
 
-  // Data/hora formatada
-  const now = new Date();
+  // Relógio ao vivo (atualiza a cada minuto)
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const ms = 60000 - (Date.now() % 60000); // sincroniza com o minuto
+    const timeout = setTimeout(() => {
+      setNow(new Date());
+      const interval = setInterval(() => setNow(new Date()), 60000);
+      return () => clearInterval(interval);
+    }, ms);
+    return () => clearTimeout(timeout);
+  }, []);
+
   const weekday = now.toLocaleDateString("pt-BR", { weekday: "long" });
   const dateStr = now.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
   const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h");
