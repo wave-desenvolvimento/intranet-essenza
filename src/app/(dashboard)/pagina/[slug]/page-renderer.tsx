@@ -2425,11 +2425,6 @@ function VideoUrlField({ value, onChange }: { value: string; onChange: (v: strin
       return;
     }
 
-    if (file.size > 500 * 1024 * 1024) {
-      toast.error("O video deve ter no maximo 500MB");
-      return;
-    }
-
     setUploading(true);
     setProgress(0);
 
