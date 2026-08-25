@@ -154,15 +154,21 @@ function SortablePageRow({
 
 // --- Sortable Section (entire block: header + children) ---
 function SortableSection({
-  group, children: childrenContent, onEdit, onDelete, isPending,
+  group, children: childrenContent, onEdit, onDelete, isPending, isDraggingPage,
 }: {
   group: Page;
   children: React.ReactNode;
   onEdit: (p: Page) => void;
   onDelete: (id: string) => void;
   isPending: boolean;
+  isDraggingPage: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.id });
+  const { setNodeRef: setHeaderDropRef, isOver: isHeaderOver } = useDroppable({
+    id: `header:${group.id}`,
+    data: { type: "container", groupId: group.id },
+    disabled: !isDraggingPage,
+  });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const isSystem = group.page_type === "system";
 
@@ -172,7 +178,13 @@ function SortableSection({
       style={style}
       className={cn("mb-4 transition-opacity", isDragging && "opacity-40")}
     >
-      <div className="flex items-center gap-2 px-1 mb-2">
+      <div
+        ref={setHeaderDropRef}
+        className={cn(
+          "flex items-center gap-2 px-1 mb-2 rounded-lg py-1.5 -mx-1 transition-colors",
+          isHeaderOver && "bg-brand-olive-soft/30 ring-1 ring-brand-olive ring-dashed"
+        )}
+      >
         <button
           {...attributes}
           {...listeners}
@@ -186,6 +198,9 @@ function SortableSection({
           <span className="inline-flex items-center gap-0.5 rounded-md bg-ink-100 px-1 py-0.5 text-[9px] font-medium text-ink-400">
             <Cog size={8} /> Sistema
           </span>
+        )}
+        {isHeaderOver && (
+          <span className="text-[10px] font-medium text-brand-olive ml-auto">Soltar aqui</span>
         )}
         <Tooltip content="Editar seção"><button onClick={() => onEdit(group)} className="rounded-md p-0.5 text-ink-300 hover:text-ink-500"><Pencil size={10} /></button></Tooltip>
         <Tooltip content="Remover seção"><button onClick={() => onDelete(group.id)} disabled={isPending} className="rounded-md p-0.5 text-ink-300 hover:text-danger"><Trash2 size={10} /></button></Tooltip>
@@ -216,7 +231,8 @@ function SectionOverlay({ group, childCount }: { group: Page; childCount: number
 
 // --- Droppable container for each section ---
 function DroppableSection({ id, children, isOver }: { id: string; children: React.ReactNode; isOver?: boolean }) {
-  const { setNodeRef, isOver: droppableIsOver } = useDroppable({ id, data: { type: "container" } });
+  const droppableId = `container:${id}`;
+  const { setNodeRef, isOver: droppableIsOver } = useDroppable({ id: droppableId, data: { type: "container", groupId: id } });
   const highlight = isOver || droppableIsOver;
 
   return (
@@ -328,6 +344,14 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
   }
 
   // --- Drag helpers ---
+  // Resolve droppable IDs like "container:groupId" or "header:groupId" back to the group ID
+  function resolveDropId(id: string): string {
+    if (id.startsWith("container:") || id.startsWith("header:")) {
+      return id.split(":")[1];
+    }
+    return id;
+  }
+
   const persistOrder = useCallback((items: { id: string; sort_order: number; parent_id: string | null }[]) => {
     startTransition(async () => {
       const r = await reorderPages(items);
@@ -362,7 +386,8 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
     if (!over) return;
 
     const activePageId = active.id as string;
-    const overId = over.id as string;
+    const rawOverId = over.id as string;
+    const overId = resolveDropId(rawOverId);
 
     // Determine which container the "over" item belongs to
     const overPage = pages.find((p) => p.id === overId);
@@ -372,7 +397,7 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
       // Hovering over another page → same container as that page
       targetContainerId = overPage.parent_id || ROOT_CONTAINER;
     } else if (overId === ROOT_CONTAINER || groupPages.some((g) => g.id === overId)) {
-      // Hovering over a container droppable directly
+      // Hovering over a container droppable (content area or header)
       targetContainerId = overId;
     } else {
       return;
@@ -420,7 +445,8 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
 
     // --- Page reorder / cross-section move ---
     const activePageId = active.id as string;
-    const overId = over.id as string;
+    const rawOverId = over.id as string;
+    const overId = resolveDropId(rawOverId);
 
     const overPage = pages.find((p) => p.id === overId && !p.is_group);
     const containerId = overPage
@@ -526,6 +552,7 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
               onEdit={openEdit}
               onDelete={handleDelete}
               isPending={isPending}
+              isDraggingPage={activeDragType === "page"}
             >
               <SortableContext items={children.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                 <DroppableSection id={group.id}>

@@ -104,7 +104,7 @@ export function GlobalSearch() {
       // Surveys
       supabase.from("surveys").select("id, title, active").ilike("title", `%${q}%`).limit(5),
       // Media fields for asset extraction
-      supabase.from("cms_fields").select("collection_id, slug, name, field_type").in("field_type", ["image", "image_array", "image_variants", "file", "file_array"]),
+      supabase.from("cms_fields").select("collection_id, slug, name, field_type").in("field_type", ["image", "image_array", "image_variants", "file", "file_array", "video_array"]),
       // Folders matching search term (to find items inside)
       supabase.from("cms_folders").select("id, name").ilike("name", `%${q}%`).limit(10),
       // Collections matching search term

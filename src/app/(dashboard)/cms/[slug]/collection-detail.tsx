@@ -5,12 +5,12 @@ import DOMPurify from "dompurify";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
-  ArrowLeft, Plus, Pencil, Trash2, X, Settings, Check, Upload, GripVertical, ChevronRight, ChevronUp, ChevronDown, Copy, History, RotateCcw, Search, Clock,
+  ArrowLeft, Plus, Pencil, Trash2, X, Settings, Check, Upload, GripVertical, ChevronRight, ChevronUp, ChevronDown, Copy, History, RotateCcw, Search, Clock, Play, Video,
 } from "lucide-react";
 import { createField, updateField, deleteField, createItem, updateItem, deleteItem, reorderItems, reorderFields, updateCollection, bulkUpdateStatus, bulkDeleteItems, duplicateItem } from "../actions";
 import { getItemHistory, revertToVersion } from "@/app/(dashboard)/history-actions";
 import { useDragReorder } from "@/hooks/use-drag-reorder";
-import { uploadToStorage } from "@/lib/upload";
+import { uploadToStorage, uploadToStorageWithProgress } from "@/lib/upload";
 import { cn, getAssetScheduleStatus } from "@/lib/utils";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { Sheet } from "@/components/ui/sheet";
@@ -38,6 +38,7 @@ const FIELD_TYPES = [
   { value: "duration", label: "Duração (mm:ss)" },
   { value: "image_array", label: "Galeria de Imagens" },
   { value: "file_array", label: "Lista de Arquivos" },
+  { value: "video_array", label: "Galeria de Videos" },
   { value: "collection_ref", label: "Referência (single)" },
   { value: "collection_multi_ref", label: "Referência (multi)" },
 ];
@@ -160,7 +161,7 @@ export function CollectionDetail({ collection, fields, items }: Props) {
   const [fSelectOptions, setFSelectOptions] = useState<{ value: string; label: string }[]>([]);
 
   // Visible columns (first 4 text-ish fields)
-  const visibleFields = fields.filter((f) => !["boolean", "image", "file", "file_array", "image_array", "image_variants"].includes(f.field_type)).slice(0, 4);
+  const visibleFields = fields.filter((f) => !["boolean", "image", "file", "file_array", "image_array", "image_variants", "video_array"].includes(f.field_type)).slice(0, 4);
 
   // Filtered items by search
   const filteredItems = useMemo(() => {
@@ -725,6 +726,17 @@ function CellValue({ value, field }: { value: unknown; field: Field }) {
     return <span className="text-xs text-ink-500">{items.length} {items.length === 1 ? "arquivo" : "arquivos"}</span>;
   }
 
+  if (type === "video_array") {
+    const items = Array.isArray(value) ? (value as { title?: string; url: string }[]) : [];
+    if (items.length === 0) return <span className="text-ink-300">-</span>;
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-ink-500">
+        <Video size={12} className="text-ink-400" />
+        {items.length} {items.length === 1 ? "video" : "videos"}
+      </span>
+    );
+  }
+
   const str = String(value || "");
   if (!str || str === "undefined") return <span className="text-ink-300">-</span>;
 
@@ -791,6 +803,7 @@ function DynamicField({ field, value, onChange }: { field: Field; value: unknown
     case "image_variants": return <ImageVariantsField field={field} value={value} onChange={onChange} />;
     case "image_array": return <ImageArrayField field={field} value={value} onChange={onChange} />;
     case "file_array": return <FileArrayField field={field} value={value} onChange={onChange} />;
+    case "video_array": return <VideoArrayField field={field} value={value} onChange={onChange} />;
     case "select": {
       const opts = field.options as { choices?: { value: string; label: string; icon?: string }[] } | null;
       const choices = opts?.choices || [];
@@ -1342,6 +1355,164 @@ function FileArrayField({ field, value, onChange }: { field: Field; value: unkno
         )}
       </label>
       {items.length > 0 && <p className="text-[10px] text-ink-400">{items.length} {items.length === 1 ? "arquivo" : "arquivos"}</p>}
+    </div>
+  );
+}
+
+interface VideoItem { title: string; url: string; filename?: string; published_at?: string | null; expires_at?: string | null; }
+
+function VideoArrayField({ field, value, onChange }: { field: Field; value: unknown; onChange: (val: unknown) => void }) {
+  const items: VideoItem[] = Array.isArray(value) ? (value as VideoItem[]) : [];
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [schedulingIdx, setSchedulingIdx] = useState<number | null>(null);
+  const [playingIdx, setPlayingIdx] = useState<number | null>(null);
+
+  const uploading = Object.keys(uploadProgress).length > 0;
+
+  async function handleUpload(files: FileList) {
+    const videoFiles = Array.from(files).filter((f) => f.type.startsWith("video/"));
+    if (videoFiles.length === 0) return;
+
+    const newItems = [...items];
+    const progress: Record<string, number> = {};
+
+    for (const file of videoFiles) {
+      const key = `${file.name}-${Date.now()}`;
+      progress[key] = 0;
+      setUploadProgress((prev) => ({ ...prev, [key]: 0 }));
+
+      const r = await uploadToStorageWithProgress(file, {
+        bucket: "assets",
+        folder: `${field.slug}/videos`,
+        onProgress: (pct) => setUploadProgress((prev) => ({ ...prev, [key]: pct })),
+      });
+
+      if ("url" in r) {
+        const name = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+        newItems.push({ title: name, url: r.url, filename: file.name });
+      }
+
+      setUploadProgress((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+
+    onChange(newItems);
+  }
+
+  function updateTitle(index: number, title: string) {
+    onChange(items.map((item, i) => i === index ? { ...item, title } : item));
+  }
+
+  function removeItem(index: number) {
+    onChange(items.filter((_, i) => i !== index));
+    if (schedulingIdx === index) setSchedulingIdx(null);
+    if (playingIdx === index) setPlayingIdx(null);
+  }
+
+  function moveItem(from: number, to: number) {
+    if (to < 0 || to >= items.length) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onChange(next);
+  }
+
+  const totalProgress = Object.values(uploadProgress);
+  const avgProgress = totalProgress.length > 0 ? Math.round(totalProgress.reduce((a, b) => a + b, 0) / totalProgress.length) : 0;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {items.map((item, i) => {
+        const schedStatus = getAssetScheduleStatus(item);
+        const hasSchedule = !!(item.published_at || item.expires_at);
+        const isPlaying = playingIdx === i;
+        return (
+          <div key={i} className={cn(
+            "rounded-lg border overflow-hidden",
+            schedStatus === "scheduled" ? "border-warning bg-warning-soft/20" : schedStatus === "expired" ? "border-ink-200 opacity-60" : "border-ink-100 bg-white",
+          )}>
+            {isPlaying ? (
+              <div className="relative aspect-video bg-black rounded-t-lg overflow-hidden">
+                <video src={item.url} controls autoPlay className="w-full h-full" />
+                <button type="button" onClick={() => setPlayingIdx(null)} className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80">
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className="relative aspect-video bg-ink-900 rounded-t-lg overflow-hidden cursor-pointer group"
+                onClick={() => setPlayingIdx(i)}
+              >
+                <video src={item.url} muted preload="metadata" className="w-full h-full object-cover opacity-70 group-hover:opacity-50 transition-opacity" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md group-hover:scale-110 transition-transform">
+                    <Play size={18} className="text-ink-700 ml-0.5" />
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-purple-50">
+                <Video size={14} className="text-purple-600" />
+              </div>
+              <input
+                type="text"
+                value={item.title}
+                onChange={(e) => updateTitle(i, e.target.value)}
+                placeholder="Titulo do video..."
+                className="flex-1 min-w-0 text-sm text-ink-900 bg-transparent focus:outline-none"
+              />
+              {schedStatus === "scheduled" && (
+                <span className="rounded-full bg-warning px-1.5 py-0.5 text-[9px] font-semibold text-white flex items-center gap-0.5 shrink-0">
+                  <Clock size={8} />Agendado
+                </span>
+              )}
+              {schedStatus === "expired" && (
+                <span className="rounded-full bg-ink-400 px-1.5 py-0.5 text-[9px] font-semibold text-white shrink-0">Expirado</span>
+              )}
+              <div className="flex items-center gap-0.5 shrink-0">
+                {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Mover para cima"><ChevronUp size={12} /></button>}
+                {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Mover para baixo"><ChevronDown size={12} /></button>}
+                <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-md p-1", hasSchedule ? "text-warning hover:text-warning/80" : "text-ink-400 hover:text-ink-700")} title="Agendar exibicao"><Clock size={12} /></button>
+                <button type="button" onClick={() => removeItem(i)} className="rounded-md p-1 text-ink-400 hover:text-danger" title="Remover video"><X size={12} /></button>
+              </div>
+            </div>
+            {schedulingIdx === i && (
+              <AssetSchedulePanel item={item} index={i} onChange={(v) => onChange(v)} items={items} />
+            )}
+          </div>
+        );
+      })}
+
+      {/* Upload progress */}
+      {uploading && (
+        <div className="rounded-lg border border-brand-olive bg-brand-olive-soft/20 px-4 py-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-brand-olive">Enviando {totalProgress.length} video{totalProgress.length > 1 ? "s" : ""}...</span>
+            <span className="text-xs font-semibold text-brand-olive">{avgProgress}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-brand-olive/20 overflow-hidden">
+            <div className="h-full rounded-full bg-brand-olive transition-all duration-300" style={{ width: `${avgProgress}%` }} />
+          </div>
+        </div>
+      )}
+
+      <label className={cn(
+        "flex items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors",
+        uploading ? "border-brand-olive bg-brand-olive-soft/30 pointer-events-none" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30",
+        items.length > 0 ? "h-10" : "h-20"
+      )}>
+        <input type="file" accept="video/*" multiple className="sr-only" disabled={uploading} onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }} />
+        {uploading ? (
+          <span className="text-xs text-brand-olive font-medium">Enviando...</span>
+        ) : (
+          <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">{items.length > 0 ? "Adicionar videos" : "Enviar videos"}</span></>
+        )}
+      </label>
+      {items.length > 0 && <p className="text-[10px] text-ink-400">{items.length} {items.length === 1 ? "video" : "videos"}</p>}
     </div>
   );
 }

@@ -8,12 +8,12 @@ export interface LibraryAsset {
   url: string;
   title: string;
   collection: string;
-  type: "image" | "file";
+  type: "image" | "file" | "video";
 }
 
 export async function getLibraryAssets(): Promise<LibraryAsset[]> {
   const supabase = await createClient();
-  const mediaTypes = ["image", "image_array", "image_variants", "file", "file_array"];
+  const mediaTypes = ["image", "image_array", "image_variants", "file", "file_array", "video_array"];
 
   const { data: mediaFields } = await supabase
     .from("cms_fields")
@@ -57,6 +57,7 @@ export async function getLibraryAssets(): Promise<LibraryAsset[]> {
       const raw = d[f.slug];
       if (!raw) continue;
       const isImageType = ["image", "image_array", "image_variants"].includes(f.field_type);
+      const isVideoType = f.field_type === "video_array";
 
       if ((f.field_type === "image" || f.field_type === "file") && typeof raw === "string") {
         assets.push({ id: `${item.id}-${f.slug}`, url: raw, title: itemTitle || f.name, collection: colName, type: isImageType ? "image" : "file" });
@@ -66,7 +67,7 @@ export async function getLibraryAssets(): Promise<LibraryAsset[]> {
         }
       } else if (Array.isArray(raw)) {
         for (const [i, entry] of (raw as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]).entries()) {
-          if (entry.url && isAssetVisible(entry)) assets.push({ id: `${item.id}-${f.slug}-${i}`, url: entry.url, title: entry.title || itemTitle || `${f.name} ${i + 1}`, collection: colName, type: isImageType ? "image" : "file" });
+          if (entry.url && isAssetVisible(entry)) assets.push({ id: `${item.id}-${f.slug}-${i}`, url: entry.url, title: entry.title || itemTitle || `${f.name} ${i + 1}`, collection: colName, type: isVideoType ? "video" : isImageType ? "image" : "file" });
         }
       }
     }

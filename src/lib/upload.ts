@@ -62,6 +62,46 @@ export async function uploadToStorage(
   return { url: urlData.publicUrl };
 }
 
+/** Upload file to Supabase Storage with progress callback via XHR.
+ *  Returns the public URL. */
+export async function uploadToStorageWithProgress(
+  file: File,
+  options: UploadOptions & { onProgress: (pct: number) => void },
+): Promise<{ url: string } | { error: string }> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return { error: "Nao autenticado" };
+
+  const processedFile = await compressIfImage(file, options);
+  const ext = processedFile.name.split(".").pop() || "bin";
+  const folder = options.folder ? `${options.folder}/` : "";
+  const fileName = `${folder}${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const url = `${SUPABASE_URL}/storage/v1/object/${options.bucket}/${fileName}`;
+
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) options.onProgress(Math.round((e.loaded / e.total) * 100));
+    });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const { data: urlData } = supabase.storage.from(options.bucket).getPublicUrl(fileName);
+        resolve({ url: urlData.publicUrl });
+      } else {
+        resolve({ error: `Erro no upload (${xhr.status})` });
+      }
+    });
+    xhr.addEventListener("error", () => resolve({ error: "Erro de rede no upload" }));
+    xhr.addEventListener("abort", () => resolve({ error: "Upload cancelado" }));
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
+    xhr.setRequestHeader("x-upsert", "false");
+    xhr.send(processedFile);
+  });
+}
+
 /** Upload video to private course-videos bucket with progress callback.
  *  Returns the storage path (not a public URL - use signed URLs to access). */
 export async function uploadVideoWithProgress(

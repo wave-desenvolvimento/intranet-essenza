@@ -15,7 +15,7 @@ export default async function BibliotecaPage() {
   const { data: canDownload } = await supabase.rpc("has_permission", { _user_id: user.id, _module: "biblioteca", _action: "download" });
 
   // Get all collections that have media fields
-  const mediaTypes = ["image", "image_array", "image_variants", "file", "file_array"];
+  const mediaTypes = ["image", "image_array", "image_variants", "file", "file_array", "video_array"];
 
   const { data: mediaFields } = await supabase
     .from("cms_fields")
@@ -82,7 +82,7 @@ export default async function BibliotecaPage() {
     collection: string;
     collectionSlug: string;
     pageSlug: string;
-    type: "image" | "file";
+    type: "image" | "file" | "video";
     url: string;
     label: string;
     tags: string[];
@@ -151,6 +151,15 @@ export default async function BibliotecaPage() {
             id: `${item.id}-${f.slug}-${i}`, itemId: item.id, title: file.title || itemTitle || `${f.name} ${i + 1}`,
             collection: col?.name || "", collectionSlug: col?.slug || "", pageSlug,
             type: isImageType ? "image" : "file", url: file.url, label: file.title || `${f.name} ${i + 1}`, tags: itemTags, createdAt: item.created_at, publishedAt: file.published_at || item.published_at, expiresAt: file.expires_at || item.expires_at,
+          });
+        }
+      } else if (f.field_type === "video_array" && Array.isArray(raw)) {
+        for (const [i, vid] of (raw as { url: string; title?: string; published_at?: string | null; expires_at?: string | null }[]).entries()) {
+          if (!vid.url || !isAssetVisible(vid)) continue;
+          assets.push({
+            id: `${item.id}-${f.slug}-${i}`, itemId: item.id, title: vid.title || itemTitle || `${f.name} ${i + 1}`,
+            collection: col?.name || "", collectionSlug: col?.slug || "", pageSlug,
+            type: "video", url: vid.url, label: vid.title || `${f.name} ${i + 1}`, tags: itemTags, createdAt: item.created_at, publishedAt: vid.published_at || item.published_at, expiresAt: vid.expires_at || item.expires_at,
           });
         }
       }

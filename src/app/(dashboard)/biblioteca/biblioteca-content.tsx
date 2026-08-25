@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   Search, X, ZoomIn, Download, Eye, FileText, File, Image as ImageIcon,
-  Filter, Grid3X3, List,
+  Filter, Grid3X3, List, Play, Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { downloadFile, downloadFilesAsZip } from "@/lib/download";
@@ -19,7 +19,7 @@ interface Asset {
   collection: string;
   collectionSlug: string;
   pageSlug: string;
-  type: "image" | "file";
+  type: "image" | "file" | "video";
   url: string;
   label: string;
   tags: string[];
@@ -43,6 +43,11 @@ function isImageUrl(url: string) {
   return ["jpg", "jpeg", "png", "webp", "gif", "avif", "svg"].includes(ext);
 }
 
+function isVideoUrl(url: string) {
+  const ext = url.split("?")[0].split(".").pop()?.toLowerCase() || "";
+  return ["mp4", "webm", "ogg", "mov", "avi", "mkv"].includes(ext);
+}
+
 const EXT_COLORS: Record<string, string> = {
   PDF: "bg-red-50 text-red-600",
   DOC: "bg-blue-50 text-blue-600", DOCX: "bg-blue-50 text-blue-600",
@@ -54,12 +59,12 @@ const EXT_COLORS: Record<string, string> = {
 
 export function BibliotecaContent({ assets, canDownload }: Props) {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "image" | "file">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "image" | "file" | "video">("all");
   const [collectionFilter, setCollectionFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [lightbox, setLightbox] = useState<{ url: string } | null>(null);
+  const [lightbox, setLightbox] = useState<{ url: string; type?: "image" | "video" } | null>(null);
 
   const collections = [...new Set(assets.map((a) => a.collection))].sort();
   const allTags = [...new Set(assets.flatMap((a) => a.tags))].sort();
@@ -125,6 +130,7 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
             {([
               { value: "all", label: "Todos" },
               { value: "image", label: "Imagens" },
+              { value: "video", label: "Videos" },
               { value: "file", label: "Arquivos" },
             ] as const).map((opt) => (
               <button
@@ -210,6 +216,7 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {paginated.map((a) => {
             const isImage = a.type === "image" && isImageUrl(a.url);
+            const isVideo = a.type === "video" || isVideoUrl(a.url);
             const ext = getFileExt(a.url);
             const extColor = EXT_COLORS[ext] || "bg-ink-100 text-ink-600";
             const isExpired = a.expiresAt && new Date(a.expiresAt) < now;
@@ -220,9 +227,9 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
                 <div
                   className={cn(
                     "relative aspect-square cursor-pointer",
-                    isImage ? "bg-ink-900" : "bg-ink-50 flex items-center justify-center"
+                    isImage || isVideo ? "bg-ink-900" : "bg-ink-50 flex items-center justify-center"
                   )}
-                  onClick={() => isImage ? setLightbox({ url: a.url }) : window.open(a.url, "_blank")}
+                  onClick={() => isImage ? setLightbox({ url: a.url, type: "image" }) : isVideo ? setLightbox({ url: a.url, type: "video" }) : window.open(a.url, "_blank")}
                 >
                   {isImage ? (
                     <>
@@ -230,6 +237,15 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="rounded-full bg-white/90 p-2.5 shadow-md">
                           <ZoomIn size={16} className="text-ink-700" />
+                        </div>
+                      </div>
+                    </>
+                  ) : isVideo ? (
+                    <>
+                      <video src={a.url} muted preload="metadata" className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition-opacity" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="rounded-full bg-white/90 p-2.5 shadow-md group-hover:scale-110 transition-transform">
+                          <Play size={16} className="text-ink-700 ml-0.5" />
                         </div>
                       </div>
                     </>
@@ -265,8 +281,13 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
                 {/* Actions */}
                 <div className="px-3 pb-2.5 flex items-center gap-1">
                   {isImage && (
-                    <button onClick={() => setLightbox({ url: a.url })} className="flex items-center gap-1 rounded-lg bg-ink-50 px-2 py-1 text-[10px] font-medium text-ink-600 hover:bg-ink-100 transition-colors">
+                    <button onClick={() => setLightbox({ url: a.url, type: "image" })} className="flex items-center gap-1 rounded-lg bg-ink-50 px-2 py-1 text-[10px] font-medium text-ink-600 hover:bg-ink-100 transition-colors">
                       <ZoomIn size={10} /> Ver
+                    </button>
+                  )}
+                  {isVideo && (
+                    <button onClick={() => setLightbox({ url: a.url, type: "video" })} className="flex items-center gap-1 rounded-lg bg-ink-50 px-2 py-1 text-[10px] font-medium text-ink-600 hover:bg-ink-100 transition-colors">
+                      <Play size={10} /> Assistir
                     </button>
                   )}
                   {canDownload && (
@@ -290,6 +311,7 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
         <div className="rounded-xl border border-ink-100 bg-white overflow-hidden divide-y divide-ink-50">
           {paginated.map((a) => {
             const isImage = a.type === "image" && isImageUrl(a.url);
+            const isVideo = a.type === "video" || isVideoUrl(a.url);
             const ext = getFileExt(a.url);
             const extColor = EXT_COLORS[ext] || "bg-ink-100 text-ink-600";
             const isExpired = a.expiresAt && new Date(a.expiresAt) < now;
@@ -298,8 +320,15 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
               <div key={a.id} className={cn("flex items-center gap-3 px-4 py-3 hover:bg-ink-50/50 transition-colors", isExpired && "opacity-70")}>
                 {/* Thumbnail */}
                 {isImage ? (
-                  <div className="h-12 w-12 rounded-lg overflow-hidden bg-ink-900 shrink-0 cursor-pointer" onClick={() => setLightbox({ url: a.url })}>
+                  <div className="h-12 w-12 rounded-lg overflow-hidden bg-ink-900 shrink-0 cursor-pointer" onClick={() => setLightbox({ url: a.url, type: "image" })}>
                     <img src={a.url} alt={a.title} className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                ) : isVideo ? (
+                  <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-ink-900 shrink-0 cursor-pointer" onClick={() => setLightbox({ url: a.url, type: "video" })}>
+                    <video src={a.url} muted preload="metadata" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <Play size={14} className="text-white" />
+                    </div>
                   </div>
                 ) : (
                   <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-lg", extColor)}>
@@ -329,11 +358,16 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
                   {isImage && (
-                    <button onClick={() => setLightbox({ url: a.url })} className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Ampliar">
+                    <button onClick={() => setLightbox({ url: a.url, type: "image" })} className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Ampliar">
                       <ZoomIn size={14} />
                     </button>
                   )}
-                  {!isImage && (
+                  {isVideo && (
+                    <button onClick={() => setLightbox({ url: a.url, type: "video" })} className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Assistir">
+                      <Play size={14} />
+                    </button>
+                  )}
+                  {!isImage && !isVideo && (
                     <a href={a.url} target="_blank" rel="noopener noreferrer" className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Abrir">
                       <Eye size={14} />
                     </a>
@@ -370,7 +404,11 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
           <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors">
             <X size={20} />
           </button>
-          <img src={lightbox.url} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+          {lightbox.type === "video" ? (
+            <video src={lightbox.url} controls autoPlay className="max-w-full max-h-full rounded-lg" onClick={(e) => e.stopPropagation()} />
+          ) : (
+            <img src={lightbox.url} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+          )}
           {canDownload && (
             <div className="absolute bottom-4 right-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => downloadFile(lightbox.url)} className="rounded-lg bg-white px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors flex items-center gap-1.5">

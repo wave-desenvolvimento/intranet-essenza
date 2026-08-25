@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useRef, useCallback } from "react";
 import DOMPurify from "dompurify";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
-import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ChevronUp, ChevronDown, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput, GripVertical } from "lucide-react";
+import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ChevronUp, ChevronDown, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput, GripVertical, Video } from "lucide-react";
 import { cn, isAssetVisible, getAssetScheduleStatus } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Sheet } from "@/components/ui/sheet";
@@ -11,7 +11,7 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { createItem, updateItem, deleteItem } from "@/app/(dashboard)/cms/actions";
 import { createFolder, updateFolder, deleteFolder, moveFolder, moveItemsToFolder, type Folder as FolderType } from "@/app/(dashboard)/cms/folder-actions";
-import { uploadToStorage, uploadVideoWithProgress } from "@/lib/upload";
+import { uploadToStorage, uploadToStorageWithProgress, uploadVideoWithProgress } from "@/lib/upload";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
@@ -996,6 +996,7 @@ function PageDynamicField({ field, value, onChange, isCourse }: { field: Field; 
     case "image_variants": return <PageImageVariantsField field={field} value={value} onChange={onChange} />;
     case "image_array": return <PageImageArrayField field={field} value={value} onChange={onChange} />;
     case "file_array": return <PageFileArrayField field={field} value={value} onChange={onChange} />;
+    case "video_array": return <PageVideoArrayField field={field} value={value} onChange={onChange} />;
     case "collection_ref": return <PageCollectionRefField field={field} value={value} onChange={onChange} />;
     case "collection_multi_ref": return <PageCollectionMultiRefField field={field} value={value} onChange={onChange} />;
     default: return <input type="text" value={String(value || "")} onChange={(e) => onChange(e.target.value)} className={cls} />;
@@ -1379,6 +1380,160 @@ function PageFileArrayField({ field, value, onChange }: { field: Field; value: u
   );
 }
 
+function PageVideoArrayField({ field, value, onChange }: { field: Field; value: unknown; onChange: (val: unknown) => void }) {
+  const items: ArrayFileItem[] = Array.isArray(value) ? (value as ArrayFileItem[]) : [];
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [schedulingIdx, setSchedulingIdx] = useState<number | null>(null);
+  const [playingIdx, setPlayingIdx] = useState<number | null>(null);
+
+  const uploading = Object.keys(uploadProgress).length > 0;
+
+  async function handleUpload(files: FileList) {
+    const videoFiles = Array.from(files).filter((f) => f.type.startsWith("video/"));
+    if (videoFiles.length === 0) return;
+
+    const newItems = [...items];
+
+    for (const file of videoFiles) {
+      const key = `${file.name}-${Date.now()}`;
+      setUploadProgress((prev) => ({ ...prev, [key]: 0 }));
+
+      const r = await uploadToStorageWithProgress(file, {
+        bucket: "assets",
+        folder: `${field.slug}/videos`,
+        onProgress: (pct) => setUploadProgress((prev) => ({ ...prev, [key]: pct })),
+      });
+
+      if ("url" in r) {
+        const name = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+        newItems.push({ title: name, url: r.url, filename: file.name });
+      }
+
+      setUploadProgress((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+
+    onChange(newItems);
+  }
+
+  function updateTitle(index: number, title: string) {
+    onChange(items.map((item, i) => i === index ? { ...item, title } : item));
+  }
+
+  function removeItem(index: number) {
+    onChange(items.filter((_, i) => i !== index));
+    if (schedulingIdx === index) setSchedulingIdx(null);
+    if (playingIdx === index) setPlayingIdx(null);
+  }
+
+  function moveItem(from: number, to: number) {
+    if (to < 0 || to >= items.length) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onChange(next);
+  }
+
+  const totalProgress = Object.values(uploadProgress);
+  const avgProgress = totalProgress.length > 0 ? Math.round(totalProgress.reduce((a, b) => a + b, 0) / totalProgress.length) : 0;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {items.map((item, i) => {
+        const schedStatus = getAssetScheduleStatus(item);
+        const hasSchedule = !!(item.published_at || item.expires_at);
+        const isPlaying = playingIdx === i;
+        return (
+          <div key={i} className={cn(
+            "rounded-lg border overflow-hidden",
+            schedStatus === "scheduled" ? "border-warning bg-warning-soft/20" : schedStatus === "expired" ? "border-ink-200 opacity-60" : "border-ink-100 bg-white",
+          )}>
+            {isPlaying ? (
+              <div className="relative aspect-video bg-black rounded-t-lg overflow-hidden">
+                <video src={item.url} controls autoPlay className="w-full h-full" />
+                <button type="button" onClick={() => setPlayingIdx(null)} className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80">
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className="relative aspect-video bg-ink-900 rounded-t-lg overflow-hidden cursor-pointer group"
+                onClick={() => setPlayingIdx(i)}
+              >
+                <video src={item.url} muted preload="metadata" className="w-full h-full object-cover opacity-70 group-hover:opacity-50 transition-opacity" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md group-hover:scale-110 transition-transform">
+                    <Play size={18} className="text-ink-700 ml-0.5" />
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-purple-50">
+                <Video size={14} className="text-purple-600" />
+              </div>
+              <input
+                type="text"
+                value={item.title}
+                onChange={(e) => updateTitle(i, e.target.value)}
+                placeholder="Titulo do video..."
+                className="flex-1 min-w-0 text-sm text-ink-900 bg-transparent focus:outline-none"
+              />
+              {schedStatus === "scheduled" && (
+                <span className="rounded-full bg-warning px-1.5 py-0.5 text-[9px] font-semibold text-white flex items-center gap-0.5 shrink-0">
+                  <Clock size={8} />Agendado
+                </span>
+              )}
+              {schedStatus === "expired" && (
+                <span className="rounded-full bg-ink-400 px-1.5 py-0.5 text-[9px] font-semibold text-white shrink-0">Expirado</span>
+              )}
+              <div className="flex items-center gap-0.5 shrink-0">
+                {i > 0 && <button type="button" onClick={() => moveItem(i, i - 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Mover para cima"><ChevronUp size={12} /></button>}
+                {i < items.length - 1 && <button type="button" onClick={() => moveItem(i, i + 1)} className="rounded-md p-1 text-ink-400 hover:text-ink-700" title="Mover para baixo"><ChevronDown size={12} /></button>}
+                <button type="button" onClick={() => setSchedulingIdx(schedulingIdx === i ? null : i)} className={cn("rounded-md p-1", hasSchedule ? "text-warning hover:text-warning/80" : "text-ink-400 hover:text-ink-700")} title="Agendar exibicao"><Clock size={12} /></button>
+                <button type="button" onClick={() => removeItem(i)} className="rounded-md p-1 text-ink-400 hover:text-danger" title="Remover video"><X size={12} /></button>
+              </div>
+            </div>
+            {schedulingIdx === i && (
+              <PageAssetSchedulePanel item={item} index={i} onChange={(v) => onChange(v)} items={items} />
+            )}
+          </div>
+        );
+      })}
+
+      {/* Upload progress */}
+      {uploading && (
+        <div className="rounded-lg border border-brand-olive bg-brand-olive-soft/20 px-4 py-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-brand-olive">Enviando {totalProgress.length} video{totalProgress.length > 1 ? "s" : ""}...</span>
+            <span className="text-xs font-semibold text-brand-olive">{avgProgress}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-brand-olive/20 overflow-hidden">
+            <div className="h-full rounded-full bg-brand-olive transition-all duration-300" style={{ width: `${avgProgress}%` }} />
+          </div>
+        </div>
+      )}
+
+      <label className={cn(
+        "flex items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors",
+        uploading ? "border-brand-olive bg-brand-olive-soft/30 pointer-events-none" : "border-ink-200 bg-ink-50/50 hover:border-brand-olive hover:bg-brand-olive-soft/30",
+        items.length > 0 ? "h-10" : "h-20"
+      )}>
+        <input type="file" accept="video/*" multiple className="sr-only" disabled={uploading} onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }} />
+        {uploading ? (
+          <span className="text-xs text-brand-olive font-medium">Enviando...</span>
+        ) : (
+          <><Upload size={14} className="text-ink-400" /><span className="text-xs text-ink-500">{items.length > 0 ? "Adicionar videos" : "Enviar videos"}</span></>
+        )}
+      </label>
+      {items.length > 0 && <p className="text-[10px] text-ink-400">{items.length} {items.length === 1 ? "video" : "videos"}</p>}
+    </div>
+  );
+}
+
 function PageCollectionRefField({ field, value, onChange }: { field: Field; value: unknown; onChange: (val: unknown) => void }) {
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -1754,6 +1909,7 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
   type Section =
     | { kind: "images"; name: string; images: { label: string; url: string }[] }
     | { kind: "files"; name: string; files: { title: string; url: string }[] }
+    | { kind: "videos"; name: string; videos: { title: string; url: string }[] }
     | { kind: "detail"; name: string; raw: unknown; type: string; options?: unknown };
 
   const sections: Section[] = [];
@@ -1792,6 +1948,12 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
         const arr = Array.isArray(raw) ? (raw as { title?: string; url: string; filename?: string; published_at?: string | null; expires_at?: string | null }[]) : [];
         const fls = arr.filter((a) => a.url && isAssetVisible(a)).map((a) => ({ title: a.title || a.filename || f.name, url: a.url }));
         if (fls.length) sections.push({ kind: "files", name: f.name, files: fls });
+        break;
+      }
+      case "video_array": {
+        const arr = Array.isArray(raw) ? (raw as { title?: string; url: string; published_at?: string | null; expires_at?: string | null }[]) : [];
+        const vids = arr.filter((a) => a.url && isAssetVisible(a)).map((a) => ({ title: a.title || f.name, url: a.url }));
+        if (vids.length) sections.push({ kind: "videos", name: f.name, videos: vids });
         break;
       }
       default:
@@ -1959,6 +2121,25 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
                 </div>
               );
 
+              if (section.kind === "videos") return (
+                <div key={si}>
+                  <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">{section.name} ({section.videos.length})</p>
+                  <div className="flex flex-col gap-2">
+                    {section.videos.map((vid, i) => (
+                      <div key={i} className="rounded-lg border border-ink-100 overflow-hidden">
+                        <video src={vid.url} controls preload="metadata" className="w-full aspect-video bg-black" />
+                        <div className="px-3 py-2 flex items-center justify-between bg-ink-50/50">
+                          <span className="text-xs font-medium text-ink-700 truncate">{vid.title}</span>
+                          <a href={vid.url} download className="rounded-md p-1 text-ink-400 hover:text-brand-olive transition-colors" title="Baixar">
+                            <Download size={14} />
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+
               if (section.kind === "detail") return (
                 <div key={si}>
                   <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-1.5">{section.name}</p>
@@ -2104,7 +2285,7 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
 function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelete, isPending, foldersNode, highlightedItemId }: { collection: CollectionData; filterCollections: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; foldersNode?: React.ReactNode; highlightedItemId?: string | null }) {
   const [search, setSearch] = useState("");
   const titleField = collection.fields.find((f) => f.field_type === "text");
-  const visibleFields = collection.fields.filter((f) => !["boolean", "image", "file", "file_array", "image_array"].includes(f.field_type)).slice(0, 4);
+  const visibleFields = collection.fields.filter((f) => !["boolean", "image", "file", "file_array", "image_array", "video_array"].includes(f.field_type)).slice(0, 4);
 
   const filtered = collection.items.filter((item) => {
     if (!search) return true;

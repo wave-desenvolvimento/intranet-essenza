@@ -70,6 +70,7 @@ interface DetailField {
 type ModalSection =
   | { kind: "images"; name: string; images: ImageVariant[] }
   | { kind: "files"; name: string; files: { title: string; url: string }[] }
+  | { kind: "videos"; name: string; videos: { title: string; url: string }[] }
   | { kind: "detail"; detail: DetailField };
 
 function CopyButton({ text }: { text: string }) {
@@ -317,7 +318,7 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
   const fileFields = fields.filter((f) => f.field_type === "file");
   const fileArrayFields = fields.filter((f) => f.field_type === "file_array");
 
-  const mediaTypes = new Set(["image", "image_variants", "image_array", "file", "file_array"]);
+  const mediaTypes = new Set(["image", "image_variants", "image_array", "file", "file_array", "video_array"]);
   const detailFields = fields.filter((f) => !mediaTypes.has(f.field_type));
 
   const hasImageSchema = imageFields.length > 0 || variantsFields.length > 0 || imageArrayFields.length > 0;
@@ -399,6 +400,10 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
         const arr = Array.isArray(raw) ? (raw as { title?: string; url: string; published_at?: string | null; expires_at?: string | null }[]) : [];
         const fls = arr.filter((a) => a.url && isAssetVisible(a)).map((a) => ({ title: a.title || f.name, url: a.url }));
         if (fls.length) sections.push({ kind: "files", name: f.name, files: fls });
+      } else if (f.field_type === "video_array") {
+        const arr = Array.isArray(raw) ? (raw as { title?: string; url: string; published_at?: string | null; expires_at?: string | null }[]) : [];
+        const vids = arr.filter((a) => a.url && isAssetVisible(a)).map((a) => ({ title: a.title || f.name, url: a.url }));
+        if (vids.length) sections.push({ kind: "videos", name: f.name, videos: vids });
       } else {
         sections.push({ kind: "detail", detail: { name: f.name, raw, type: f.field_type, options: f.options } });
       }
@@ -628,6 +633,22 @@ export function GalleryView({ items, fields, onEdit, onDelete, onDuplicate, isPe
                         </div>
                       );
                     })}
+                  </div>
+                );
+                if (section.kind === "videos") return (
+                  <div key={si} className="flex flex-col gap-2">
+                    <p className="text-xs font-semibold text-ink-700">{section.name} ({section.videos.length})</p>
+                    {section.videos.map((vid, i) => (
+                      <div key={i} className="rounded-lg border border-ink-100 overflow-hidden">
+                        <video src={vid.url} controls preload="metadata" className="w-full aspect-video bg-black" />
+                        <div className="px-3 py-2 flex items-center justify-between">
+                          <span className="text-xs font-medium text-ink-700 truncate">{vid.title}</span>
+                          <button onClick={() => downloadFile(vid.url, vid.title)} className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive transition-colors" title="Baixar">
+                            <Download size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 );
                 if (section.kind === "detail") return (
