@@ -1,5 +1,4 @@
--- Aumenta limite de tamanho do bucket assets de 10MB para 500MB
--- para permitir upload de videos e arquivos grandes
+-- Remove limite de tamanho do bucket assets para permitir qualquer arquivo
 update storage.buckets
-set file_size_limit = 524288000 -- 500MB
+set file_size_limit = null
 where id = 'assets';
