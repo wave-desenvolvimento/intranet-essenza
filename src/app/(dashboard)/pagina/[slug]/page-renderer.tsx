@@ -483,7 +483,14 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold text-ink-900">{page.title}</h1>
           <span className="text-sm text-ink-400">
-            {currentCollection ? currentCollection.items.length : 0} {(currentCollection?.items.length || 0) === 1 ? "item" : "itens"}
+            {(() => {
+              const itemCount = currentCollection?.items.length || 0;
+              const folderCount = currentSubfolders.length;
+              const parts: string[] = [];
+              if (itemCount > 0) parts.push(`${itemCount} ${itemCount === 1 ? "arquivo" : "arquivos"}`);
+              if (folderCount > 0) parts.push(`${folderCount} ${folderCount === 1 ? "pasta" : "pastas"}`);
+              return parts.join(" · ") || "Vazio";
+            })()}
           </span>
         </div>
         <div className="flex items-center gap-2">
