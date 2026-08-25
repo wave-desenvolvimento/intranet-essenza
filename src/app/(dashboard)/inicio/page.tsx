@@ -9,33 +9,47 @@ export default async function DashboardPage() {
 
   if (!user) return null;
 
-  // Fetch profile with full franchise data
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, franchise_id, franchise:franchises(*)")
-    .eq("id", user.id)
-    .single();
-
-  // Fetch real stats
-  const { count: totalUsers } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "active");
-
-  const { count: totalFranchises } = await supabase
-    .from("franchises")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "active");
-
-  // Fetch user permissions
-  const { data: permissions } = await supabase.rpc("get_user_permissions", {
-    _user_id: user.id,
-  });
+  // === Batch 1: Independent queries in parallel ===
+  const [
+    { data: profile },
+    { count: totalUsers },
+    { count: totalFranchises },
+    { data: permissions },
+    { data: recentAnnouncements },
+    { data: collections },
+    favorites,
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("full_name, franchise_id, franchise:franchises(id, name, segment)")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active"),
+    supabase
+      .from("franchises")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active"),
+    supabase.rpc("get_user_permissions", { _user_id: user.id }),
+    supabase
+      .from("announcements")
+      .select("id, title, body, priority, banner_url, created_at, target_type")
+      .order("priority", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(3),
+    // Batch all collection lookups into one query
+    supabase
+      .from("cms_collections")
+      .select("id, slug")
+      .in("slug", ["banners", "materiais-pdv", "posts-campanha", "posts-redes"]),
+    getFavorites(),
+  ]);
 
   const realPermKeys = (permissions || []).map(
     (p: { module: string; action: string }) => `${p.module}.${p.action}`
   );
-
   const permissionKeys = await getEffectivePermissions(realPermKeys);
 
   const userName = profile?.full_name || user.email?.split("@")[0] || "Usuário";
@@ -43,56 +57,105 @@ export default async function DashboardPage() {
   const rawFranchise = profile?.franchise as any;
   const franchise = Array.isArray(rawFranchise) ? rawFranchise[0] : rawFranchise;
 
-  // Fetch banners from CMS
-  const { data: bannersCollection } = await supabase
-    .from("cms_collections")
-    .select("id")
-    .eq("slug", "banners")
-    .single();
+  // Map collection slugs to IDs (single query, reused everywhere)
+  const colMap = new Map((collections || []).map((c) => [c.slug, c.id]));
 
-  let banners: { id: string; data: Record<string, unknown> }[] = [];
-  if (bannersCollection) {
-    const { data } = await supabase
-      .from("cms_items")
-      .select("id, data")
-      .eq("collection_id", bannersCollection.id)
-      .eq("status", "published")
-      .order("sort_order");
-    banners = (data || []) as typeof banners;
-  }
+  const bannersColId = colMap.get("banners");
+  const materiaisColId = colMap.get("materiais-pdv");
+  const campanhaColId = colMap.get("posts-campanha");
+  const redesColId = colMap.get("posts-redes");
 
-  // Fetch recent items from key collections for dashboard tables
-  async function fetchRecentItems(collectionSlug: string, limit = 3) {
-    const { data: col } = await supabase
-      .from("cms_collections")
-      .select("id")
-      .eq("slug", collectionSlug)
-      .single();
-    if (!col) return [];
-    const { data: items } = await supabase
+  // === Batch 2: Queries that depend on batch 1 results ===
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const q = (builder: PromiseLike<any>) => Promise.resolve(builder);
+
+  const recentItemsQuery = (collectionId: string | undefined, limit = 3) => {
+    if (!collectionId) return Promise.resolve({ data: null });
+    return q(supabase
       .from("cms_items")
       .select("id, data, status, created_at")
-      .eq("collection_id", col.id)
+      .eq("collection_id", collectionId)
       .eq("status", "published")
       .order("created_at", { ascending: false })
-      .limit(limit);
-    return (items || []) as { id: string; data: Record<string, unknown>; status: string; created_at: string }[];
-  }
+      .limit(limit));
+  };
 
-  // Orders stats (for admins) or own orders (for franchise users)
+  // Orders + CMS items + counts - all in parallel
   const canViewOrders = permissionKeys.includes("pedidos.view") || permissionKeys.includes("pedidos.approve");
   const canApproveOrders = permissionKeys.includes("pedidos.approve");
 
-  let orderStats = { pendingCount: 0, monthRevenue: 0, recentOrders: [] as { id: string; status: string; total: number; created_at: string; franchise_name: string }[] };
+  const batch2Promises: Promise<unknown>[] = [
+    // Banners
+    bannersColId
+      ? q(supabase.from("cms_items").select("id, data").eq("collection_id", bannersColId).eq("status", "published").order("sort_order"))
+      : Promise.resolve({ data: null }),
+    // Recent items (3 collections)
+    recentItemsQuery(materiaisColId),
+    recentItemsQuery(campanhaColId),
+    recentItemsQuery(redesColId),
+    // Counts (reuse colMap IDs directly, no subquery)
+    campanhaColId
+      ? q(supabase.from("cms_items").select("*", { count: "exact", head: true }).eq("status", "published").eq("collection_id", campanhaColId))
+      : Promise.resolve({ count: 0 }),
+    materiaisColId
+      ? q(supabase.from("cms_items").select("*", { count: "exact", head: true }).eq("status", "published").eq("collection_id", materiaisColId))
+      : Promise.resolve({ count: 0 }),
+  ];
 
+  // Orders (conditional)
+  let orderStatsPromise: Promise<unknown>;
   if (canApproveOrders) {
-    // Admin: see all orders
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-    const [{ count: pending }, { data: monthOrders }, { data: recent }] = await Promise.all([
+    orderStatsPromise = Promise.all([
       supabase.from("orders").select("*", { count: "exact", head: true }).in("status", ["pendente"]),
       supabase.from("orders").select("total").gte("created_at", monthStart),
       supabase.from("orders").select("id, status, total, created_at, franchise:franchises(name)").order("created_at", { ascending: false }).limit(5),
     ]);
+  } else if (canViewOrders && profile?.franchise_id) {
+    orderStatsPromise = q(supabase
+      .from("orders")
+      .select("id, status, total, created_at")
+      .eq("franchise_id", profile.franchise_id)
+      .order("created_at", { ascending: false })
+      .limit(5));
+  } else {
+    orderStatsPromise = Promise.resolve(null);
+  }
+
+  batch2Promises.push(orderStatsPromise);
+
+  const [
+    bannersResult,
+    materialsResult,
+    promotionsResult,
+    socialResult,
+    campaignCountResult,
+    materialCountResult,
+    orderResult,
+  ] = await Promise.all(batch2Promises) as [
+    { data: { id: string; data: Record<string, unknown> }[] | null },
+    { data: { id: string; data: Record<string, unknown>; status: string; created_at: string }[] | null },
+    { data: { id: string; data: Record<string, unknown>; status: string; created_at: string }[] | null },
+    { data: { id: string; data: Record<string, unknown>; status: string; created_at: string }[] | null },
+    { count: number | null },
+    { count: number | null },
+    unknown,
+  ];
+
+  const banners = (bannersResult.data || []) as { id: string; data: Record<string, unknown> }[];
+  const materials = (materialsResult.data || []) as { id: string; data: Record<string, unknown>; status: string; created_at: string }[];
+  const promotions = (promotionsResult.data || []) as { id: string; data: Record<string, unknown>; status: string; created_at: string }[];
+  const social = (socialResult.data || []) as { id: string; data: Record<string, unknown>; status: string; created_at: string }[];
+
+  // Build order stats
+  let orderStats = { pendingCount: 0, monthRevenue: 0, recentOrders: [] as { id: string; status: string; total: number; created_at: string; franchise_name: string }[] };
+
+  if (canApproveOrders && Array.isArray(orderResult)) {
+    const [{ count: pending }, { data: monthOrders }, { data: recent }] = orderResult as [
+      { count: number | null },
+      { data: { total: number }[] | null },
+      { data: { id: string; status: string; total: number; created_at: string; franchise: unknown }[] | null },
+    ];
     orderStats = {
       pendingCount: pending || 0,
       monthRevenue: (monthOrders || []).reduce((s, o) => s + Number(o.total), 0),
@@ -101,49 +164,15 @@ export default async function DashboardPage() {
         franchise_name: (o.franchise as unknown as { name: string })?.name || "-",
       })),
     };
-  } else if (canViewOrders && profile?.franchise_id) {
-    // Franchise user: own orders
-    const { data: myOrders } = await supabase
-      .from("orders")
-      .select("id, status, total, created_at")
-      .eq("franchise_id", profile.franchise_id)
-      .order("created_at", { ascending: false })
-      .limit(5);
-    const pending = (myOrders || []).filter((o) => o.status === "pendente").length;
+  } else if (canViewOrders && profile?.franchise_id && orderResult && typeof orderResult === "object" && "data" in (orderResult as Record<string, unknown>)) {
+    const myOrders = ((orderResult as { data: { id: string; status: string; total: number; created_at: string }[] | null }).data || []);
+    const pending = myOrders.filter((o) => o.status === "pendente").length;
     orderStats = {
       pendingCount: pending,
       monthRevenue: 0,
-      recentOrders: (myOrders || []).map((o) => ({ ...o, franchise_name: "" })),
+      recentOrders: myOrders.map((o) => ({ ...o, franchise_name: "" })),
     };
   }
-
-  // Fetch recent announcements (pinned + latest)
-  const { data: recentAnnouncements } = await supabase
-    .from("announcements")
-    .select("id, title, body, priority, banner_url, created_at, target_type")
-    .order("priority", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(3);
-
-  const [materials, promotions, social, favorites] = await Promise.all([
-    fetchRecentItems("materiais-pdv"),
-    fetchRecentItems("posts-campanha"),
-    fetchRecentItems("posts-redes"),
-    getFavorites(),
-  ]);
-
-  // Count campaigns and materials
-  const { count: campaignCount } = await supabase
-    .from("cms_items")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "published")
-    .in("collection_id", (await supabase.from("cms_collections").select("id").eq("slug", "posts-campanha")).data?.map((c) => c.id) || []);
-
-  const { count: materialCount } = await supabase
-    .from("cms_items")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "published")
-    .in("collection_id", (await supabase.from("cms_collections").select("id").eq("slug", "materiais-pdv")).data?.map((c) => c.id) || []);
 
   return (
     <DashboardContent
@@ -154,8 +183,8 @@ export default async function DashboardPage() {
       stats={{
         activeUsers: totalUsers || 0,
         activeFranchises: totalFranchises || 0,
-        campaigns: campaignCount || 0,
-        materials: materialCount || 0,
+        campaigns: campaignCountResult.count || 0,
+        materials: materialCountResult.count || 0,
       }}
       recentMaterials={materials}
       recentPromotions={promotions}
