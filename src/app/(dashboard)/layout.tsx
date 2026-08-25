@@ -13,6 +13,7 @@ import { Toaster } from "sonner";
 import { SurveyWidget } from "@/components/layout/survey-widget";
 import { PageViewTracker } from "@/components/layout/page-view-tracker";
 import { IdleLogout } from "@/components/layout/idle-logout";
+import { getEffectivePermissions } from "@/lib/dev-mode-server";
 
 export default async function DashboardLayout({
   children,
@@ -23,7 +24,7 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   // All layout queries in parallel
-  const [{ data: userRole }, { data: allActiveSurveys }, { data: respondedSurveys }, { data: cmsPages }] = await Promise.all([
+  const [{ data: userRole }, { data: allActiveSurveys }, { data: respondedSurveys }, { data: cmsPages }, { data: permissions }] = await Promise.all([
     supabase
       .from("user_roles")
       .select("role:roles(name, level)")
@@ -45,6 +46,8 @@ export default async function DashboardLayout({
       .from("cms_pages")
       .select("id, title, slug, icon, parent_id, is_group, page_type, href, module, required_action")
       .order("sort_order"),
+    // Permissions for sidebar (avoids client-side fetch + skeleton flash)
+    supabase.rpc("get_user_permissions", { _user_id: user?.id || "" }),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,6 +61,12 @@ export default async function DashboardLayout({
     avatarUrl: user?.user_metadata?.avatar_url || "",
   };
 
+  // Compute permission keys for sidebar
+  const realPermKeys = (permissions || []).map(
+    (p: { module: string; action: string }) => `${p.module}.${p.action}`
+  );
+  const permissionKeys = await getEffectivePermissions(realPermKeys);
+
   // Filter surveys: active ones user hasn't responded to
   const respondedIds = new Set((respondedSurveys || []).map((r: { survey_id: string }) => r.survey_id));
   const pendingSurveys = (allActiveSurveys || [])
@@ -69,7 +78,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-dvh bg-brand-cream font-sans">
-      <Sidebar cmsPages={cmsPages || []} />
+      <Sidebar cmsPages={cmsPages || []} permissionKeys={permissionKeys} />
 
       <div className="flex flex-1 flex-col min-w-0">
         <header className="sticky top-0 z-50 flex h-12 md:h-14 items-center justify-between border-b border-ink-100 bg-white px-3 md:px-5">
@@ -85,7 +94,7 @@ export default async function DashboardLayout({
 
         <main className="flex-1 p-3 pb-20 md:px-8 md:py-7 md:pb-7">{children}</main>
       </div>
-      <MobileNav cmsPages={cmsPages || []} />
+      <MobileNav cmsPages={cmsPages || []} permissionKeys={permissionKeys} />
       <TourAutoStart />
       <InstallPrompt />
       <SwRegister />

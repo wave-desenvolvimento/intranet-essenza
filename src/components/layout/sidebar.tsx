@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ChevronRight, PanelLeftClose, PanelLeftOpen, Folder } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { cn } from "@/lib/utils";
-import { usePermissions } from "@/hooks/use-permissions";
 import { getIconComponent } from "@/components/ui/icon-picker";
 import { useState, useEffect } from "react";
 
@@ -24,6 +23,7 @@ interface CmsPage {
 
 interface SidebarProps {
   cmsPages?: CmsPage[];
+  permissionKeys?: string[];
 }
 
 function resolveHref(page: CmsPage): string {
@@ -35,11 +35,17 @@ function resolveIcon(page: CmsPage) {
   return getIconComponent(page.icon) || Folder;
 }
 
-export function Sidebar({ cmsPages = [] }: SidebarProps) {
+export function Sidebar({ cmsPages = [], permissionKeys = [] }: SidebarProps) {
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
-  const { can, canModule, loading: permissionsLoading } = usePermissions();
   const [collapsed, setCollapsed] = useState(false);
+
+  function can(key: string): boolean {
+    return permissionKeys.includes(key);
+  }
+  function canModule(mod: string): boolean {
+    return permissionKeys.some((k) => k.startsWith(`${mod}.`));
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
@@ -217,25 +223,14 @@ export function Sidebar({ cmsPages = [] }: SidebarProps) {
 
       {/* Navigation */}
       <nav className={cn("flex-1 overflow-y-auto pt-3", collapsed ? "px-1" : "px-2")}>
-        {permissionsLoading && (
-          <div className={cn("flex flex-col gap-1", collapsed ? "px-1" : "px-2")}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className={cn("rounded-[9px] bg-ink-50 animate-pulse", collapsed ? "h-10 w-full" : "h-[34px] w-full")} />
-            ))}
-          </div>
-        )}
-        {!permissionsLoading && (
-          <>
-            {/* Root pages (no group) */}
-            {rootPages.length > 0 && renderSection(null, rootPages)}
+        {/* Root pages (no group) */}
+        {rootPages.length > 0 && renderSection(null, rootPages)}
 
-            {/* Grouped sections */}
-            {groups.map((group) => {
-              const children = cmsPages.filter((p) => p.parent_id === group.id && !p.is_group);
-              return renderSection(group, children);
-            })}
-          </>
-        )}
+        {/* Grouped sections */}
+        {groups.map((group) => {
+          const children = cmsPages.filter((p) => p.parent_id === group.id && !p.is_group);
+          return renderSection(group, children);
+        })}
       </nav>
 
       {/* Footer */}

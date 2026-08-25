@@ -7,7 +7,6 @@ import { LayoutDashboard, ShoppingCart, User, X, Menu, Folder } from "lucide-rea
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { cn } from "@/lib/utils";
 import { getIconComponent } from "@/components/ui/icon-picker";
-import { usePermissions } from "@/hooks/use-permissions";
 
 interface CmsPage {
   id: string;
@@ -24,6 +23,7 @@ interface CmsPage {
 
 interface Props {
   cmsPages?: CmsPage[];
+  permissionKeys?: string[];
 }
 
 function resolveHref(page: CmsPage): string {
@@ -31,10 +31,16 @@ function resolveHref(page: CmsPage): string {
   return `/pagina/${page.slug}`;
 }
 
-export function MobileNav({ cmsPages = [] }: Props) {
+export function MobileNav({ cmsPages = [], permissionKeys = [] }: Props) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { can, canModule, loading: permissionsLoading } = usePermissions();
+
+  function can(key: string): boolean {
+    return permissionKeys.includes(key);
+  }
+  function canModule(mod: string): boolean {
+    return permissionKeys.some((k) => k.startsWith(`${mod}.`));
+  }
 
   function canViewPage(page: CmsPage): boolean {
     if (page.page_type === "system") {
@@ -63,7 +69,7 @@ export function MobileNav({ cmsPages = [] }: Props) {
         <div className="flex items-center justify-around h-14">
           <Link href="/inicio" onClick={() => setDrawerOpen(false)} className={cn("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors", pathname === "/inicio" ? "text-brand-olive" : "text-ink-400")}>
             <LayoutDashboard size={20} />
-            <span className="text-[10px] font-medium">Início</span>
+            <span className="text-[10px] font-medium">Inicio</span>
           </Link>
           <button data-tour="mobile-menu-btn" onClick={() => setDrawerOpen(!drawerOpen)} className={cn("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors", drawerOpen ? "text-brand-olive" : "text-ink-400")}>
             <Menu size={20} />
@@ -95,7 +101,7 @@ export function MobileNav({ cmsPages = [] }: Props) {
 
             <div className="flex-1 overflow-y-auto px-3 py-3">
               {/* Root pages */}
-              {!permissionsLoading && rootPages.filter(canViewPage).map((page) => {
+              {rootPages.filter(canViewPage).map((page) => {
                 const href = resolveHref(page);
                 const active = isActive(href);
                 const Icon = getIconComponent(page.icon) || Folder;
@@ -116,7 +122,7 @@ export function MobileNav({ cmsPages = [] }: Props) {
               })}
 
               {/* Grouped sections */}
-              {!permissionsLoading && groups.map((group) => {
+              {groups.map((group) => {
                 const children = cmsPages
                   .filter((p) => p.parent_id === group.id && !p.is_group)
                   .filter(canViewPage);
@@ -158,7 +164,7 @@ export function MobileNav({ cmsPages = [] }: Props) {
               rel="noopener noreferrer"
               className="block mt-auto pb-2 text-center text-[10px] text-ink-300 hover:text-ink-500 transition-colors"
             >
-              construído por WaveCommerce
+              construido por WaveCommerce
             </a>
           </div>
         </div>
