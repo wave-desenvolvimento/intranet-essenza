@@ -809,8 +809,8 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEn
       )}
       onClick={() => { if (!isDragging) onEnter(); }}
     >
-      {/* Thumbnail - mesma altura que items (aspect-square) */}
-      <div className="aspect-square relative overflow-hidden rounded-t-[10px] bg-brand-olive-soft/30 flex items-center justify-center">
+      {/* Thumbnail */}
+      <div className="aspect-[4/3] relative overflow-hidden rounded-t-[10px] bg-brand-olive-soft/30 flex items-center justify-center">
         {hasCover ? (
           <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
         ) : (
@@ -1817,7 +1817,7 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
               {/* Thumbnail */}
               <div
                 className={cn(
-                  "relative cursor-pointer overflow-hidden aspect-square",
+                  "relative cursor-pointer overflow-hidden aspect-[4/3]",
                   itemHasImage || itemHasVideos ? "bg-ink-50" : "bg-brand-olive-soft/60 flex flex-col items-center justify-center"
                 )}
                 onClick={onCardClick}
