@@ -1630,8 +1630,6 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
   const fileArrayField = collection.fields.find((f) => f.field_type === "file_array");
   const videoArrayField = collection.fields.find((f) => f.field_type === "video_array");
   const hasImages = imageField || variantsField || imageArrayField;
-  const hasFiles = fileField || fileArrayField;
-  const hasVideos = !!videoArrayField;
 
   function getItemFiles(item: Item): { title: string; url: string }[] {
     if (fileArrayField) {
@@ -1798,20 +1796,16 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
           const files = getItemFiles(item);
           const firstFileUrl = files[0]?.url || "";
           const firstExt = firstFileUrl ? firstFileUrl.match(/\.(\w{2,5})(?:\?|$)/)?.[1]?.toUpperCase() || "FILE" : "";
+          // Detecta conteudo do item para thumbnail e click
           const videoArrayData = videoArrayField && Array.isArray(item.data[videoArrayField.slug]) ? (item.data[videoArrayField.slug] as { title?: string; url: string; published_at?: string | null; expires_at?: string | null }[]).filter((a) => isAssetVisible(a)) : [];
-          const showImage = hasImages && imgUrl;
-          const showFile = !showImage && hasFiles && files.length > 0;
-          const showVideo = !showImage && !showFile && videoArrayData.length > 0;
+          const itemHasImage = !!imgUrl;
+          const itemHasFiles = files.length > 0;
+          const itemHasVideos = videoArrayData.length > 0;
           const EXT_COLORS: Record<string, string> = { PDF: "bg-red-50 text-red-600", DOC: "bg-blue-50 text-blue-600", DOCX: "bg-blue-50 text-blue-600", XLS: "bg-green-50 text-green-600", XLSX: "bg-green-50 text-green-600" };
 
           function onCardClick() {
-            if (showImage) {
-              handleOpenDetail(item);
-            } else if (showFile) {
-              handleFileCardClick(item);
-            } else if (showVideo) {
-              handleOpenDetail(item);
-            }
+            // Sempre abre o modal de detalhe - ele sabe renderizar qualquer tipo de campo
+            handleOpenDetail(item);
           }
 
           return (
@@ -1820,23 +1814,25 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
               <div
                 className={cn(
                   "relative cursor-pointer",
-                  showImage ? "aspect-square bg-ink-50" : "aspect-[4/3] bg-brand-olive-soft/60 flex flex-col items-center justify-center"
+                  itemHasImage ? "aspect-square bg-ink-50" : "aspect-[4/3] bg-brand-olive-soft/60 flex flex-col items-center justify-center"
                 )}
                 onClick={onCardClick}
               >
-                {showImage ? (
-                  imgUrl ? <img src={imgUrl} alt={title} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-ink-300 text-xs">Sem imagem</div>
-                ) : showFile ? (
-                  <>
-                    <BrandLogo width={148} height={148} />
-                    {files.length > 1 && <span className="absolute top-2 right-2 rounded-md bg-brand-olive/70 px-1.5 py-0.5 text-[9px] font-medium text-white">{files.length} arquivos</span>}
-                  </>
-                ) : showVideo ? (
+                {itemHasImage ? (
+                  <img src={imgUrl} alt={title} className="w-full h-full object-cover" />
+                ) : itemHasVideos ? (
                   <>
                     <Play size={36} className="text-brand-olive" />
                     {videoArrayData.length > 1 && <span className="absolute top-2 right-2 rounded-md bg-brand-olive/70 px-1.5 py-0.5 text-[9px] font-medium text-white">{videoArrayData.length} videos</span>}
                   </>
-                ) : null}
+                ) : itemHasFiles ? (
+                  <>
+                    <BrandLogo width={148} height={148} />
+                    {files.length > 1 && <span className="absolute top-2 right-2 rounded-md bg-brand-olive/70 px-1.5 py-0.5 text-[9px] font-medium text-white">{files.length} arquivos</span>}
+                  </>
+                ) : (
+                  <FileText size={36} className="text-ink-300" />
+                )}
                 {hasImages && (
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
@@ -1864,17 +1860,8 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
                   </div>
                 )}
                 <div className="flex items-center gap-0.5 mt-1.5 -mx-0.5">
-                  {showImage && imgUrl && (
-                    <>
-                      <button onClick={() => handleOpenDetail(item)} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Ver detalhe"><Eye size={12} /></button>
-                      <ImageFormatDownload imageUrl={imgUrl} variants={itemVariants} />
-                    </>
-                  )}
-                  {showFile && files.length > 0 && (
-                    <button onClick={() => handleFileCardClick(item)} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title={files.length === 1 ? "Abrir" : "Ver arquivos"}>
-                      <Eye size={12} />
-                    </button>
-                  )}
+                  <button onClick={() => handleOpenDetail(item)} className="rounded-md p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Ver detalhe"><Eye size={12} /></button>
+                  {itemHasImage && <ImageFormatDownload imageUrl={imgUrl} variants={itemVariants} />}
                   <FavoriteButton itemId={item.id} collectionId={collection.id} initialFavorited={favoriteIds.has(item.id)} size={12} />
                   <div className="flex-1" />
                   {canEdit && <button onClick={() => onEdit?.(item)} className="rounded-md p-1 text-ink-300 hover:text-ink-700 hover:bg-ink-100 transition-colors" title="Editar"><Pencil size={11} /></button>}
