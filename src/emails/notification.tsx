@@ -1,5 +1,5 @@
 import {
-  Html, Head, Body, Container, Section, Text, Button, Hr, Tailwind, Img, Row, Column,
+  Html, Head, Body, Container, Section, Text, Button, Hr, Tailwind, Img, Link,
 } from "@react-email/components";
 
 interface NotificationEmailProps {
@@ -8,18 +8,20 @@ interface NotificationEmailProps {
   ctaLabel?: string;
   ctaUrl?: string;
   footnote?: string;
+  prefsUrl?: string;
 }
 
 NotificationEmail.PreviewProps = {
-  title: "Novo conteúdo disponível",
+  title: "Novo conteudo disponivel",
   body: "Um novo material foi publicado em Fotos.\nAcesse o Hub para conferir.",
-  ctaLabel: "Ver conteúdo",
+  ctaLabel: "Ver conteudo",
   ctaUrl: "https://intranet.emporioessenza.com.br/pagina/biblioteca",
+  prefsUrl: "https://intranet.emporioessenza.com.br/perfil#notificacoes",
 } satisfies NotificationEmailProps;
 
 const LOGO_URL = "https://intranet-essenza.vercel.app/_next/static/media/logo.0-7z6gznwvp2a.svg";
 
-export function NotificationEmail({ title, body, ctaLabel, ctaUrl, footnote }: NotificationEmailProps) {
+export function NotificationEmail({ title, body, ctaLabel, ctaUrl, footnote, prefsUrl }: NotificationEmailProps) {
   return (
     <Html>
       <Head />
@@ -32,7 +34,7 @@ export function NotificationEmail({ title, body, ctaLabel, ctaUrl, footnote }: N
                 src={LOGO_URL}
                 width="160"
                 height="auto"
-                alt="Empório Essenza"
+                alt="Emporio Essenza"
                 className="mx-auto"
               />
             </Section>
@@ -84,6 +86,13 @@ export function NotificationEmail({ title, body, ctaLabel, ctaUrl, footnote }: N
               <Text className="text-[11px] m-0" style={{ color: "#b5b5a8" }}>
                 Emporio Essenza Serra Gaucha
               </Text>
+              {prefsUrl && (
+                <Text className="text-[11px] mt-3 m-0">
+                  <Link href={prefsUrl} style={{ color: "#9b9b8e", textDecoration: "underline" }}>
+                    Gerenciar notificacoes por email
+                  </Link>
+                </Text>
+              )}
             </Section>
           </Container>
         </Body>

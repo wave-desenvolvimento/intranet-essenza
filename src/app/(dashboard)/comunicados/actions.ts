@@ -80,6 +80,7 @@ export async function createAnnouncement(formData: FormData) {
       emailBody: body.replace(/<[^>]+>/g, "").slice(0, 500),
       ctaLabel: "Ver comunicado",
       ctaUrl: "/comunicados",
+      category: "announcements",
     },
     excludeUserId: user.id,
   }).catch(() => {});

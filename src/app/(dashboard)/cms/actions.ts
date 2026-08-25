@@ -469,6 +469,7 @@ async function notifyNewContent(
       emailBody: `Um novo material foi publicado em "${collectionName}".\n\nAcesse o Hub para conferir.`,
       ctaLabel: "Ver conteúdo",
       ctaUrl: pageSlug ? `/pagina/${pageSlug}` : "/inicio",
+      category: "content",
     },
     excludeUserId,
   });

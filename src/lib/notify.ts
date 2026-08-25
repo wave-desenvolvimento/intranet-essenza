@@ -4,6 +4,19 @@ import { getResend, FROM_EMAIL } from "@/lib/email";
 import { render } from "@react-email/render";
 import { NotificationEmail } from "@/emails/notification";
 
+// ---- Email categories ----
+// "system" always sends (invites, support tickets, password resets)
+export type EmailCategory = "content" | "announcements" | "surveys" | "orders" | "system";
+
+// Defaults per category (missing key in user prefs = use this)
+const CATEGORY_DEFAULTS: Record<EmailCategory, boolean> = {
+  content: false,       // CMS content - off by default (main spam source)
+  announcements: true,
+  surveys: true,
+  orders: true,
+  system: true,         // always on, never toggleable
+};
+
 interface NotifyParams {
   title: string;
   body?: string;
@@ -17,6 +30,8 @@ interface EmailParams {
   ctaLabel?: string;
   /** Absolute path like "/inicio" or full URL */
   ctaUrl?: string;
+  /** Category for preference filtering. Defaults to "system" (always sends). */
+  category?: EmailCategory;
 }
 
 // ---- Core: notify a list of user IDs ----
@@ -49,9 +64,18 @@ export async function notifyUsers({ userIds, notification, email }: NotifyUsersO
     href: notification.href,
   }).catch(() => {});
 
-  // 3. Email (non-blocking)
+  // 3. Email (non-blocking, respects user preferences)
   if (email) {
-    sendBatchEmail(userIds, email).catch(() => {});
+    const category = email.category || "system";
+    if (category === "system") {
+      // System emails always send
+      sendBatchEmail(userIds, email).catch(() => {});
+    } else {
+      // Filter users by email preference
+      filterUsersByEmailPref(userIds, category).then((filteredIds) => {
+        if (filteredIds.length > 0) sendBatchEmail(filteredIds, email);
+      }).catch(() => {});
+    }
   }
 }
 
@@ -130,6 +154,30 @@ export async function notifyFranchise({ franchiseId, notification, email, exclud
   await notifyUsers({ userIds, notification, email });
 }
 
+// ---- Email preference helpers ----
+
+export function getUserEmailPref(prefs: Record<string, boolean> | null, category: EmailCategory): boolean {
+  if (category === "system") return true;
+  if (!prefs || !(category in prefs)) return CATEGORY_DEFAULTS[category];
+  return !!prefs[category];
+}
+
+async function filterUsersByEmailPref(userIds: string[], category: EmailCategory): Promise<string[]> {
+  if (category === "system") return userIds;
+
+  const admin = createAdminClient();
+  const { data: profiles } = await admin
+    .from("profiles")
+    .select("id, email_prefs")
+    .in("id", userIds);
+
+  if (!profiles) return [];
+
+  return profiles
+    .filter((p) => getUserEmailPref(p.email_prefs as Record<string, boolean> | null, category))
+    .map((p) => p.id);
+}
+
 // ---- Email dispatch (internal) ----
 
 const BATCH_SIZE = 50;
@@ -153,12 +201,15 @@ async function sendBatchEmail(userIds: string[], params: EmailParams) {
     ? params.ctaUrl.startsWith("http") ? params.ctaUrl : `${baseUrl}${params.ctaUrl}`
     : undefined;
 
+  const prefsUrl = `${baseUrl}/perfil#notificacoes`;
+
   const html = await render(
     NotificationEmail({
       title: params.subject,
       body: params.emailBody,
       ctaLabel: params.ctaLabel,
       ctaUrl,
+      prefsUrl,
     }),
   );
 

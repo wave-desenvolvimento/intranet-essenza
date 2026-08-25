@@ -43,6 +43,29 @@ export async function updateProfile(formData: FormData) {
   return { success: true };
 }
 
+export async function updateEmailPrefs(prefs: Record<string, boolean>) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nao autenticado." };
+
+  // Sanitize: only allow known keys
+  const allowed = ["content", "announcements", "surveys", "orders"];
+  const safe: Record<string, boolean> = {};
+  for (const key of allowed) {
+    if (key in prefs) safe[key] = !!prefs[key];
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ email_prefs: safe })
+    .eq("id", user.id);
+
+  if (error) return { error: "Erro ao salvar preferencias." };
+
+  revalidatePath("/perfil");
+  return { success: true };
+}
+
 export async function changePassword(formData: FormData) {
   const supabase = await createClient();
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { User, Mail, Building2, Lock, Upload, Camera, Eye, EyeOff } from "lucide-react";
-import { updateProfile, changePassword } from "./actions";
+import { useState, useTransition, useEffect } from "react";
+import { User, Mail, Building2, Lock, Upload, Camera, Eye, EyeOff, Bell, BellOff } from "lucide-react";
+import { updateProfile, changePassword, updateEmailPrefs } from "./actions";
 import { uploadToStorage } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -12,11 +12,27 @@ interface Props {
   email: string;
   franchiseName: string | null;
   avatarUrl: string;
+  emailPrefs: Record<string, boolean>;
 }
+
+const EMAIL_CATEGORIES = [
+  { key: "announcements", label: "Comunicados", desc: "Novos comunicados publicados pela rede" },
+  { key: "surveys", label: "Pesquisas", desc: "Novas pesquisas para responder" },
+  { key: "orders", label: "Pedidos", desc: "Atualizacoes de status dos pedidos" },
+  { key: "content", label: "Conteudo (CMS)", desc: "Novos materiais publicados nas paginas" },
+] as const;
+
+// Defaults: content off, rest on
+const PREF_DEFAULTS: Record<string, boolean> = {
+  content: false,
+  announcements: true,
+  surveys: true,
+  orders: true,
+};
 
 const inputCls = "h-10 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10";
 
-export function ProfileForm({ fullName: initialName, email, franchiseName, avatarUrl: initialAvatar }: Props) {
+export function ProfileForm({ fullName: initialName, email, franchiseName, avatarUrl: initialAvatar, emailPrefs: initialPrefs }: Props) {
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(initialName);
   const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
@@ -29,6 +45,30 @@ export function ProfileForm({ fullName: initialName, email, franchiseName, avata
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [passError, setPassError] = useState("");
+
+  // Email prefs
+  const [prefs, setPrefs] = useState<Record<string, boolean>>(() => {
+    const merged = { ...PREF_DEFAULTS };
+    for (const [k, v] of Object.entries(initialPrefs)) merged[k] = v;
+    return merged;
+  });
+
+  function togglePref(key: string) {
+    const next = { ...prefs, [key]: !prefs[key] };
+    setPrefs(next);
+    startTransition(async () => {
+      const r = await updateEmailPrefs(next);
+      if (r?.error) toast.error(r.error);
+      else toast.success("Preferencias atualizadas");
+    });
+  }
+
+  // Scroll to #notificacoes if hash is present (from email link)
+  useEffect(() => {
+    if (window.location.hash === "#notificacoes") {
+      document.getElementById("notificacoes")?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
 
   function handleSaveProfile() {
     const fd = new FormData();
@@ -120,6 +160,42 @@ export function ProfileForm({ fullName: initialName, email, franchiseName, avata
           <button onClick={handleSaveProfile} disabled={isPending || !name} className="self-start rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-50 transition-colors mt-1">
             {isPending ? "Salvando..." : "Salvar"}
           </button>
+        </div>
+      </div>
+
+      {/* Email notifications */}
+      <div id="notificacoes" className="rounded-xl border border-ink-100 bg-white p-5 mb-4 scroll-mt-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Bell size={15} className="text-ink-400" />
+          <h3 className="text-sm font-semibold text-ink-900">Notificacoes por email</h3>
+        </div>
+        <p className="text-xs text-ink-500 mb-4">Escolha quais tipos de email voce quer receber. Notificacoes no app e push continuam funcionando normalmente.</p>
+        <div className="flex flex-col divide-y divide-ink-50">
+          {EMAIL_CATEGORIES.map((cat) => {
+            const enabled = prefs[cat.key] ?? PREF_DEFAULTS[cat.key];
+            return (
+              <div key={cat.key} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-ink-900">{cat.label}</p>
+                  <p className="text-xs text-ink-400">{cat.desc}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePref(cat.key)}
+                  disabled={isPending}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                    enabled ? "bg-brand-olive" : "bg-ink-200"
+                  )}
+                >
+                  <span className={cn(
+                    "inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                    enabled ? "translate-x-6" : "translate-x-1"
+                  )} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 

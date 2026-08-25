@@ -83,6 +83,7 @@ export async function createSurvey(formData: FormData) {
       emailBody: `A pesquisa "${title}" está aguardando sua resposta.${description ? `\n\n${description}` : ""}\n\nSua opinião é muito importante para a melhoria contínua da rede.`,
       ctaLabel: "Responder pesquisa",
       ctaUrl: "/inicio",
+      category: "surveys",
     },
     excludeUserId: user?.id,
   }).catch(() => {});
