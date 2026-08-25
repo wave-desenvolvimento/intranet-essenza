@@ -809,20 +809,23 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEn
       )}
       onClick={() => { if (!isDragging) onEnter(); }}
     >
-      {hasCover ? (
-        <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-[10px]">
+      {/* Thumbnail - mesma altura que items (aspect-square) */}
+      <div className="aspect-square relative overflow-hidden rounded-t-[10px] bg-brand-olive-soft/30 flex items-center justify-center">
+        {hasCover ? (
           <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
-          {isOver && (
-            <div className="absolute inset-0 bg-brand-olive/30 flex items-center justify-center backdrop-blur-[1px]">
-              <FolderInput size={28} className="text-white drop-shadow-md" />
-            </div>
-          )}
-        </div>
-      ) : null}
-      <div className={cn("flex items-center gap-3 px-3", hasCover ? "py-3" : "py-4 px-4")}>
+        ) : (
+          <FolderIconComp size={40} className="text-brand-olive/40" />
+        )}
+        {isOver && (
+          <div className="absolute inset-0 bg-brand-olive/30 flex items-center justify-center backdrop-blur-[1px]">
+            <FolderInput size={28} className="text-white drop-shadow-md" />
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-3 px-3 py-3">
         {isOver ? (
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-olive/10 shrink-0">
-            <FolderInput size={20} className="text-brand-olive" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-olive/10 shrink-0">
+            <FolderInput size={16} className="text-brand-olive" />
           </div>
         ) : (
           <>
@@ -831,8 +834,8 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEn
                 <GripVertical size={16} className="text-ink-300" />
               </div>
             )}
-            <div className={cn("flex items-center justify-center rounded-lg shrink-0", hasCover ? "h-7 w-7" : "h-9 w-9 bg-brand-olive-soft/50")}>
-              <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-olive-soft/50 shrink-0">
+              <FolderIconComp size={16} className="text-brand-olive" />
             </div>
           </>
         )}
