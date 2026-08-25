@@ -825,7 +825,7 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, card
   const folderBgHex = FOLDER_BG_COLORS[bgIndex];
 
   if (cardStyle === "folder") {
-    // Estilo ficheiro - camadas: fundo com aba + papeis + frente com capa
+    // Estilo ficheiro - limpo: aba sutil + card unico
     return (
       <motion.div
         ref={setDropRef}
@@ -835,89 +835,53 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, card
         )}
         style={{ zIndex: isMenuOpen ? 50 : undefined }}
         onClick={() => { if (!isDragging) onEnter(); }}
-        whileHover="hover"
-        initial="rest"
-        animate={isOver ? "hover" : "rest"}
+        whileHover={{ y: -3 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
       >
-        {/* Camada 1 - Fundo da pasta com aba (atras de tudo) */}
-        <div className="absolute inset-x-0 top-0 bottom-2">
-          <div className="flex">
-            <div className="h-5 w-[38%] rounded-t-lg bg-[#cdc4b3]" />
-            <div className="h-5 w-3 bg-[#cdc4b3]" style={{ borderRadius: "0 0 8px 0", marginTop: "8px" }} />
-          </div>
-          <div className="h-full rounded-tr-xl rounded-b-xl bg-[#cdc4b3]" />
+        {/* Aba do ficheiro */}
+        <div className="relative h-3 z-[1] ml-1">
+          <div className="absolute bottom-0 left-0 h-full w-[35%] rounded-t-md bg-white border border-b-0 border-ink-200" />
         </div>
-
-        {/* Camada 2 - Assets/papeis saindo do ficheiro */}
-        <div className="relative pt-5">
-          <motion.div
-            className="absolute left-2 right-2 top-5 h-4 rounded-t-lg overflow-hidden shadow-[0_-1px_3px_rgba(0,0,0,0.08)]"
-            variants={{ rest: { y: 0 }, hover: { y: -6 } }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          >
-            {previewUrls[1] ? (
-              <img src={previewUrls[1]} alt="" className="w-full h-8 object-cover" draggable={false} />
+        {/* Card principal */}
+        <div className={cn(
+          "relative rounded-xl rounded-tl-none overflow-hidden border border-ink-200 bg-white transition-shadow duration-200",
+          isOver ? "ring-2 ring-brand-olive/40 shadow-lg" : "shadow-sm group-hover:shadow-lg",
+        )}>
+          <div className="aspect-[4/3] relative flex items-center justify-center overflow-hidden bg-ink-50">
+            {hasCover ? (
+              <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
             ) : (
-              <div className="w-full h-full bg-white" />
-            )}
-          </motion.div>
-          <motion.div
-            className="absolute left-1 right-1 top-7 h-4 rounded-t-lg overflow-hidden shadow-[0_-1px_3px_rgba(0,0,0,0.06)]"
-            variants={{ rest: { y: 0 }, hover: { y: -3 } }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          >
-            {previewUrls[0] ? (
-              <img src={previewUrls[0]} alt="" className="w-full h-8 object-cover" draggable={false} />
-            ) : (
-              <div className="w-full h-full bg-gray-50" />
-            )}
-          </motion.div>
-
-          {/* Camada 3 - Frente da pasta (capa principal) */}
-          <motion.div
-            className={cn(
-              "relative rounded-2xl overflow-hidden mt-2",
-              isOver ? "ring-2 ring-brand-olive/40" : "",
-            )}
-            variants={{ rest: { y: 0, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }, hover: { y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.15)" } }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          >
-            <div className="aspect-[4/3] relative flex items-center justify-center overflow-hidden bg-ink-100">
-              {hasCover ? (
-                <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
-              ) : (
-                <div className="w-full h-full bg-brand-olive-soft/40 flex items-center justify-center">
-                  <BrandLogo size={48} className="opacity-15" />
-                </div>
-              )}
-              {isOver && (
-                <div className="absolute inset-0 bg-brand-olive/30 flex items-center justify-center backdrop-blur-[1px]">
-                  <FolderInput size={28} className="text-white drop-shadow-md" />
-                </div>
-              )}
-              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 px-3 py-2.5">
-                {isOver ? (
-                  <p className="text-sm font-medium text-white truncate flex-1">Soltar aqui</p>
-                ) : (
-                  <>
-                    {canEdit && (
-                      <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-black/25 hover:bg-black/40 transition-colors touch-none backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
-                        <GripVertical size={14} className="text-white" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-white truncate drop-shadow-md">{folder.name}</p>
-                      {childCount > 0 && <p className="text-[10px] text-white/70 mt-0.5 drop-shadow-sm">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
-                    </div>
-                    {canEdit && !isOver && (
-                      <FolderContextMenu isOpen={isMenuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onMove={onMove} onEdit={onEdit} onDelete={onDelete} onDark />
-                    )}
-                  </>
-                )}
+              <div className="w-full h-full bg-brand-olive-soft/30 flex items-center justify-center">
+                <BrandLogo size={48} className="opacity-15" />
               </div>
-            </div>
-          </motion.div>
+            )}
+            {isOver && (
+              <div className="absolute inset-0 bg-brand-olive/30 flex items-center justify-center backdrop-blur-[1px]">
+                <FolderInput size={28} className="text-white drop-shadow-md" />
+              </div>
+            )}
+          </div>
+          {/* Rodape limpo */}
+          <div className="flex items-center gap-2 px-3 py-2.5 border-t border-ink-100">
+            {isOver ? (
+              <p className="text-sm font-medium text-brand-olive truncate flex-1">Soltar aqui</p>
+            ) : (
+              <>
+                {canEdit && (
+                  <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing p-1 rounded-md hover:bg-ink-100 transition-colors touch-none" onClick={(e) => e.stopPropagation()}>
+                    <GripVertical size={14} className="text-ink-300" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-ink-900 truncate">{folder.name}</p>
+                  {childCount > 0 && <p className="text-[10px] text-ink-400 mt-0.5">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
+                </div>
+                {canEdit && !isOver && (
+                  <FolderContextMenu isOpen={isMenuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onMove={onMove} onEdit={onEdit} onDelete={onDelete} />
+                )}
+              </>
+            )}
+          </div>
         </div>
       </motion.div>
     );
