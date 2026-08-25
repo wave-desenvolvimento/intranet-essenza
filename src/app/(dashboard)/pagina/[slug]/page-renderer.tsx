@@ -1814,8 +1814,8 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
               {/* Thumbnail */}
               <div
                 className={cn(
-                  "relative cursor-pointer overflow-hidden",
-                  itemHasImage || itemHasVideos ? "aspect-square bg-ink-50" : "aspect-[4/3] bg-brand-olive-soft/60 flex flex-col items-center justify-center"
+                  "relative cursor-pointer overflow-hidden aspect-square",
+                  itemHasImage || itemHasVideos ? "bg-ink-50" : "bg-brand-olive-soft/60 flex flex-col items-center justify-center"
                 )}
                 onClick={onCardClick}
               >
