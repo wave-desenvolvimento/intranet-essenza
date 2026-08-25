@@ -165,20 +165,7 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
 
   const visibleStats = statCards.filter((s) => s.visible);
 
-  // Texto contextual dinâmico
-  const contextParts: string[] = [];
-  if (orderStats && orderStats.pendingCount > 0) {
-    contextParts.push(`${orderStats.pendingCount === 1 ? "Um pedido aguarda" : `${orderStats.pendingCount} pedidos aguardam`} sua aprovação`);
-  }
-  if (announcements.length > 0) {
-    contextParts.push("você tem comunicados novos");
-  }
-  if (recentMaterials.length > 0) {
-    contextParts.push(`${recentMaterials.length} ${recentMaterials.length === 1 ? "material novo" : "materiais novos"}`);
-  }
-  const contextText = contextParts.length > 0
-    ? contextParts.join(" e ") + "."
-    : "Confira as novidades e acesse seus materiais.";
+  const contextText = "Confira as novidades e acesse seus materiais.";
 
   // Data/hora formatada
   const now = new Date();
@@ -197,7 +184,7 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
           {greeting},<br />{firstName}.
         </h1>
         <p className="text-sm text-ink-500 mt-2 max-w-lg leading-relaxed">
-          {contextText.charAt(0).toUpperCase() + contextText.slice(1)}
+          {contextText}
         </p>
         <div className="flex items-center gap-3 mt-4">
           {showMaterials && (
