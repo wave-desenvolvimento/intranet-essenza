@@ -421,7 +421,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 
   const foldersGrid = currentSubfolders.length > 0 ? (
     <DndContext collisionDetection={pointerWithin} onDragStart={(e: DragStartEvent) => { setDndActiveId(String(e.active.id)); setFolderMenuId(null); }} onDragEnd={handleDndEnd}>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 mb-4">
         {currentSubfolders.map((folder) => (
           <DndFolderCard
             key={folder.id}
@@ -799,6 +799,14 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEn
   const FolderIconComp = folder.icon === "folder" ? Folder : (getIconByName(folder.icon) || Folder);
   const hasCover = !!folder.cover_url;
 
+  // Cor de fundo deterministica por folder id (sem capa)
+  const FOLDER_BG_COLORS = [
+    "bg-[#5C5441]", "bg-[#6B6352]", "bg-[#7A7263]", "bg-[#4A4535]",
+    "bg-[#8B7E6A]", "bg-[#635C4B]", "bg-[#544D3E]", "bg-[#746D5C]",
+  ];
+  const bgIndex = folder.id.charCodeAt(0) % FOLDER_BG_COLORS.length;
+  const folderBg = FOLDER_BG_COLORS[bgIndex];
+
   return (
     <div
       ref={setDropRef}
@@ -810,11 +818,11 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEn
       onClick={() => { if (!isDragging) onEnter(); }}
     >
       {/* Thumbnail */}
-      <div className="aspect-[4/3] relative overflow-hidden rounded-t-[10px] bg-brand-olive-soft/30 flex items-center justify-center">
+      <div className={cn("aspect-[4/3] relative overflow-hidden rounded-t-[10px] flex items-center justify-center", hasCover ? "bg-ink-50" : folderBg)}>
         {hasCover ? (
           <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
         ) : (
-          <FolderIconComp size={40} className="text-brand-olive/40" />
+          <BrandLogo size={64} className="brightness-0 invert opacity-30" />
         )}
         {isOver && (
           <div className="absolute inset-0 bg-brand-olive/30 flex items-center justify-center backdrop-blur-[1px]">
