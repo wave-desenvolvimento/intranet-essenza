@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { downloadFile, downloadFilesAsZip } from "@/lib/download";
 import { ImageFormatDownload, type ImageVariant } from "@/components/ui/image-format-download";
 import { ShareLink } from "@/components/ui/share-link";
-import { PdfThumbnail, isPdfUrl } from "@/components/ui/pdf-thumbnail";
 import { usePagination } from "@/hooks/use-pagination";
 import Link from "next/link";
 
@@ -218,7 +217,6 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
           {paginated.map((a) => {
             const isImage = a.type === "image" && isImageUrl(a.url);
             const isVideo = a.type === "video" || isVideoUrl(a.url);
-            const isPdf = !isImage && !isVideo && isPdfUrl(a.url);
             const ext = getFileExt(a.url);
             const extColor = EXT_COLORS[ext] || "bg-ink-100 text-ink-600";
             const isExpired = a.expiresAt && new Date(a.expiresAt) < now;
@@ -229,7 +227,7 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
                 <div
                   className={cn(
                     "relative aspect-square cursor-pointer",
-                    isImage || isVideo || isPdf ? "bg-ink-50" : "bg-ink-50 flex items-center justify-center"
+                    isImage || isVideo ? "bg-ink-900" : "bg-ink-50 flex items-center justify-center"
                   )}
                   onClick={() => isImage ? setLightbox({ url: a.url, type: "image" }) : isVideo ? setLightbox({ url: a.url, type: "video" }) : window.open(a.url, "_blank")}
                 >
@@ -251,17 +249,9 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
                         </div>
                       </div>
                     </>
-                  ) : isPdf ? (
-                    <>
-                      <PdfThumbnail url={a.url} />
-                      <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-red-600/90 px-1.5 py-0.5 shadow-sm">
-                        <FileText size={10} className="text-white" />
-                        <span className="text-[9px] font-bold text-white">PDF</span>
-                      </div>
-                    </>
                   ) : (
                     <div className={cn("flex h-14 w-14 items-center justify-center rounded-xl", extColor)}>
-                      <File size={24} />
+                      {ext === "PDF" ? <FileText size={24} /> : <File size={24} />}
                     </div>
                   )}
                 </div>
@@ -322,7 +312,6 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
           {paginated.map((a) => {
             const isImage = a.type === "image" && isImageUrl(a.url);
             const isVideo = a.type === "video" || isVideoUrl(a.url);
-            const isPdf = !isImage && !isVideo && isPdfUrl(a.url);
             const ext = getFileExt(a.url);
             const extColor = EXT_COLORS[ext] || "bg-ink-100 text-ink-600";
             const isExpired = a.expiresAt && new Date(a.expiresAt) < now;
@@ -341,13 +330,9 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
                       <Play size={14} className="text-white" />
                     </div>
                   </div>
-                ) : isPdf ? (
-                  <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-ink-50 shrink-0 cursor-pointer" onClick={() => window.open(a.url, "_blank")}>
-                    <PdfThumbnail url={a.url} />
-                  </div>
                 ) : (
                   <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-lg", extColor)}>
-                    <File size={18} />
+                    {ext === "PDF" ? <FileText size={18} /> : <File size={18} />}
                   </div>
                 )}
 
