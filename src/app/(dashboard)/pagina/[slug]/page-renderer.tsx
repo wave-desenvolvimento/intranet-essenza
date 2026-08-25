@@ -809,8 +809,7 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, card
   const folderBgHex = FOLDER_BG_COLORS[bgIndex];
 
   if (cardStyle === "folder") {
-    // Estilo formato pasta - clip-path da o shape, capa preenche tudo
-    const clipPath = "polygon(0% 6%, 0% 100%, 100% 100%, 100% 6%, 42% 6%, 38% 0%, 0% 0%)";
+    // Estilo formato pasta - aba decorativa + card arredondado
     return (
       <div
         ref={setDropRef}
@@ -822,15 +821,18 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, card
         style={{ zIndex: isMenuOpen ? 50 : undefined }}
         onClick={() => { if (!isDragging) onEnter(); }}
       >
-        {/* Card com shape de pasta via clip-path */}
-        <div
-          className={cn(
-            "transition-all duration-200",
-            isOver ? "shadow-lg" : "shadow-sm group-hover:shadow-md",
-          )}
-          style={{ clipPath }}
-        >
-          <div className="aspect-[4/3] relative flex items-center justify-center overflow-hidden bg-ink-100 rounded-tr-xl">
+        {/* Aba da pasta - decorativa */}
+        <div className="relative h-4 z-[1]">
+          <div className="absolute bottom-0 left-0 w-[38%] h-full rounded-t-xl overflow-hidden" style={{ backgroundColor: hasCover ? "#b8ae9c" : "#c5bc9f" }}>
+            {hasCover && <img src={folder.cover_url!} alt="" className="w-[260%] h-[800%] object-cover opacity-80 -mt-1" draggable={false} />}
+          </div>
+        </div>
+        {/* Corpo da pasta */}
+        <div className={cn(
+          "rounded-b-2xl rounded-tr-2xl overflow-hidden transition-all duration-200",
+          isOver ? "ring-2 ring-brand-olive/40 shadow-lg" : "shadow-sm group-hover:shadow-md",
+        )}>
+          <div className="aspect-[4/3] relative flex items-center justify-center overflow-hidden bg-ink-100">
             {hasCover ? (
               <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
             ) : (
@@ -843,30 +845,30 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, card
                 <FolderInput size={28} className="text-white drop-shadow-md" />
               </div>
             )}
-            {/* Gradiente para legibilidade do texto */}
-            <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/50 to-transparent" />
+            {/* Gradiente para legibilidade */}
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
+            {/* Nome e botoes sobre o gradiente */}
+            <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 px-3 py-2.5">
+              {isOver ? (
+                <p className="text-sm font-medium text-white truncate flex-1">Soltar aqui</p>
+              ) : (
+                <>
+                  {canEdit && (
+                    <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-black/25 hover:bg-black/40 transition-colors touch-none backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
+                      <GripVertical size={14} className="text-white" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold text-white truncate drop-shadow-md">{folder.name}</p>
+                    {childCount > 0 && <p className="text-[10px] text-white/70 mt-0.5 drop-shadow-sm">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
+                  </div>
+                  {canEdit && !isOver && (
+                    <FolderContextMenu isOpen={isMenuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onMove={onMove} onEdit={onEdit} onDelete={onDelete} onDark />
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-        {/* Rodape fora do clip-path pra o menu nao ser cortado */}
-        <div className="flex items-center gap-2 px-3 py-2 -mt-10 relative z-10">
-          {isOver ? (
-            <p className="text-sm font-medium text-white truncate flex-1">Soltar aqui</p>
-          ) : (
-            <>
-              {canEdit && (
-                <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-black/20 hover:bg-black/30 transition-colors touch-none backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
-                  <GripVertical size={14} className="text-white" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-white truncate drop-shadow-md">{folder.name}</p>
-                {childCount > 0 && <p className="text-[10px] text-white/70 mt-0.5 drop-shadow-sm">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
-              </div>
-              {canEdit && !isOver && (
-                <FolderContextMenu isOpen={isMenuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onMove={onMove} onEdit={onEdit} onDelete={onDelete} onDark />
-              )}
-            </>
-          )}
         </div>
       </div>
     );
