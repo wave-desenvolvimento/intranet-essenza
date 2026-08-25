@@ -1800,8 +1800,8 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
           const firstExt = firstFileUrl ? firstFileUrl.match(/\.(\w{2,5})(?:\?|$)/)?.[1]?.toUpperCase() || "FILE" : "";
           const videoArrayData = videoArrayField && Array.isArray(item.data[videoArrayField.slug]) ? (item.data[videoArrayField.slug] as { title?: string; url: string; published_at?: string | null; expires_at?: string | null }[]).filter((a) => isAssetVisible(a)) : [];
           const showImage = hasImages && imgUrl;
-          const showFile = !hasImages && hasFiles;
-          const showVideo = !hasImages && !hasFiles && hasVideos && videoArrayData.length > 0;
+          const showFile = !showImage && hasFiles && files.length > 0;
+          const showVideo = !showImage && !showFile && videoArrayData.length > 0;
           const EXT_COLORS: Record<string, string> = { PDF: "bg-red-50 text-red-600", DOC: "bg-blue-50 text-blue-600", DOCX: "bg-blue-50 text-blue-600", XLS: "bg-green-50 text-green-600", XLSX: "bg-green-50 text-green-600" };
 
           function onCardClick() {
