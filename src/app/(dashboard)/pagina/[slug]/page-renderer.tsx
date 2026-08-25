@@ -423,6 +423,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 
   const foldersGrid = currentSubfolders.length > 0 ? (
     <DndContext collisionDetection={pointerWithin} onDragStart={(e: DragStartEvent) => { setDndActiveId(String(e.active.id)); setFolderMenuId(null); }} onDragEnd={handleDndEnd}>
+      <p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-2">Pastas</p>
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 mb-4">
         {currentSubfolders.map((folder) => (
           <DndFolderCard
@@ -1875,6 +1876,12 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
       </div>
 
       {foldersNode}
+      {foldersNode && filtered.length > 0 && (
+        <div className="flex items-center gap-3 mb-3">
+          <p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Arquivos</p>
+          <div className="flex-1 h-px bg-ink-100" />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {paginatedItems.map((item) => {
@@ -2384,6 +2391,12 @@ function FilesPageView({ collection, filterCollections = [], canEdit, onEdit, on
       </div>
 
       {foldersNode}
+      {foldersNode && filtered.length > 0 && (
+        <div className="flex items-center gap-3 mb-3">
+          <p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Arquivos</p>
+          <div className="flex-1 h-px bg-ink-100" />
+        </div>
+      )}
 
       <div className="rounded-xl border border-ink-100 bg-white overflow-hidden">
         {paginatedFiles.map((item, i) => {
@@ -2449,6 +2462,12 @@ function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelet
       </div>
 
       {foldersNode}
+      {foldersNode && filtered.length > 0 && (
+        <div className="flex items-center gap-3 mb-3">
+          <p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Arquivos</p>
+          <div className="flex-1 h-px bg-ink-100" />
+        </div>
+      )}
 
       <div className="rounded-xl border border-ink-100 bg-white overflow-x-auto">
         <table className="w-full text-sm">
