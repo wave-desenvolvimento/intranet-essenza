@@ -76,29 +76,24 @@ export default async function DynamicPage({
     }
   }
 
-  // Fetch folders for this page
-  const { data: folders } = await supabase
-    .from("cms_folders")
-    .select("*")
-    .eq("page_id", page.id)
-    .order("sort_order")
-    .order("name");
+  // Fetch folders, collections, folder style in parallel
+  const [foldersRes, allCollectionsRes, folderStyleRes] = await Promise.all([
+    supabase.from("cms_folders").select("*").eq("page_id", page.id).order("sort_order").order("name"),
+    supabase.from("cms_collections").select("id, name, slug, icon").eq("is_group", false).order("name"),
+    supabase.from("app_settings").select("value").eq("key", "folder_card_style").single(),
+  ]);
 
-  // Fetch all collections (for folder collection picker)
-  const { data: allCollections } = await supabase
-    .from("cms_collections")
-    .select("id, name, slug, icon")
-    .eq("is_group", false)
-    .order("name");
+  const folderCardStyle = typeof folderStyleRes.data?.value === "string" ? folderStyleRes.data.value : "default";
 
   return (
     <PageRenderer
       page={page}
       collections={validCollections}
-      folders={folders || []}
-      allCollections={allCollections || []}
+      folders={foldersRes.data || []}
+      allCollections={allCollectionsRes.data || []}
       initialFolderId={initialFolderId}
       initialItemId={initialItemId}
+      folderCardStyle={folderCardStyle}
     />
   );
 }

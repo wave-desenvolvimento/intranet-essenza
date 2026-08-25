@@ -79,9 +79,10 @@ interface Props {
   allCollections: CollectionMeta[];
   initialFolderId?: string;
   initialItemId?: string;
+  folderCardStyle?: string;
 }
 
-export function PageRenderer({ page, collections, folders: initialFolders, allCollections, initialFolderId, initialItemId }: Props) {
+export function PageRenderer({ page, collections, folders: initialFolders, allCollections, initialFolderId, initialItemId, folderCardStyle = "default" }: Props) {
   const mainCollection = collections.find((c) => c.role === "main");
   const filterCollections = collections.filter((c) => c.role === "filter");
   const { can } = usePermissions();
@@ -430,6 +431,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
             canEdit={canEdit}
             isDndActive={dndActiveId === folder.id}
             isMenuOpen={folderMenuId === folder.id}
+            cardStyle={folderCardStyle}
             onEnter={() => enterFolder(folder)}
             onToggleMenu={(e) => { e.stopPropagation(); setFolderMenuId(folderMenuId === folder.id ? null : folder.id); }}
             onCloseMenu={() => setFolderMenuId(null)}
@@ -787,8 +789,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 // === Dynamic field for page editor ===
 // === DnD-kit folder components ===
 
-function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEnter, onToggleMenu, onCloseMenu, onMove, onEdit, onDelete }: {
-  folder: FolderType; folders: FolderType[]; canEdit: boolean; isDndActive: boolean; isMenuOpen: boolean;
+function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, cardStyle = "default", onEnter, onToggleMenu, onCloseMenu, onMove, onEdit, onDelete }: {
+  folder: FolderType; folders: FolderType[]; canEdit: boolean; isDndActive: boolean; isMenuOpen: boolean; cardStyle?: string;
   onEnter: () => void; onToggleMenu: (e: React.MouseEvent) => void; onCloseMenu: () => void;
   onMove: (e: React.MouseEvent) => void; onEdit: (e: React.MouseEvent) => void; onDelete: (e: React.MouseEvent) => void;
 }) {
@@ -799,14 +801,79 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEn
   const FolderIconComp = folder.icon === "folder" ? Folder : (getIconByName(folder.icon) || Folder);
   const hasCover = !!folder.cover_url;
 
-  // Cor de fundo deterministica por folder id (sem capa)
   const FOLDER_BG_COLORS = [
-    "bg-[#5C5441]", "bg-[#6B6352]", "bg-[#7A7263]", "bg-[#4A4535]",
-    "bg-[#8B7E6A]", "bg-[#635C4B]", "bg-[#544D3E]", "bg-[#746D5C]",
+    "#5C5441", "#6B6352", "#7A7263", "#4A4535",
+    "#8B7E6A", "#635C4B", "#544D3E", "#746D5C",
   ];
   const bgIndex = folder.id.charCodeAt(0) % FOLDER_BG_COLORS.length;
-  const folderBg = FOLDER_BG_COLORS[bgIndex];
+  const folderBgHex = FOLDER_BG_COLORS[bgIndex];
 
+  if (cardStyle === "folder") {
+    // Estilo formato pasta com aba
+    const tabColor = hasCover ? "#d4c9b0" : folderBgHex;
+    const bodyColor = hasCover ? "#e8e0d0" : `${folderBgHex}cc`;
+    return (
+      <div
+        ref={setDropRef}
+        className={cn(
+          "group relative cursor-pointer transition-all duration-200",
+          (isDragging || isDndActive) && "opacity-30 scale-95",
+          isOver && "scale-[1.03]",
+        )}
+        onClick={() => { if (!isDragging) onEnter(); }}
+      >
+        {/* Aba da pasta */}
+        <div className="flex items-end">
+          <div className="h-4 w-[40%] rounded-t-lg" style={{ backgroundColor: tabColor }} />
+          <div className="flex-1" />
+        </div>
+        {/* Corpo da pasta */}
+        <div className={cn(
+          "rounded-b-xl rounded-tr-xl border-2 overflow-hidden transition-all duration-200",
+          isOver ? "border-brand-olive ring-2 ring-brand-olive/30 shadow-lg" : "border-transparent hover:shadow-md",
+        )}>
+          <div
+            className="aspect-[3/2] relative flex items-center justify-center overflow-hidden"
+            style={{ backgroundColor: hasCover ? undefined : folderBgHex }}
+          >
+            {hasCover ? (
+              <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
+            ) : (
+              <BrandLogo size={56} className="brightness-0 invert opacity-25" />
+            )}
+            {isOver && (
+              <div className="absolute inset-0 bg-brand-olive/30 flex items-center justify-center backdrop-blur-[1px]">
+                <FolderInput size={28} className="text-white drop-shadow-md" />
+              </div>
+            )}
+          </div>
+          {/* Rodape */}
+          <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: bodyColor }}>
+            {isOver ? (
+              <p className="text-sm font-medium text-brand-olive truncate flex-1">Soltar aqui</p>
+            ) : (
+              <>
+                {canEdit && (
+                  <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing p-1 rounded-md hover:bg-white/20 transition-colors touch-none" onClick={(e) => e.stopPropagation()}>
+                    <GripVertical size={14} className="text-white/50" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate drop-shadow-sm">{folder.name}</p>
+                  {childCount > 0 && <p className="text-[10px] text-white/60">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
+                </div>
+                {canEdit && !isOver && (
+                  <FolderContextMenu isOpen={isMenuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onMove={onMove} onEdit={onEdit} onDelete={onDelete} />
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Estilo padrão
   return (
     <div
       ref={setDropRef}
@@ -817,8 +884,7 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEn
       )}
       onClick={() => { if (!isDragging) onEnter(); }}
     >
-      {/* Thumbnail */}
-      <div className={cn("aspect-[4/3] relative overflow-hidden rounded-t-[10px] flex items-center justify-center", hasCover ? "bg-ink-50" : folderBg)}>
+      <div className="aspect-[4/3] relative overflow-hidden rounded-t-[10px] flex items-center justify-center" style={{ backgroundColor: hasCover ? undefined : folderBgHex }}>
         {hasCover ? (
           <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
         ) : (
