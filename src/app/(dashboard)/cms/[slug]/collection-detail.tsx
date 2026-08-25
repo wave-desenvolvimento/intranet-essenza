@@ -11,6 +11,7 @@ import { createField, updateField, deleteField, createItem, updateItem, deleteIt
 import { getItemHistory, revertToVersion } from "@/app/(dashboard)/history-actions";
 import { useDragReorder } from "@/hooks/use-drag-reorder";
 import { uploadToStorage, uploadToStorageWithProgress } from "@/lib/upload";
+import { toast } from "sonner";
 import { cn, getAssetScheduleStatus } from "@/lib/utils";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { Sheet } from "@/components/ui/sheet";
@@ -1079,7 +1080,7 @@ function FileUploadField({ field, value, onChange }: { field: Field; value: unkn
     setFileName(file.name);
     const r = await uploadToStorage(file, { bucket, folder: field.slug });
     setUploading(false);
-    if ("url" in r) onChange(r.url);
+    if ("url" in r) { onChange(r.url); } else { toast.error(r.error); }
   }
   return (
     <div className="flex flex-col gap-2">
@@ -1275,6 +1276,8 @@ function FileArrayField({ field, value, onChange }: { field: Field; value: unkno
       if ("url" in r) {
         const name = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
         newItems.push({ title: name, url: r.url, filename: file.name });
+      } else {
+        toast.error(`Erro ao enviar "${file.name}": ${r.error}`);
       }
     }
     setUploading(false);
@@ -1390,6 +1393,8 @@ function VideoArrayField({ field, value, onChange }: { field: Field; value: unkn
       if ("url" in r) {
         const name = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
         newItems.push({ title: name, url: r.url, filename: file.name });
+      } else {
+        toast.error(`Erro ao enviar "${file.name}": ${r.error}`);
       }
 
       setUploadProgress((prev) => {

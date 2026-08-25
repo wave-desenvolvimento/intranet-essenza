@@ -53,7 +53,7 @@ export async function uploadToStorage(
     .from(options.bucket)
     .upload(fileName, processedFile, { upsert: false });
 
-  if (error) return { error: "Erro ao enviar arquivo." };
+  if (error) return { error: error.message || "Erro ao enviar arquivo." };
 
   const { data: urlData } = supabase.storage
     .from(options.bucket)

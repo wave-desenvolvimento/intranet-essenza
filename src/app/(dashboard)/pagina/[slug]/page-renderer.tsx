@@ -1126,7 +1126,7 @@ function PageFileField({ field, value, onChange }: { field: Field; value: unknow
     setUploading(true);
     const r = await uploadToStorage(file, { bucket: "assets", folder: field.slug });
     setUploading(false);
-    if ("url" in r) onChange(r.url);
+    if ("url" in r) { onChange(r.url); } else { toast.error(r.error); }
   }
   return (
     <div className="flex flex-col gap-2">
@@ -1305,6 +1305,8 @@ function PageFileArrayField({ field, value, onChange }: { field: Field; value: u
       if ("url" in r) {
         const name = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
         newItems.push({ title: name, url: r.url, filename: file.name });
+      } else {
+        toast.error(`Erro ao enviar "${file.name}": ${r.error}`);
       }
     }
     setUploading(false);
@@ -1407,6 +1409,8 @@ function PageVideoArrayField({ field, value, onChange }: { field: Field; value: 
       if ("url" in r) {
         const name = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
         newItems.push({ title: name, url: r.url, filename: file.name });
+      } else {
+        toast.error(`Erro ao enviar "${file.name}": ${r.error}`);
       }
 
       setUploadProgress((prev) => {
