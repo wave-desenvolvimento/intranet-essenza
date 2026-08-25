@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition, useRef, useCallback } from "react";
 import DOMPurify from "dompurify";
-import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, useDroppable, useDraggable, pointerWithin, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
 import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ChevronUp, ChevronDown, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput, GripVertical, Video } from "lucide-react";
 import { cn, isAssetVisible, getAssetScheduleStatus } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
@@ -420,8 +420,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
   const activeFolder = dndActiveId ? currentSubfolders.find((f) => f.id === dndActiveId) : null;
 
   const foldersGrid = currentSubfolders.length > 0 ? (
-    <DndContext collisionDetection={closestCenter} onDragStart={(e: DragStartEvent) => { setDndActiveId(String(e.active.id)); setFolderMenuId(null); }} onDragEnd={handleDndEnd}>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-4">
+    <DndContext collisionDetection={pointerWithin} onDragStart={(e: DragStartEvent) => { setDndActiveId(String(e.active.id)); setFolderMenuId(null); }} onDragEnd={handleDndEnd}>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-4">
         {currentSubfolders.map((folder) => (
           <DndFolderCard
             key={folder.id}
@@ -803,33 +803,37 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEn
     <div
       ref={setDropRef}
       className={cn(
-        "group relative rounded-xl border bg-white cursor-pointer transition-all",
-        (isDragging || isDndActive) && "opacity-40 scale-95",
-        isOver ? "border-brand-olive ring-2 ring-brand-olive shadow-md scale-105" : "border-ink-100 hover:border-brand-olive/30 hover:shadow-sm",
+        "group relative rounded-xl border-2 bg-white cursor-pointer transition-all duration-200",
+        (isDragging || isDndActive) && "opacity-30 scale-95",
+        isOver ? "border-brand-olive ring-2 ring-brand-olive/30 shadow-lg scale-[1.03] bg-brand-olive-soft/10" : "border-ink-100 hover:border-brand-olive/30 hover:shadow-sm",
       )}
       onClick={() => { if (!isDragging) onEnter(); }}
     >
       {hasCover ? (
-        <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-xl">
+        <div className="aspect-[16/9] bg-ink-50 relative overflow-hidden rounded-t-[10px]">
           <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
           {isOver && (
-            <div className="absolute inset-0 bg-brand-olive/20 flex items-center justify-center">
-              <FolderInput size={24} className="text-brand-olive" />
+            <div className="absolute inset-0 bg-brand-olive/30 flex items-center justify-center backdrop-blur-[1px]">
+              <FolderInput size={28} className="text-white drop-shadow-md" />
             </div>
           )}
         </div>
       ) : null}
-      <div className={cn("flex items-center gap-3 px-3 py-2.5", !hasCover && "py-3 px-4")}>
+      <div className={cn("flex items-center gap-3 px-3", hasCover ? "py-3" : "py-4 px-4")}>
         {isOver ? (
-          <FolderInput size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-olive/10 shrink-0">
+            <FolderInput size={20} className="text-brand-olive" />
+          </div>
         ) : (
           <>
             {canEdit && (
-              <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing -ml-1 -mr-1 p-1 rounded hover:bg-ink-100 transition-colors touch-none" onClick={(e) => e.stopPropagation()}>
-                <GripVertical size={14} className="text-ink-400" />
+              <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing -ml-1 -mr-1 p-1.5 rounded-md hover:bg-ink-100 transition-colors touch-none" onClick={(e) => e.stopPropagation()}>
+                <GripVertical size={16} className="text-ink-300" />
               </div>
             )}
-            <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive shrink-0" />
+            <div className={cn("flex items-center justify-center rounded-lg shrink-0", hasCover ? "h-7 w-7" : "h-9 w-9 bg-brand-olive-soft/50")}>
+              <FolderIconComp size={hasCover ? 16 : 20} className="text-brand-olive" />
+            </div>
           </>
         )}
         <div className="flex-1 min-w-0">
@@ -837,7 +841,7 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, onEn
             {isOver ? "Soltar aqui" : folder.name}
           </p>
           {!isOver && childCount > 0 && (
-            <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
+            <p className="text-[11px] text-ink-400 mt-0.5">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>
           )}
         </div>
         {canEdit && !isOver && (
@@ -855,11 +859,13 @@ function DndRootDropZone({ active }: { active: boolean }) {
     <div
       ref={setNodeRef}
       className={cn(
-        "flex items-center justify-center gap-2 rounded-lg border-2 border-dashed py-3 text-sm font-medium transition-all mb-2",
-        isOver ? "border-brand-olive bg-brand-olive-soft/20 text-brand-olive" : "border-ink-200 text-ink-400",
+        "flex items-center justify-center gap-3 rounded-xl border-2 border-dashed py-5 text-sm font-medium transition-all duration-200 mb-2",
+        isOver ? "border-brand-olive bg-brand-olive-soft/20 text-brand-olive scale-[1.01] shadow-sm" : "border-ink-200 text-ink-400 hover:border-ink-300",
       )}
     >
-      <ArrowLeft size={14} />
+      <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg transition-colors", isOver ? "bg-brand-olive/10" : "bg-ink-100")}>
+        <ArrowLeft size={16} />
+      </div>
       Soltar aqui para mover para a raiz
     </div>
   );
@@ -869,11 +875,13 @@ function DndFolderOverlay({ folder, folders }: { folder: FolderType; folders: Fo
   const childCount = folders.filter((f) => f.parent_id === folder.id).length;
   const FolderIconComp = folder.icon === "folder" ? Folder : (getIconByName(folder.icon) || Folder);
   return (
-    <div className="rounded-xl border border-brand-olive bg-white shadow-lg px-4 py-3 flex items-center gap-3 opacity-90 w-56">
-      <FolderIconComp size={18} className="text-brand-olive shrink-0" />
+    <div className="rounded-xl border-2 border-brand-olive bg-white shadow-xl px-4 py-3.5 flex items-center gap-3 w-60 rotate-[1.5deg]">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-olive-soft/50 shrink-0">
+        <FolderIconComp size={18} className="text-brand-olive" />
+      </div>
       <div className="min-w-0">
         <p className="text-sm font-medium text-ink-900 truncate">{folder.name}</p>
-        {childCount > 0 && <p className="text-[10px] text-ink-400">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
+        {childCount > 0 && <p className="text-[11px] text-ink-400 mt-0.5">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
       </div>
     </div>
   );
