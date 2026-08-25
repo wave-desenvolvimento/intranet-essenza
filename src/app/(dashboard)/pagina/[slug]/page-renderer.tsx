@@ -854,8 +854,8 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, card
           ) : (
             <>
               {canEdit && (
-                <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing p-1 rounded-md hover:bg-white/20 transition-colors touch-none" onClick={(e) => e.stopPropagation()}>
-                  <GripVertical size={14} className="text-white/60" />
+                <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-black/20 hover:bg-black/30 transition-colors touch-none backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
+                  <GripVertical size={14} className="text-white" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
@@ -863,7 +863,7 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, card
                 {childCount > 0 && <p className="text-[10px] text-white/70 mt-0.5 drop-shadow-sm">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
               </div>
               {canEdit && !isOver && (
-                <FolderContextMenu isOpen={isMenuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onMove={onMove} onEdit={onEdit} onDelete={onDelete} />
+                <FolderContextMenu isOpen={isMenuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onMove={onMove} onEdit={onEdit} onDelete={onDelete} onDark />
               )}
             </>
           )}
@@ -964,13 +964,14 @@ function DndFolderOverlay({ folder, folders }: { folder: FolderType; folders: Fo
 }
 
 // === Folder context menu with auto-positioning ===
-function FolderContextMenu({ isOpen, onToggle, onClose, onMove, onEdit, onDelete }: {
+function FolderContextMenu({ isOpen, onToggle, onClose, onMove, onEdit, onDelete, onDark = false }: {
   isOpen: boolean;
   onToggle: (e: React.MouseEvent) => void;
   onClose: () => void;
   onMove: (e: React.MouseEvent) => void;
   onEdit: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
+  onDark?: boolean;
 }) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -1003,8 +1004,10 @@ function FolderContextMenu({ isOpen, onToggle, onClose, onMove, onEdit, onDelete
         onClick={onToggle}
         draggable={false}
         className={cn(
-          "rounded-md p-1.5 transition-colors",
-          isOpen ? "bg-ink-100 text-ink-700" : "text-ink-400 hover:text-ink-700 hover:bg-ink-100",
+          "rounded-lg p-1.5 transition-colors backdrop-blur-sm",
+          onDark
+            ? isOpen ? "bg-black/30 text-white" : "bg-black/20 text-white hover:bg-black/30"
+            : isOpen ? "bg-ink-100 text-ink-700" : "text-ink-400 hover:text-ink-700 hover:bg-ink-100",
         )}
         title="Opcoes"
       >
