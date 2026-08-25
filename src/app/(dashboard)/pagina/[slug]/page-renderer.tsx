@@ -421,7 +421,7 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 
   const foldersGrid = currentSubfolders.length > 0 ? (
     <DndContext collisionDetection={pointerWithin} onDragStart={(e: DragStartEvent) => { setDndActiveId(String(e.active.id)); setFolderMenuId(null); }} onDragEnd={handleDndEnd}>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
         {currentSubfolders.map((folder) => (
           <DndFolderCard
             key={folder.id}
