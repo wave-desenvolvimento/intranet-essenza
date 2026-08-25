@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition, useRef, useCallback } from "react";
 import DOMPurify from "dompurify";
 import { DndContext, DragOverlay, useDroppable, useDraggable, pointerWithin, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
 import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ChevronUp, ChevronDown, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput, GripVertical, Video } from "lucide-react";
+import { motion } from "motion/react";
 import { cn, isAssetVisible, getAssetScheduleStatus } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Sheet } from "@/components/ui/sheet";
@@ -432,6 +433,21 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
             isDndActive={dndActiveId === folder.id}
             isMenuOpen={folderMenuId === folder.id}
             cardStyle={folderCardStyle}
+            previewUrls={(() => {
+              if (folderCardStyle !== "folder" || !activeCollection) return [];
+              const items = activeCollection.items.filter((i) => i.folder_id === folder.id).slice(0, 2);
+              const urls: string[] = [];
+              for (const item of items) {
+                const d = item.data;
+                const cover = String(d._cover || "");
+                if (cover) { urls.push(cover); continue; }
+                for (const val of Object.values(d)) {
+                  if (typeof val === "string" && /\.(jpg|jpeg|png|webp|gif|avif)/i.test(val)) { urls.push(val); break; }
+                  if (Array.isArray(val) && val[0]?.url && /\.(jpg|jpeg|png|webp|gif|avif)/i.test(val[0].url)) { urls.push(val[0].url); break; }
+                }
+              }
+              return urls.slice(0, 2);
+            })()}
             onEnter={() => enterFolder(folder)}
             onToggleMenu={(e) => { e.stopPropagation(); setFolderMenuId(folderMenuId === folder.id ? null : folder.id); }}
             onCloseMenu={() => setFolderMenuId(null)}
@@ -789,8 +805,8 @@ export function PageRenderer({ page, collections, folders: initialFolders, allCo
 // === Dynamic field for page editor ===
 // === DnD-kit folder components ===
 
-function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, cardStyle = "default", onEnter, onToggleMenu, onCloseMenu, onMove, onEdit, onDelete }: {
-  folder: FolderType; folders: FolderType[]; canEdit: boolean; isDndActive: boolean; isMenuOpen: boolean; cardStyle?: string;
+function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, cardStyle = "default", previewUrls = [], onEnter, onToggleMenu, onCloseMenu, onMove, onEdit, onDelete }: {
+  folder: FolderType; folders: FolderType[]; canEdit: boolean; isDndActive: boolean; isMenuOpen: boolean; cardStyle?: string; previewUrls?: string[];
   onEnter: () => void; onToggleMenu: (e: React.MouseEvent) => void; onCloseMenu: () => void;
   onMove: (e: React.MouseEvent) => void; onEdit: (e: React.MouseEvent) => void; onDelete: (e: React.MouseEvent) => void;
 }) {
@@ -809,68 +825,101 @@ function DndFolderCard({ folder, folders, canEdit, isDndActive, isMenuOpen, card
   const folderBgHex = FOLDER_BG_COLORS[bgIndex];
 
   if (cardStyle === "folder") {
-    // Estilo formato pasta - aba decorativa + card arredondado
+    // Estilo ficheiro - camadas: fundo com aba + papeis + frente com capa
     return (
-      <div
+      <motion.div
         ref={setDropRef}
         className={cn(
-          "group relative cursor-pointer transition-all duration-200 hover:-translate-y-0.5",
+          "group relative cursor-pointer",
           (isDragging || isDndActive) && "opacity-30 scale-95",
-          isOver && "scale-[1.03]",
         )}
         style={{ zIndex: isMenuOpen ? 50 : undefined }}
         onClick={() => { if (!isDragging) onEnter(); }}
+        whileHover="hover"
+        initial="rest"
+        animate={isOver ? "hover" : "rest"}
       >
-        {/* Aba da pasta - decorativa */}
-        <div className="relative h-4 z-[1]">
-          <div className="absolute bottom-0 left-0 w-[38%] h-full rounded-t-xl overflow-hidden" style={{ backgroundColor: hasCover ? "#b8ae9c" : "#c5bc9f" }}>
-            {hasCover && <img src={folder.cover_url!} alt="" className="w-[260%] h-[800%] object-cover opacity-80 -mt-1" draggable={false} />}
+        {/* Camada 1 - Fundo da pasta com aba (atras de tudo) */}
+        <div className="absolute inset-x-0 top-0 bottom-2">
+          <div className="flex">
+            <div className="h-5 w-[38%] rounded-t-lg bg-[#cdc4b3]" />
+            <div className="h-5 w-3 bg-[#cdc4b3]" style={{ borderRadius: "0 0 8px 0", marginTop: "8px" }} />
           </div>
+          <div className="h-full rounded-tr-xl rounded-b-xl bg-[#cdc4b3]" />
         </div>
-        {/* Corpo da pasta */}
-        <div className={cn(
-          "rounded-b-2xl rounded-tr-2xl overflow-hidden transition-all duration-200",
-          isOver ? "ring-2 ring-brand-olive/40 shadow-lg" : "shadow-sm group-hover:shadow-md",
-        )}>
-          <div className="aspect-[4/3] relative flex items-center justify-center overflow-hidden bg-ink-100">
-            {hasCover ? (
-              <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
+
+        {/* Camada 2 - Assets/papeis saindo do ficheiro */}
+        <div className="relative pt-5">
+          <motion.div
+            className="absolute left-2 right-2 top-5 h-4 rounded-t-lg overflow-hidden shadow-[0_-1px_3px_rgba(0,0,0,0.08)]"
+            variants={{ rest: { y: 0 }, hover: { y: -6 } }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          >
+            {previewUrls[1] ? (
+              <img src={previewUrls[1]} alt="" className="w-full h-8 object-cover" draggable={false} />
             ) : (
-              <div className="w-full h-full bg-brand-olive-soft/40 flex items-center justify-center">
-                <BrandLogo size={48} className="opacity-15" />
-              </div>
+              <div className="w-full h-full bg-white" />
             )}
-            {isOver && (
-              <div className="absolute inset-0 bg-brand-olive/30 flex items-center justify-center backdrop-blur-[1px]">
-                <FolderInput size={28} className="text-white drop-shadow-md" />
-              </div>
+          </motion.div>
+          <motion.div
+            className="absolute left-1 right-1 top-7 h-4 rounded-t-lg overflow-hidden shadow-[0_-1px_3px_rgba(0,0,0,0.06)]"
+            variants={{ rest: { y: 0 }, hover: { y: -3 } }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          >
+            {previewUrls[0] ? (
+              <img src={previewUrls[0]} alt="" className="w-full h-8 object-cover" draggable={false} />
+            ) : (
+              <div className="w-full h-full bg-gray-50" />
             )}
-            {/* Gradiente para legibilidade */}
-            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
-            {/* Nome e botoes sobre o gradiente */}
-            <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 px-3 py-2.5">
-              {isOver ? (
-                <p className="text-sm font-medium text-white truncate flex-1">Soltar aqui</p>
+          </motion.div>
+
+          {/* Camada 3 - Frente da pasta (capa principal) */}
+          <motion.div
+            className={cn(
+              "relative rounded-2xl overflow-hidden mt-2",
+              isOver ? "ring-2 ring-brand-olive/40" : "",
+            )}
+            variants={{ rest: { y: 0, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }, hover: { y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.15)" } }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          >
+            <div className="aspect-[4/3] relative flex items-center justify-center overflow-hidden bg-ink-100">
+              {hasCover ? (
+                <img src={folder.cover_url!} alt={folder.name} className="w-full h-full object-cover" draggable={false} />
               ) : (
-                <>
-                  {canEdit && (
-                    <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-black/25 hover:bg-black/40 transition-colors touch-none backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
-                      <GripVertical size={14} className="text-white" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-semibold text-white truncate drop-shadow-md">{folder.name}</p>
-                    {childCount > 0 && <p className="text-[10px] text-white/70 mt-0.5 drop-shadow-sm">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
-                  </div>
-                  {canEdit && !isOver && (
-                    <FolderContextMenu isOpen={isMenuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onMove={onMove} onEdit={onEdit} onDelete={onDelete} onDark />
-                  )}
-                </>
+                <div className="w-full h-full bg-brand-olive-soft/40 flex items-center justify-center">
+                  <BrandLogo size={48} className="opacity-15" />
+                </div>
               )}
+              {isOver && (
+                <div className="absolute inset-0 bg-brand-olive/30 flex items-center justify-center backdrop-blur-[1px]">
+                  <FolderInput size={28} className="text-white drop-shadow-md" />
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 px-3 py-2.5">
+                {isOver ? (
+                  <p className="text-sm font-medium text-white truncate flex-1">Soltar aqui</p>
+                ) : (
+                  <>
+                    {canEdit && (
+                      <div ref={setDragRef} {...listeners} {...attributes} className="shrink-0 cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-black/25 hover:bg-black/40 transition-colors touch-none backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
+                        <GripVertical size={14} className="text-white" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-white truncate drop-shadow-md">{folder.name}</p>
+                      {childCount > 0 && <p className="text-[10px] text-white/70 mt-0.5 drop-shadow-sm">{childCount} {childCount === 1 ? "subpasta" : "subpastas"}</p>}
+                    </div>
+                    {canEdit && !isOver && (
+                      <FolderContextMenu isOpen={isMenuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onMove={onMove} onEdit={onEdit} onDelete={onDelete} onDark />
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
