@@ -1814,7 +1814,7 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
               <div
                 className={cn(
                   "relative cursor-pointer",
-                  itemHasImage ? "aspect-square bg-ink-50" : "aspect-[4/3] bg-brand-olive-soft/60 flex flex-col items-center justify-center"
+                  itemHasImage || itemHasVideos ? "aspect-square bg-ink-50" : "aspect-[4/3] bg-brand-olive-soft/60 flex flex-col items-center justify-center"
                 )}
                 onClick={onCardClick}
               >
@@ -1822,8 +1822,13 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
                   <img src={imgUrl} alt={title} className="w-full h-full object-cover" />
                 ) : itemHasVideos ? (
                   <>
-                    <Play size={36} className="text-brand-olive" />
-                    {videoArrayData.length > 1 && <span className="absolute top-2 right-2 rounded-md bg-brand-olive/70 px-1.5 py-0.5 text-[9px] font-medium text-white">{videoArrayData.length} videos</span>}
+                    <video src={`${videoArrayData[0].url}#t=0.5`} preload="metadata" muted className="w-full h-full object-cover pointer-events-none" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
+                        <Play size={18} className="text-brand-olive ml-0.5" fill="currentColor" />
+                      </div>
+                    </div>
+                    {videoArrayData.length > 1 && <span className="absolute top-2 right-2 rounded-md bg-black/50 px-1.5 py-0.5 text-[9px] font-medium text-white">{videoArrayData.length} videos</span>}
                   </>
                 ) : itemHasFiles ? (
                   <>
