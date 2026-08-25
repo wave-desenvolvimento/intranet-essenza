@@ -12,6 +12,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { createItem, updateItem, deleteItem } from "@/app/(dashboard)/cms/actions";
 import { createFolder, updateFolder, deleteFolder, moveFolder, moveItemsToFolder, type Folder as FolderType } from "@/app/(dashboard)/cms/folder-actions";
 import { uploadToStorage, uploadToStorageWithProgress, uploadVideoWithProgress } from "@/lib/upload";
+import { PdfThumbnail, isPdfUrl } from "@/components/ui/pdf-thumbnail";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
@@ -1598,68 +1599,6 @@ function PageCollectionMultiRefField({ field, value, onChange }: { field: Field;
 }
 
 // === Gallery View (read-only, pra franqueado) ===
-// === PDF Thumbnail (carrega pdf.js do CDN, renderiza primeira pagina num canvas) ===
-const PDFJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let pdfjsLoadPromise: Promise<any> | null = null;
-
-function loadPdfjs() {
-  if (pdfjsLoadPromise) return pdfjsLoadPromise;
-  pdfjsLoadPromise = new Promise((resolve, reject) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((window as any).pdfjsLib) { resolve((window as any).pdfjsLib); return; }
-    const script = document.createElement("script");
-    script.src = `${PDFJS_CDN}/pdf.min.js`;
-    script.onload = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const lib = (window as any).pdfjsLib;
-      if (!lib) { reject(new Error("pdfjsLib not found")); return; }
-      lib.GlobalWorkerOptions.workerSrc = `${PDFJS_CDN}/pdf.worker.min.js`;
-      resolve(lib);
-    };
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-  return pdfjsLoadPromise;
-}
-
-function PdfThumbnail({ url }: { url: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function render() {
-      try {
-        const pdfjsLib = await loadPdfjs();
-        const pdf = await pdfjsLib.getDocument(url).promise;
-        const page = await pdf.getPage(1);
-        const canvas = canvasRef.current;
-        if (!canvas || cancelled) return;
-        const viewport = page.getViewport({ scale: 1 });
-        const scale = canvas.offsetWidth / viewport.width;
-        const scaledViewport = page.getViewport({ scale });
-        canvas.width = scaledViewport.width;
-        canvas.height = scaledViewport.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
-        if (!cancelled) setLoaded(true);
-      } catch {
-        // Falha silenciosa - mostra fallback
-      }
-    }
-    render();
-    return () => { cancelled = true; };
-  }, [url]);
-
-  return (
-    <>
-      <canvas ref={canvasRef} className={cn("w-full h-full object-cover", loaded ? "block" : "hidden")} />
-      {!loaded && <FileText size={36} className="text-red-400" />}
-    </>
-  );
-}
 
 function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, onDelete, isPending, favoriteIds = new Set(), foldersNode, highlightedItemId }: { collection: CollectionData; filterCollections?: CollectionData[]; canEdit?: boolean; onEdit?: (item: Item) => void; onDelete?: (id: string) => void; isPending?: boolean; favoriteIds?: Set<string>; foldersNode?: React.ReactNode; highlightedItemId?: string | null }) {
   const [lightbox, setLightbox] = useState<{ url: string; variants: ImageVariant[] } | null>(null);
@@ -1864,7 +1803,7 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
           const itemHasImage = !!imgUrl;
           const itemHasFiles = files.length > 0;
           const itemHasVideos = videoArrayData.length > 0;
-          const firstFilePdf = itemHasFiles && /\.pdf(\?|$)/i.test(files[0].url);
+          const firstFilePdf = itemHasFiles && isPdfUrl(files[0].url);
           const EXT_COLORS: Record<string, string> = { PDF: "bg-red-50 text-red-600", DOC: "bg-blue-50 text-blue-600", DOCX: "bg-blue-50 text-blue-600", XLS: "bg-green-50 text-green-600", XLSX: "bg-green-50 text-green-600" };
 
           function onCardClick() {
