@@ -12,7 +12,6 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { createItem, updateItem, deleteItem } from "@/app/(dashboard)/cms/actions";
 import { createFolder, updateFolder, deleteFolder, moveFolder, moveItemsToFolder, type Folder as FolderType } from "@/app/(dashboard)/cms/folder-actions";
 import { uploadToStorage, uploadToStorageWithProgress, uploadVideoWithProgress } from "@/lib/upload";
-import { PdfThumbnail, isPdfUrl } from "@/components/ui/pdf-thumbnail";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
@@ -1803,7 +1802,6 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
           const itemHasImage = !!imgUrl;
           const itemHasFiles = files.length > 0;
           const itemHasVideos = videoArrayData.length > 0;
-          const firstFilePdf = itemHasFiles && isPdfUrl(files[0].url);
           const EXT_COLORS: Record<string, string> = { PDF: "bg-red-50 text-red-600", DOC: "bg-blue-50 text-blue-600", DOCX: "bg-blue-50 text-blue-600", XLS: "bg-green-50 text-green-600", XLSX: "bg-green-50 text-green-600" };
 
           function onCardClick() {
@@ -1817,7 +1815,7 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
               <div
                 className={cn(
                   "relative cursor-pointer overflow-hidden",
-                  itemHasImage || itemHasVideos || firstFilePdf ? "aspect-square bg-ink-50" : "aspect-[4/3] bg-brand-olive-soft/60 flex flex-col items-center justify-center"
+                  itemHasImage || itemHasVideos ? "aspect-square bg-ink-50" : "aspect-[4/3] bg-brand-olive-soft/60 flex flex-col items-center justify-center"
                 )}
                 onClick={onCardClick}
               >
@@ -1832,15 +1830,6 @@ function GalleryPageView({ collection, filterCollections = [], canEdit, onEdit, 
                       </div>
                     </div>
                     {videoArrayData.length > 1 && <span className="absolute top-2 right-2 rounded-md bg-black/50 px-1.5 py-0.5 text-[9px] font-medium text-white">{videoArrayData.length} videos</span>}
-                  </>
-                ) : firstFilePdf ? (
-                  <>
-                    <PdfThumbnail url={files[0].url} />
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-red-600/90 px-1.5 py-0.5 shadow-sm">
-                      <FileText size={10} className="text-white" />
-                      <span className="text-[9px] font-bold text-white">PDF</span>
-                    </div>
-                    {files.length > 1 && <span className="absolute top-2 right-2 rounded-md bg-black/50 px-1.5 py-0.5 text-[9px] font-medium text-white">{files.length} arquivos</span>}
                   </>
                 ) : itemHasFiles ? (
                   <>
