@@ -37,14 +37,6 @@ export async function getTickets(params?: {
   const supabase = await createClient();
   const { status, search, page = 0 } = params || {};
 
-  const { data: all } = await supabase
-    .from("support_tickets")
-    .select("status");
-  const counts: Record<string, number> = {};
-  for (const t of all || []) {
-    counts[t.status] = (counts[t.status] || 0) + 1;
-  }
-
   let query = supabase
     .from("support_tickets")
     .select("*", { count: "exact" });
@@ -60,12 +52,21 @@ export async function getTickets(params?: {
     .order("created_at", { ascending: false })
     .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-  const { data, count } = await query;
+  const [{ data, count }, cNovo, cEmAndamento, cResolvido] = await Promise.all([
+    query,
+    supabase.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "novo"),
+    supabase.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "em_andamento"),
+    supabase.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "resolvido"),
+  ]);
 
   return {
     data: (data || []) as SupportTicket[],
     total: count || 0,
-    counts,
+    counts: {
+      novo: cNovo.count || 0,
+      em_andamento: cEmAndamento.count || 0,
+      resolvido: cResolvido.count || 0,
+    },
   };
 }
 

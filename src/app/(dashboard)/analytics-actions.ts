@@ -65,23 +65,37 @@ export async function getAnalyticsDashboard(from?: string, to?: string) {
   const dateTo = to || new Date().toISOString();
   const thirtyDaysAgo = dateFrom;
 
-  const { data: topViewed } = await supabase
-    .from("analytics_events")
-    .select("item_id, cms_items!inner(data, collection_id, cms_collections(name))")
-    .eq("event_type", "view")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo)
-    .limit(500);
+  // Todas as queries em paralelo
+  const [topViewedRes, topDownloadedRes, franchiseEventsRes, totalViewsRes, totalDownloadsRes, activeUserIdsRes] = await Promise.all([
+    supabase
+      .from("analytics_events")
+      .select("item_id, cms_items!inner(data, collection_id, cms_collections(name))")
+      .eq("event_type", "view")
+      .gte("created_at", dateFrom)
+      .lte("created_at", dateTo)
+      .limit(500),
+    supabase
+      .from("analytics_events")
+      .select("item_id, cms_items!inner(data, collection_id, cms_collections(name))")
+      .eq("event_type", "download")
+      .gte("created_at", dateFrom)
+      .lte("created_at", dateTo)
+      .limit(500),
+    supabase
+      .from("analytics_events")
+      .select("franchise_id, event_type, franchises(name)")
+      .gte("created_at", dateFrom)
+      .lte("created_at", dateTo)
+      .limit(2000),
+    supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "view").gte("created_at", dateFrom).lte("created_at", dateTo),
+    supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "download").gte("created_at", dateFrom).lte("created_at", dateTo),
+    supabase.from("analytics_events").select("user_id").gte("created_at", dateFrom).lte("created_at", dateTo).limit(5000),
+  ]);
 
-  const { data: topDownloaded } = await supabase
-    .from("analytics_events")
-    .select("item_id, cms_items!inner(data, collection_id, cms_collections(name))")
-    .eq("event_type", "download")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo)
-    .limit(500);
+  const topViewed = topViewedRes.data;
+  const topDownloaded = topDownloadedRes.data;
+  const franchiseEvents = franchiseEventsRes.data;
 
-  // Aggregate by item
   function aggregateByItem(events: typeof topViewed) {
     const map = new Map<string, { itemId: string; title: string; collection: string; count: number }>();
     for (const e of events || []) {
@@ -94,14 +108,6 @@ export async function getAnalyticsDashboard(from?: string, to?: string) {
     }
     return [...map.values()].sort((a, b) => b.count - a.count).slice(0, 10);
   }
-
-  // Events by franchise
-  const { data: franchiseEvents } = await supabase
-    .from("analytics_events")
-    .select("franchise_id, event_type, franchises(name)")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo)
-    .limit(2000);
 
   function aggregateByFranchise(events: typeof franchiseEvents) {
     const map = new Map<string, { franchiseId: string; name: string; views: number; downloads: number }>();
@@ -116,35 +122,12 @@ export async function getAnalyticsDashboard(from?: string, to?: string) {
     return [...map.values()].sort((a, b) => (b.views + b.downloads) - (a.views + a.downloads));
   }
 
-  // Totals
-  const { count: totalViews } = await supabase
-    .from("analytics_events")
-    .select("*", { count: "exact", head: true })
-    .eq("event_type", "view")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo);
-
-  const { count: totalDownloads } = await supabase
-    .from("analytics_events")
-    .select("*", { count: "exact", head: true })
-    .eq("event_type", "download")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo);
-
-  // Active users (unique users with events)
-  const { data: activeUserIds } = await supabase
-    .from("analytics_events")
-    .select("user_id")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo)
-    .limit(5000);
-
-  const uniqueActiveUsers = new Set((activeUserIds || []).map((e) => e.user_id)).size;
+  const uniqueActiveUsers = new Set((activeUserIdsRes.data || []).map((e) => e.user_id)).size;
 
   return {
     totals: {
-      views: totalViews || 0,
-      downloads: totalDownloads || 0,
+      views: totalViewsRes.count || 0,
+      downloads: totalDownloadsRes.count || 0,
       activeUsers: uniqueActiveUsers,
     },
     topViewed: aggregateByItem(topViewed),
@@ -164,25 +147,20 @@ export async function getOrdersAnalytics(from?: string, to?: string) {
   const periodMs = new Date(dateTo).getTime() - new Date(dateFrom).getTime();
   const prevFrom = new Date(new Date(dateFrom).getTime() - periodMs).toISOString();
 
-  const { data: recentOrders } = await supabase
-    .from("orders")
-    .select("id, status, total, franchise_id, created_at, franchises(name, segment), items:order_items(product_name, quantity, subtotal)")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo)
-    .order("created_at", { ascending: false });
+  const [recentOrdersRes, prevCountRes, prevTotalRes] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id, status, total, franchise_id, created_at, franchises(name, segment), items:order_items(product_name, quantity, subtotal)")
+      .gte("created_at", dateFrom)
+      .lte("created_at", dateTo)
+      .order("created_at", { ascending: false }),
+    supabase.from("orders").select("*", { count: "exact", head: true }).gte("created_at", prevFrom).lt("created_at", dateFrom),
+    supabase.from("orders").select("total").gte("created_at", prevFrom).lt("created_at", dateFrom),
+  ]);
 
-  // Previous period for comparison
-  const { count: prevCount } = await supabase
-    .from("orders")
-    .select("*", { count: "exact", head: true })
-    .gte("created_at", prevFrom)
-    .lt("created_at", dateFrom);
-
-  const { data: prevTotalData } = await supabase
-    .from("orders")
-    .select("total")
-    .gte("created_at", prevFrom)
-    .lt("created_at", dateFrom);
+  const recentOrders = recentOrdersRes.data;
+  const prevCount = prevCountRes.count;
+  const prevTotalData = prevTotalRes.data;
 
   const orders = recentOrders || [];
   const prevRevenue = (prevTotalData || []).reduce((s, o) => s + Number(o.total), 0);
@@ -326,16 +304,17 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
     franchiseDetailMap.set(pv.franchise_id, existing);
   }
 
-  // Also include content engagement data (analytics_events) per franchise
-  const { data: contentEvents } = await supabase
-    .from("analytics_events")
-    .select("franchise_id, event_type, user_id")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo)
-    .limit(5000);
+  // Todas as queries adicionais em paralelo
+  const [contentEventsRes, allActiveProfilesRes, ordersInPeriodRes, surveyResponsesRes, announcementReadsRes] = await Promise.all([
+    supabase.from("analytics_events").select("franchise_id, event_type, user_id").gte("created_at", dateFrom).lte("created_at", dateTo).limit(5000),
+    supabase.from("profiles").select("id, franchise_id").eq("status", "active"),
+    supabase.from("orders").select("franchise_id, total").gte("created_at", dateFrom).lte("created_at", dateTo),
+    supabase.from("survey_responses").select("user_id, franchise_id").gte("created_at", dateFrom).lte("created_at", dateTo),
+    supabase.from("announcement_reads").select("user_id").gte("read_at", dateFrom).lte("read_at", dateTo),
+  ]);
 
   const contentByFranchise = new Map<string, { views: number; downloads: number }>();
-  for (const e of contentEvents || []) {
+  for (const e of contentEventsRes.data || []) {
     if (!e.franchise_id) continue;
     const existing = contentByFranchise.get(e.franchise_id) || { views: 0, downloads: 0 };
     if (e.event_type === "view") existing.views++;
@@ -343,27 +322,15 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
     contentByFranchise.set(e.franchise_id, existing);
   }
 
-  // Total registered users per franchise (active only)
-  const { data: allActiveProfiles } = await supabase
-    .from("profiles")
-    .select("id, franchise_id")
-    .eq("status", "active");
-
+  const allActiveProfiles = allActiveProfilesRes.data || [];
   const totalUsersByFranchise = new Map<string, number>();
-  for (const p of allActiveProfiles || []) {
+  for (const p of allActiveProfiles) {
     if (!p.franchise_id) continue;
     totalUsersByFranchise.set(p.franchise_id, (totalUsersByFranchise.get(p.franchise_id) || 0) + 1);
   }
 
-  // Orders per franchise in the period
-  const { data: ordersInPeriod } = await supabase
-    .from("orders")
-    .select("franchise_id, total")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo);
-
   const ordersByFranchise = new Map<string, { count: number; revenue: number }>();
-  for (const o of ordersInPeriod || []) {
+  for (const o of ordersInPeriodRes.data || []) {
     if (!o.franchise_id) continue;
     const existing = ordersByFranchise.get(o.franchise_id) || { count: 0, revenue: 0 };
     existing.count++;
@@ -371,35 +338,21 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
     ordersByFranchise.set(o.franchise_id, existing);
   }
 
-  // Survey responses per franchise in the period
-  const { data: surveyResponsesInPeriod } = await supabase
-    .from("survey_responses")
-    .select("user_id, franchise_id")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo);
-
   const surveysByFranchise = new Map<string, number>();
-  for (const sr of surveyResponsesInPeriod || []) {
+  for (const sr of surveyResponsesRes.data || []) {
     const fId = sr.franchise_id;
     if (!fId) continue;
     surveysByFranchise.set(fId, (surveysByFranchise.get(fId) || 0) + 1);
   }
 
-  // Announcement reads per franchise in the period (join via profiles since announcement_reads has no franchise_id)
-  const { data: announcementReadsInPeriod } = await supabase
-    .from("announcement_reads")
-    .select("user_id")
-    .gte("read_at", dateFrom)
-    .lte("read_at", dateTo);
-
   // Build a user->franchise map from all active profiles already fetched
   const userFranchiseMap = new Map<string, string>();
-  for (const p of allActiveProfiles || []) {
+  for (const p of allActiveProfiles) {
     if (p.franchise_id) userFranchiseMap.set(p.id, p.franchise_id);
   }
 
   const announcementsByFranchise = new Map<string, number>();
-  for (const ar of announcementReadsInPeriod || []) {
+  for (const ar of announcementReadsRes.data || []) {
     const fId = userFranchiseMap.get(ar.user_id);
     if (!fId) continue;
     announcementsByFranchise.set(fId, (announcementsByFranchise.get(fId) || 0) + 1);

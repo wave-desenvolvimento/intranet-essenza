@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getFranchiseBySlug, getFranchiseUsers } from "../actions";
+import { getFranchiseUsers } from "../actions";
 import { getFranchiseStock } from "../stock-actions";
 import { FranchiseDetail } from "./franchise-detail";
 import { StockTab } from "./stock-tab";
@@ -13,28 +13,29 @@ export default async function FranchiseDetailPage({
 }) {
   const { slug } = await params;
   const supabase = await createClient();
-  const franchise = await getFranchiseBySlug(slug);
 
+  // Franchise + auth em paralelo
+  const [franchiseRes, { data: { user } }] = await Promise.all([
+    supabase.from("franchises").select("*").eq("slug", slug).single(),
+    supabase.auth.getUser(),
+  ]);
+
+  const franchise = franchiseRes.data;
   if (!franchise) notFound();
 
-  const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || "";
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("franchise_id, is_franchise_admin")
-    .eq("id", userId)
-    .single();
-
-  const { data: canManageRoles } = await supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "manage" });
-  const isFranchiseAdmin = !!profile?.is_franchise_admin && profile?.franchise_id === franchise.id;
-  const canManageUsers = !!canManageRoles || isFranchiseAdmin;
-
-  const [users, availableRoles, stock] = await Promise.all([
+  // Profile, permissao, users, roles, stock - tudo em paralelo
+  const [profileRes, canManageRolesRes, users, availableRoles, stock] = await Promise.all([
+    supabase.from("profiles").select("franchise_id, is_franchise_admin").eq("id", userId).single(),
+    supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "manage" }),
     getFranchiseUsers(franchise.id),
     getRolesForContext(userId),
     getFranchiseStock(franchise.id),
   ]);
+
+  const isFranchiseAdmin = !!profileRes.data?.is_franchise_admin && profileRes.data?.franchise_id === franchise.id;
+  const canManageUsers = !!canManageRolesRes.data || isFranchiseAdmin;
 
   return (
     <FranchiseDetail
@@ -42,7 +43,7 @@ export default async function FranchiseDetailPage({
       users={users}
       roles={availableRoles}
       canManageUsers={canManageUsers}
-      canManageRoles={!!canManageRoles}
+      canManageRoles={!!canManageRolesRes.data}
       stockTab={<StockTab franchiseId={franchise.id} stock={stock} canEdit={canManageUsers} />}
     />
   );

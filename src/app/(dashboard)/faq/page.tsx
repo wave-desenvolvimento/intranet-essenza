@@ -1,18 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
-import { getFaqItems, getFaqCategories } from "./actions";
 import { FaqManager } from "./faq-manager";
 
 export default async function FaqPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id || "";
 
-  const [items, categories] = await Promise.all([getFaqItems(), getFaqCategories()]);
+  const [itemsRes, categoriesRes, canManageRes] = await Promise.all([
+    supabase.from("faq_items").select("*, category:faq_categories(id, name, slug, icon)").order("sort_order"),
+    supabase.from("faq_categories").select("*").order("sort_order"),
+    supabase.rpc("has_permission", { _user_id: userId, _module: "faq", _action: "create" }),
+  ]);
 
-  const { data: canManage } = await supabase.rpc("has_permission", {
-    _user_id: user?.id || "",
-    _module: "faq",
-    _action: "create",
-  });
-
-  return <FaqManager items={items} categories={categories} canManage={!!canManage} />;
+  return <FaqManager items={itemsRes.data || []} categories={categoriesRes.data || []} canManage={!!canManageRes.data} />;
 }
