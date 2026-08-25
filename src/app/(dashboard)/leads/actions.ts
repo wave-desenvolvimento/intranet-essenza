@@ -39,16 +39,7 @@ export async function getLeads(params?: {
   const supabase = await createClient();
   const { status, origem, search, page = 0 } = params || {};
 
-  // Counts per status (always unfiltered for the cards)
-  const { data: allLeads } = await supabase
-    .from("reseller_leads")
-    .select("status");
-  const counts: Record<string, number> = {};
-  for (const l of allLeads || []) {
-    counts[l.status] = (counts[l.status] || 0) + 1;
-  }
-
-  // Filtered query
+  // Filtered query + counts por status em paralelo
   let query = supabase
     .from("reseller_leads")
     .select("*", { count: "exact" });
@@ -65,12 +56,23 @@ export async function getLeads(params?: {
     .order("created_at", { ascending: false })
     .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-  const { data, count } = await query;
+  const [{ data, count }, cNovo, cEmContato, cConvertido, cDescartado] = await Promise.all([
+    query,
+    supabase.from("reseller_leads").select("*", { count: "exact", head: true }).eq("status", "novo"),
+    supabase.from("reseller_leads").select("*", { count: "exact", head: true }).eq("status", "em_contato"),
+    supabase.from("reseller_leads").select("*", { count: "exact", head: true }).eq("status", "convertido"),
+    supabase.from("reseller_leads").select("*", { count: "exact", head: true }).eq("status", "descartado"),
+  ]);
 
   return {
     data: (data || []) as ResellerLead[],
     total: count || 0,
-    counts,
+    counts: {
+      novo: cNovo.count || 0,
+      em_contato: cEmContato.count || 0,
+      convertido: cConvertido.count || 0,
+      descartado: cDescartado.count || 0,
+    },
   };
 }
 

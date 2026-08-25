@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { getActiveProducts, getMyOrders } from "./actions";
 import { OrderPage } from "./order-page";
 
 export default async function PedidosPage() {
@@ -7,27 +6,44 @@ export default async function PedidosPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || "";
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("franchise_id, franchise:franchises(name, segment)")
-    .eq("id", userId)
-    .single();
+  // Todas as queries em paralelo
+  const [profileRes, productsRes, canManageRes] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("franchise_id, franchise:franchises(name, segment)")
+      .eq("id", userId)
+      .single(),
+    supabase
+      .from("products")
+      .select("*, prices:product_prices(*), product_category:product_categories(id, name)")
+      .eq("active", true)
+      .order("category")
+      .order("name"),
+    supabase.rpc("has_permission", { _user_id: userId, _module: "pedidos", _action: "manage" }),
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawFranchise = profile?.franchise as any;
+  const rawFranchise = profileRes.data?.franchise as any;
   const franchise = Array.isArray(rawFranchise) ? rawFranchise[0] : rawFranchise;
+  const franchiseId = profileRes.data?.franchise_id || "";
 
-  const [products, orders] = await Promise.all([getActiveProducts(), getMyOrders()]);
-  const { data: canManageOrders } = await supabase.rpc("has_permission", { _user_id: userId, _module: "pedidos", _action: "manage" });
+  // Orders da franquia - depende do franchise_id
+  const { data: orders } = franchiseId
+    ? await supabase
+        .from("orders")
+        .select("*, items:order_items(*)")
+        .eq("franchise_id", franchiseId)
+        .order("created_at", { ascending: false })
+    : { data: [] };
 
   return (
     <OrderPage
-      products={products}
-      orders={orders}
+      products={productsRes.data || []}
+      orders={orders || []}
       segment={franchise?.segment || "franquia"}
       franchiseName={franchise?.name || ""}
-      franchiseId={profile?.franchise_id || ""}
-      isAdmin={!!canManageOrders}
+      franchiseId={franchiseId}
+      isAdmin={!!canManageRes.data}
     />
   );
 }
