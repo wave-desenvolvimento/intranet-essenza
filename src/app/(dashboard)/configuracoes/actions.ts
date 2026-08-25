@@ -20,6 +20,7 @@ const MODULE_ACTIONS: Record<string, string[]> = {
   pesquisas:            ["view", "create", "edit", "delete"],
   leads:                ["view", "edit", "delete", "export"],
   biblioteca:           ["view", "download"],
+  suporte:              ["view", "create", "edit", "delete"],
   "universo-da-marca":  ["view", "create", "edit", "download"],
   configuracoes:        ["view", "edit"],
 };
@@ -74,7 +75,7 @@ async function ensureAllPermissions() {
     }
   }
 
-  const { data: existing } = await supabase.from("permissions").select("module, action");
+  const { data: existing } = await supabase.from("permissions").select("id, module, action");
   const existingSet = new Set((existing || []).map((p) => `${p.module}::${p.action}`));
 
   const missing = Object.entries(moduleActions).flatMap(([module, actions]) =>
@@ -83,7 +84,52 @@ async function ensureAllPermissions() {
   );
 
   if (missing.length > 0) {
-    await supabase.from("permissions").insert(missing);
+    const { data: inserted } = await supabase.from("permissions").insert(missing).select("id");
+    // Auto-assign new permissions to Owner role (level 90)
+    if (inserted && inserted.length > 0) {
+      await autoAssignToOwner(supabase, inserted.map((p) => p.id));
+    }
+  }
+
+  // Also ensure Owner has ALL existing permissions (fixes gaps from before this logic)
+  await syncOwnerPermissions(supabase, existing || []);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function autoAssignToOwner(supabase: any, permissionIds: string[]) {
+  const { data: ownerRole } = await supabase
+    .from("roles")
+    .select("id")
+    .eq("level", 90)
+    .single();
+  if (!ownerRole) return;
+
+  await supabase.from("role_permissions").insert(
+    permissionIds.map((pid) => ({ role_id: ownerRole.id, permission_id: pid }))
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncOwnerPermissions(supabase: any, allPermissions: { id: string }[]) {
+  if (allPermissions.length === 0) return;
+
+  const { data: ownerRole } = await supabase
+    .from("roles")
+    .select("id, role_permissions(permission_id)")
+    .eq("level", 90)
+    .single();
+  if (!ownerRole) return;
+
+  const hasSet = new Set(
+    (ownerRole.role_permissions || []).map((rp: { permission_id: string }) => rp.permission_id)
+  );
+  const missingIds = allPermissions.filter((p) => !hasSet.has(p.id)).map((p) => p.id);
+
+  if (missingIds.length > 0) {
+    await supabase.from("role_permissions").upsert(
+      missingIds.map((pid) => ({ role_id: ownerRole.id, permission_id: pid })),
+      { onConflict: "role_id,permission_id", ignoreDuplicates: true }
+    );
   }
 }
 

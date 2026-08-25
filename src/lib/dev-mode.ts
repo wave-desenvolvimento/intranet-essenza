@@ -23,6 +23,7 @@ const MODULE_ACTIONS: Record<string, string[]> = {
   pesquisas:            ["view", "create", "edit", "delete"],
   leads:                ["view", "edit", "delete", "export"],
   biblioteca:           ["view", "download"],
+  suporte:              ["view", "create", "edit", "delete"],
   configuracoes:        ["view", "edit"],
   "universo-da-marca":  ["view", "create", "edit", "download"],
   "material-corporativo": ["view", "create", "edit", "download"],
