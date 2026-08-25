@@ -13,6 +13,7 @@ import { Toaster } from "sonner";
 import { SurveyWidget } from "@/components/layout/survey-widget";
 import { PageViewTracker } from "@/components/layout/page-view-tracker";
 import { IdleLogout } from "@/components/layout/idle-logout";
+import { PageTransition } from "@/components/layout/page-transition";
 import { getEffectivePermissions } from "@/lib/dev-mode-server";
 
 export default async function DashboardLayout({
@@ -92,7 +93,9 @@ export default async function DashboardLayout({
           </div>
         </header>
 
-        <main className="flex-1 p-3 pb-20 md:px-8 md:py-7 md:pb-7">{children}</main>
+        <main className="flex-1 p-3 pb-20 md:px-8 md:py-7 md:pb-7">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
       <MobileNav cmsPages={cmsPages || []} permissionKeys={permissionKeys} />
       <TourAutoStart />

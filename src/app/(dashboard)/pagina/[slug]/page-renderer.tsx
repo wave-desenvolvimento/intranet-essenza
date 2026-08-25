@@ -2150,10 +2150,24 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
 
   return (
     <>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-        <div className="w-full max-w-2xl max-h-[90vh] rounded-xl bg-white shadow-modal overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <motion.div
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="w-full max-w-2xl max-h-[90vh] rounded-xl bg-white shadow-modal overflow-y-auto"
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.97, y: 5 }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
-          <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-ink-100 bg-white">
+          <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-ink-100 bg-white rounded-t-xl">
             <h3 className="text-base font-semibold text-ink-900">{title || "Conteúdo"}</h3>
             <button onClick={onClose} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 transition-colors">
               <X size={18} />
@@ -2260,15 +2274,30 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
               return null;
             })}
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Lightbox from detail */}
       {lightbox && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-8" onClick={() => setLightbox(null)}>
+        <motion.div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          onClick={() => setLightbox(null)}
+        >
           <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={20} /></button>
-          <img src={lightbox} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
-        </div>
+          <motion.img
+            src={lightbox}
+            alt=""
+            className="max-w-full max-h-full object-contain rounded-lg"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </motion.div>
       )}
     </>
   );

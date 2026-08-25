@@ -5,6 +5,7 @@ import {
   Search, X, ZoomIn, Download, Eye, FileText, File, Image as ImageIcon,
   Filter, Grid3X3, List, Play, Video,
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { downloadFile, downloadFilesAsZip } from "@/lib/download";
 import { ImageFormatDownload, type ImageVariant } from "@/components/ui/image-format-download";
@@ -399,15 +400,40 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
       )}
 
       {/* Lightbox */}
+      <AnimatePresence>
       {lightbox && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-8" onClick={() => setLightbox(null)}>
+        <motion.div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          onClick={() => setLightbox(null)}
+        >
           <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors">
             <X size={20} />
           </button>
           {lightbox.type === "video" ? (
-            <video src={lightbox.url} controls autoPlay className="max-w-full max-h-full rounded-lg" onClick={(e) => e.stopPropagation()} />
+            <motion.video
+              src={lightbox.url}
+              controls
+              autoPlay
+              className="max-w-full max-h-full rounded-lg"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+            />
           ) : (
-            <img src={lightbox.url} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+            <motion.img
+              src={lightbox.url}
+              alt=""
+              className="max-w-full max-h-full object-contain rounded-lg"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+            />
           )}
           {canDownload && (
             <div className="absolute bottom-4 right-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -416,8 +442,9 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
               </button>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
