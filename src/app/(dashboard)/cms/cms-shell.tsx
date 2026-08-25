@@ -98,23 +98,30 @@ export function CmsShell({ collections, pages, folderCardStyle: initialStyle }: 
 }
 
 function FolderPreview({ style, active }: { style: "default" | "folder"; active: boolean }) {
+  const color = "#5C5441";
   return (
     <div className={cn("flex-1 rounded-lg border-2 p-3 transition-colors", active ? "border-brand-olive bg-brand-olive-soft/10" : "border-ink-100")}>
       <p className="text-[10px] font-medium text-ink-500 mb-2">{style === "default" ? "Padrão" : "Formato pasta"}</p>
       {style === "default" ? (
-        <div className="rounded-lg border border-ink-100 bg-white overflow-hidden">
-          <div className="aspect-[4/3] bg-[#5C5441]" />
+        <div className="rounded-lg border border-ink-100 bg-white overflow-hidden shadow-sm">
+          <div className="aspect-[4/3] bg-[#5C5441] flex items-center justify-center">
+            <span className="text-white/30 text-[8px] font-bold tracking-wider">ESSENZA</span>
+          </div>
           <div className="px-2 py-1.5">
-            <div className="h-2 w-12 rounded bg-ink-100" />
+            <div className="h-1.5 w-10 rounded bg-ink-100" />
           </div>
         </div>
       ) : (
-        <div className="relative">
-          <div className="absolute top-0 left-2 w-10 h-3 rounded-t-md bg-[#5C5441]" />
-          <div className="mt-2 rounded-lg border border-ink-100 bg-white overflow-hidden">
-            <div className="aspect-[4/3] bg-[#5C5441] rounded-tr-lg" />
-            <div className="px-2 py-1.5">
-              <div className="h-2 w-12 rounded bg-ink-100" />
+        <div className="relative pt-2">
+          <svg viewBox="0 0 120 20" className="h-3 w-[45%] absolute top-0 left-0" preserveAspectRatio="none">
+            <path d="M0 20 L0 6 Q0 0 6 0 L100 0 Q108 0 112 6 L120 20 Z" fill={color} />
+          </svg>
+          <div className="rounded-b-xl rounded-tr-xl overflow-hidden shadow-sm" style={{ backgroundColor: color }}>
+            <div className="aspect-[5/3] flex items-center justify-center">
+              <span className="text-white/25 text-[8px] font-bold tracking-wider">ESSENZA</span>
+            </div>
+            <div className="px-2 py-1.5" style={{ backgroundColor: "rgba(255,255,255,0.15)" }}>
+              <div className="h-1.5 w-10 rounded bg-white/30" />
             </div>
           </div>
         </div>

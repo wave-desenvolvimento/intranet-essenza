@@ -17,9 +17,9 @@ export async function setAppSetting(key: string, value: unknown) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("app_settings")
-    .upsert({ key, value: JSON.stringify(value) }, { onConflict: "key" });
+    .upsert({ key, value }, { onConflict: "key" });
   if (error) return { error: error.message };
-  revalidatePath("/cms");
-  revalidatePath("/pagina");
+  revalidatePath("/cms", "layout");
+  revalidatePath("/pagina", "layout");
   return { success: true };
 }
