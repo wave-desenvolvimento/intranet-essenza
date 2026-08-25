@@ -165,93 +165,103 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
 
   const visibleStats = statCards.filter((s) => s.visible);
 
+  // Texto contextual dinâmico
+  const contextParts: string[] = [];
+  if (orderStats && orderStats.pendingCount > 0) {
+    contextParts.push(`${orderStats.pendingCount === 1 ? "Um pedido aguarda" : `${orderStats.pendingCount} pedidos aguardam`} sua aprovação`);
+  }
+  if (announcements.length > 0) {
+    contextParts.push("você tem comunicados novos");
+  }
+  if (recentMaterials.length > 0) {
+    contextParts.push(`${recentMaterials.length} ${recentMaterials.length === 1 ? "material novo" : "materiais novos"}`);
+  }
+  const contextText = contextParts.length > 0
+    ? contextParts.join(" e ") + "."
+    : "Confira as novidades e acesse seus materiais.";
+
+  // Data/hora formatada
+  const now = new Date();
+  const weekday = now.toLocaleDateString("pt-BR", { weekday: "long" });
+  const dateStr = now.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
+  const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h");
+
   return (
-    <div className="flex flex-col gap-4 md:gap-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-ink-900">
-            {greeting}, {firstName}
-          </h1>
-          <p className="text-xs md:text-sm text-ink-500 mt-0.5">
-            Confira as novidades e acesse seus materiais.
-          </p>
+    <div className="flex flex-col gap-6 md:gap-8">
+      {/* Hero */}
+      <div>
+        <p className="text-[11px] font-medium text-ink-400 uppercase tracking-wider mb-2">
+          {weekday}, {dateStr} - {timeStr}
+        </p>
+        <h1 className="text-2xl md:text-3xl font-semibold text-ink-900 leading-tight">
+          {greeting},<br />{firstName}.
+        </h1>
+        <p className="text-sm text-ink-500 mt-2 max-w-lg leading-relaxed">
+          {contextText.charAt(0).toUpperCase() + contextText.slice(1)}
+        </p>
+        <div className="flex items-center gap-3 mt-4">
+          {showMaterials && (
+            <Link href="/pagina/material-corporativo" className="rounded-lg border border-ink-200 px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors">
+              Ver materiais
+            </Link>
+          )}
+          {showOrders && (
+            <Link href="/novo-pedido" className="rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors flex items-center gap-2">
+              Novo pedido <ArrowRight size={14} />
+            </Link>
+          )}
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Row - divisores verticais */}
       {visibleStats.length > 0 && (
-        <div className={cn("grid gap-3", visibleStats.length <= 2 ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-" + Math.min(visibleStats.length, 5))}>
-          {visibleStats.map((s) => (
-            <div key={s.label} className="rounded-xl border border-ink-100 bg-white px-4 py-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-ink-500 truncate">{s.label}</span>
-                <s.icon size={14} className={s.positive ? "text-brand-olive" : "text-warning"} />
-              </div>
-              <p className="text-lg font-semibold text-ink-900 truncate">{s.value}</p>
-              <p className="text-[10px] text-ink-400 truncate">{s.change}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Announcements */}
-      {announcements.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {announcements.map((a) => {
-            const isUrgent = a.priority === "urgent";
-            const isPinned = a.priority === "pinned";
-            const PriorityIcon = isPinned ? Pin : isUrgent ? AlertTriangle : Megaphone;
-            const borderColor = isUrgent ? "border-danger/40 ring-1 ring-danger/10" : isPinned ? "border-brand-olive/40 ring-1 ring-brand-olive/10" : "border-ink-100";
-            const accentBg = isUrgent ? "bg-danger" : isPinned ? "bg-brand-olive" : "bg-brand-olive";
-            const bodyText = a.body.replace(/<[^>]*>/g, "").trim();
-
-            return (
-              <Link key={a.id} href="/comunicados" className={cn("group relative rounded-2xl border bg-white overflow-hidden hover:shadow-md transition-all", borderColor)}>
-                {/* Accent bar */}
-                <div className={cn("absolute top-0 left-0 bottom-0 w-1 rounded-l-2xl", accentBg)} />
-
-                {a.banner_url ? (
-                  <div className="flex flex-col sm:flex-row">
-                    <div className="sm:w-48 sm:shrink-0 h-40 sm:h-auto overflow-hidden">
-                      <img src={a.banner_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    </div>
-                    <div className="flex-1 min-w-0 p-4 pl-5 sm:pl-4 flex flex-col justify-center">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <PriorityIcon size={14} className={isUrgent ? "text-danger" : "text-brand-olive"} />
-                        <span className="text-[10px] font-medium text-ink-400 uppercase tracking-wide">
-                          {isUrgent ? "Urgente" : isPinned ? "Fixado" : "Comunicado"}
-                        </span>
-                        <span className="text-[10px] text-ink-300 ml-auto">{new Date(a.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
-                      </div>
-                      <h3 className="text-base font-semibold text-ink-900 group-hover:text-brand-olive transition-colors leading-snug">{a.title}</h3>
-                      {bodyText && <p className="text-sm text-ink-500 line-clamp-2 mt-1.5 leading-relaxed">{bodyText.slice(0, 200)}</p>}
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-olive mt-3 group-hover:gap-2 transition-all">
-                        Ler mais <ArrowRight size={12} />
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 pl-5">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <PriorityIcon size={14} className={isUrgent ? "text-danger" : "text-brand-olive"} />
-                      <span className="text-[10px] font-medium text-ink-400 uppercase tracking-wide">
-                        {isUrgent ? "Urgente" : isPinned ? "Fixado" : "Comunicado"}
-                      </span>
-                      <span className="text-[10px] text-ink-300 ml-auto">{new Date(a.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
-                    </div>
-                    <h3 className="text-base font-semibold text-ink-900 group-hover:text-brand-olive transition-colors leading-snug">{a.title}</h3>
-                    {bodyText && <p className="text-sm text-ink-500 line-clamp-2 mt-1.5 leading-relaxed">{bodyText.slice(0, 200)}</p>}
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-olive mt-3 group-hover:gap-2 transition-all">
-                      Ler mais <ArrowRight size={12} />
-                    </span>
-                  </div>
+        <div className="rounded-xl border border-ink-100 bg-white overflow-hidden">
+          <div className="grid divide-x divide-ink-100" style={{ gridTemplateColumns: `repeat(${Math.min(visibleStats.length, 5)}, 1fr)` }}>
+            {visibleStats.map((s) => (
+              <div key={s.label} className="px-5 py-4">
+                <p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-2">{s.label}</p>
+                <p className="text-2xl md:text-3xl font-semibold text-ink-900">{s.value}</p>
+                <p className="text-xs text-ink-400 mt-1">{s.change}</p>
+                {s.label === "Pedidos pendentes" && orderStats && orderStats.pendingCount > 0 && (
+                  <Link href={isOrderAdmin ? "/gestao-de-pedidos" : "/novo-pedido"} className="inline-flex items-center gap-1 text-xs font-medium text-brand-olive mt-2 hover:gap-2 transition-all">
+                    Aprovar agora <ArrowRight size={11} />
+                  </Link>
                 )}
-              </Link>
-            );
-          })}
+              </div>
+            ))}
+          </div>
         </div>
       )}
+
+      {/* Comunicado em destaque - full width, fundo brand */}
+      {announcements.length > 0 && (() => {
+        const a = announcements[0];
+        const bodyText = a.body.replace(/<[^>]*>/g, "").trim();
+        return (
+          <Link href="/comunicados" className="group block rounded-2xl bg-brand-olive overflow-hidden hover:shadow-lg transition-all">
+            <div className="flex flex-col sm:flex-row">
+              {a.banner_url && (
+                <div className="sm:w-[40%] sm:shrink-0 h-48 sm:h-auto overflow-hidden">
+                  <img src={a.banner_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0 p-6 md:p-8 flex flex-col justify-center">
+                <div className="flex items-center gap-2 mb-3">
+                  <Megaphone size={14} className="text-white/60" />
+                  <span className="text-[10px] font-semibold text-white/60 uppercase tracking-wider">
+                    Comunicado - {new Date(a.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+                  </span>
+                </div>
+                <h3 className="text-xl md:text-2xl font-semibold text-white leading-snug">{a.title}</h3>
+                {bodyText && <p className="text-sm text-white/70 line-clamp-2 mt-2 leading-relaxed max-w-lg">{bodyText.slice(0, 200)}</p>}
+                <span className="inline-flex items-center gap-2 text-sm font-semibold text-white mt-4 uppercase tracking-wide group-hover:gap-3 transition-all">
+                  Ler comunicado <ArrowRight size={14} />
+                </span>
+              </div>
+            </div>
+          </Link>
+        );
+      })()}
 
       {/* Banners Carousel (from CMS) */}
       {showCampaigns && banners.length > 0 && (
