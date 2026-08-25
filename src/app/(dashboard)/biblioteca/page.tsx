@@ -8,66 +8,42 @@ export default async function BibliotecaPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Check permission
-  const { data: canView } = await supabase.rpc("has_permission", { _user_id: user.id, _module: "biblioteca", _action: "view" });
-  if (!canView) redirect("/inicio");
+  // Permissoes + media fields em paralelo
+  const [canViewRes, canDownloadRes, mediaFieldsRes] = await Promise.all([
+    supabase.rpc("has_permission", { _user_id: user.id, _module: "biblioteca", _action: "view" }),
+    supabase.rpc("has_permission", { _user_id: user.id, _module: "biblioteca", _action: "download" }),
+    supabase.from("cms_fields").select("id, slug, name, field_type, collection_id").in("field_type", ["image", "image_array", "image_variants", "file", "file_array", "video_array"]).order("sort_order"),
+  ]);
 
-  const { data: canDownload } = await supabase.rpc("has_permission", { _user_id: user.id, _module: "biblioteca", _action: "download" });
-
-  // Get all collections that have media fields
-  const mediaTypes = ["image", "image_array", "image_variants", "file", "file_array", "video_array"];
-
-  const { data: mediaFields } = await supabase
-    .from("cms_fields")
-    .select("id, slug, name, field_type, collection_id")
-    .in("field_type", mediaTypes)
-    .order("sort_order");
+  if (!canViewRes.data) redirect("/inicio");
+  const canDownload = !!canDownloadRes.data;
+  const mediaFields = mediaFieldsRes.data;
 
   if (!mediaFields || mediaFields.length === 0) {
-    return <BibliotecaContent assets={[]} canDownload={!!canDownload} />;
+    return <BibliotecaContent assets={[]} canDownload={canDownload} />;
   }
 
   const collectionIds = [...new Set(mediaFields.map((f) => f.collection_id))];
+  const now = new Date().toISOString();
 
-  // Get collections info
-  const { data: collections } = await supabase
-    .from("cms_collections")
-    .select("id, name, slug")
-    .in("id", collectionIds);
+  // Collections, title fields, items, page links - tudo em paralelo
+  const [collectionsRes, titleFieldsRes, itemsRes, pageLinksRes] = await Promise.all([
+    supabase.from("cms_collections").select("id, name, slug").in("id", collectionIds),
+    supabase.from("cms_fields").select("collection_id, slug").in("collection_id", collectionIds).eq("field_type", "text").order("sort_order"),
+    supabase.from("cms_items").select("id, data, collection_id, created_at, published_at, expires_at, tags").in("collection_id", collectionIds).eq("status", "published").or(`expires_at.is.null,expires_at.gte.${now}`).or(`published_at.is.null,published_at.lte.${now}`).order("created_at", { ascending: false }).limit(500),
+    supabase.from("cms_page_collections").select("collection_id, page:cms_pages(slug)").in("collection_id", collectionIds).eq("role", "main"),
+  ]);
 
-  const colMap = new Map((collections || []).map((c) => [c.id, c]));
-
-  // Get all title fields for each collection
-  const { data: titleFields } = await supabase
-    .from("cms_fields")
-    .select("collection_id, slug")
-    .in("collection_id", collectionIds)
-    .eq("field_type", "text")
-    .order("sort_order");
+  const colMap = new Map((collectionsRes.data || []).map((c) => [c.id, c]));
 
   const titleFieldMap = new Map<string, string>();
-  for (const tf of titleFields || []) {
+  for (const tf of titleFieldsRes.data || []) {
     if (!titleFieldMap.has(tf.collection_id)) titleFieldMap.set(tf.collection_id, tf.slug);
   }
 
-  // Get all published and active items from these collections
-  const now = new Date().toISOString();
-  const { data: items } = await supabase
-    .from("cms_items")
-    .select("id, data, collection_id, created_at, published_at, expires_at, tags")
-    .in("collection_id", collectionIds)
-    .eq("status", "published")
-    .or(`expires_at.is.null,expires_at.gte.${now}`)
-    .or(`published_at.is.null,published_at.lte.${now}`)
-    .order("created_at", { ascending: false })
-    .limit(500);
+  const items = itemsRes.data;
 
-  // Get page slugs for collections
-  const { data: pageLinks } = await supabase
-    .from("cms_page_collections")
-    .select("collection_id, page:cms_pages(slug)")
-    .in("collection_id", collectionIds)
-    .eq("role", "main");
+  const pageLinks = pageLinksRes.data;
 
   const pageMap = new Map((pageLinks || []).map((pl) => {
     const page = Array.isArray(pl.page) ? pl.page[0] : pl.page;

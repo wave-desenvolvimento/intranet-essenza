@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { getTemplates, getPublishedTemplates } from "./actions";
 import { TemplatesModule } from "./templates-module";
 
 export default async function TemplatesPage({ searchParams }: { searchParams: Promise<{ preview?: string }> }) {
@@ -8,33 +7,36 @@ export default async function TemplatesPage({ searchParams }: { searchParams: Pr
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || "";
 
-  // Check permissions
-  const { data: canView } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "view" });
-  const { data: canCreate } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "create" });
-  const { data: canEdit } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "edit" });
-  const { data: canDelete } = await supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "delete" });
+  // Permissoes + profile em paralelo
+  const [canViewRes, canCreateRes, canEditRes, canDeleteRes, profileRes] = await Promise.all([
+    supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "view" }),
+    supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "create" }),
+    supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "edit" }),
+    supabase.rpc("has_permission", { _user_id: userId, _module: "templates", _action: "delete" }),
+    supabase.from("profiles").select("franchise:franchises(*)").eq("id", userId).single(),
+  ]);
 
-  // Anyone with view permission sees all published; create/edit also sees drafts
-  const canManage = !!(canCreate || canEdit);
-  const templates = canManage ? await getTemplates() : canView ? await getPublishedTemplates() : [];
+  const canManage = !!(canCreateRes.data || canEditRes.data);
 
-  // Get franchise data for rendering
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("franchise:franchises(*)")
-    .eq("id", userId)
-    .single();
+  // Templates: query direta sem server action
+  const templatesQuery = canManage
+    ? supabase.from("banner_templates").select("*").order("sort_order")
+    : canViewRes.data
+      ? supabase.from("banner_templates").select("*").eq("status", "published").order("sort_order")
+      : null;
+
+  const templates = templatesQuery ? (await templatesQuery).data || [] : [];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawFranchise = profile?.franchise as any;
+  const rawFranchise = profileRes.data?.franchise as any;
   const franchise = Array.isArray(rawFranchise) ? rawFranchise[0] : rawFranchise;
 
   return (
     <TemplatesModule
       templates={templates}
-      canCreate={!!canCreate}
-      canEdit={!!canEdit}
-      canDelete={!!canDelete}
+      canCreate={!!canCreateRes.data}
+      canEdit={!!canEditRes.data}
+      canDelete={!!canDeleteRes.data}
       franchiseData={franchise || null}
       initialPreviewId={preview || null}
     />

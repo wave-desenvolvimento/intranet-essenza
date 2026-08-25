@@ -20,24 +20,21 @@ export default async function CourseModulePage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) notFound();
 
-  // Permission check
-  const { data: perms } = await supabase.rpc("get_user_permissions", { _user_id: user.id });
-  const realPermKeys = (perms || []).map((p: { module: string; action: string }) => `${p.module}.${p.action}`);
+  // Permissoes + modulo + sidebar em paralelo
+  const [permsRes, moduleRes, allModulesRes] = await Promise.all([
+    supabase.rpc("get_user_permissions", { _user_id: user.id }),
+    supabase.from("course_modules").select("*").eq("slug", moduleSlug).eq("status", "published").single(),
+    supabase.from("course_modules").select("id, title, slug, course_videos(id, title, duration_seconds, sort_order, status)").eq("status", "published").order("sort_order"),
+  ]);
+
+  const realPermKeys = (permsRes.data || []).map((p: { module: string; action: string }) => `${p.module}.${p.action}`);
   const effectivePerms = await getEffectivePermissions(realPermKeys);
-  const hasAccess = effectivePerms.some((k) => k.startsWith("universo-da-marca."));
-  if (!hasAccess) notFound();
+  if (!effectivePerms.some((k) => k.startsWith("universo-da-marca."))) notFound();
 
-  // Fetch current module
-  const { data: currentModule } = await supabase
-    .from("course_modules")
-    .select("*")
-    .eq("slug", moduleSlug)
-    .eq("status", "published")
-    .single();
-
+  const currentModule = moduleRes.data;
   if (!currentModule) notFound();
 
-  // Fetch published videos for current module
+  // Videos do modulo atual (depende do module.id)
   const { data: currentVideos } = await supabase
     .from("course_videos")
     .select("id, title, description, source_type, thumbnail_url, duration_seconds, sort_order, status")
@@ -45,12 +42,7 @@ export default async function CourseModulePage({
     .eq("status", "published")
     .order("sort_order");
 
-  // Fetch ALL published modules with their videos for the sidebar
-  const { data: allModules } = await supabase
-    .from("course_modules")
-    .select("id, title, slug, course_videos(id, title, duration_seconds, sort_order, status)")
-    .eq("status", "published")
-    .order("sort_order");
+  const allModules = allModulesRes.data;
 
   const sidebarModules: SidebarModule[] = (allModules || []).map((m) => ({
     id: m.id,

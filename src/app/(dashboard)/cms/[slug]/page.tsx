@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getCollection, getFields, getItems } from "../actions";
+import { createClient } from "@/lib/supabase/server";
 import { CollectionDetail } from "./collection-detail";
 
 export default async function CollectionDetailPage({
@@ -8,14 +8,20 @@ export default async function CollectionDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const collection = await getCollection(slug);
+  const supabase = await createClient();
+
+  const { data: collection } = await supabase
+    .from("cms_collections")
+    .select("*")
+    .eq("slug", slug)
+    .single();
 
   if (!collection) notFound();
 
-  const [fields, items] = await Promise.all([
-    getFields(collection.id),
-    getItems(collection.id),
+  const [fieldsRes, itemsRes] = await Promise.all([
+    supabase.from("cms_fields").select("*").eq("collection_id", collection.id).order("sort_order"),
+    supabase.from("cms_items").select("*").eq("collection_id", collection.id).order("sort_order"),
   ]);
 
-  return <CollectionDetail collection={collection} fields={fields} items={items} />;
+  return <CollectionDetail collection={collection} fields={fieldsRes.data || []} items={itemsRes.data || []} />;
 }
