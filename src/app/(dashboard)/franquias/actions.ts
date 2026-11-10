@@ -72,6 +72,7 @@ function extractFranchiseFields(formData: FormData) {
     name: formData.get("name") as string,
     city: formData.get("city") as string,
     segment: formData.get("segment") as string || "franquia",
+    store_type: formData.get("store_type") === "quiosque" ? "quiosque" : "loja",
     phone: formData.get("phone") as string || null,
     whatsapp: formData.get("whatsapp") as string || null,
     email: formData.get("email") as string || null,

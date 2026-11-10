@@ -28,6 +28,7 @@ interface Franchise {
   state: string | null;
   status: string;
   segment: string;
+  store_type: string;
   phone: string | null;
   whatsapp: string | null;
   email: string | null;
@@ -79,6 +80,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [segment, setSegment] = useState("franquia");
+  const [storeType, setStoreType] = useState("loja");
   const [status, setStatus] = useState("active");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -114,7 +116,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
 
   function openCreate() {
     setEditing(null);
-    setName(""); setCity(""); setState(""); setSegment("franquia"); setStatus("active");
+    setName(""); setCity(""); setState(""); setSegment("franquia"); setStoreType("loja"); setStatus("active");
     setPhone(""); setWhatsapp(""); setEmail(""); setInstagram(""); setFacebook("");
     setTiktok(""); setWebsite(""); setLogoUrl(""); setAddress(""); setNeighborhood("");
     setCep(""); setCnpj(""); setOpeningHours(""); setManagerName(""); setSellerId("");
@@ -124,7 +126,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
 
   function openEdit(f: Franchise) {
     setEditing(f);
-    setName(f.name); setCity(f.city || ""); setState(f.state || ""); setSegment(f.segment); setStatus(f.status);
+    setName(f.name); setCity(f.city || ""); setState(f.state || ""); setSegment(f.segment); setStoreType(f.store_type || "loja"); setStatus(f.status);
     setPhone(f.phone || ""); setWhatsapp(f.whatsapp || ""); setEmail(f.email || "");
     setInstagram(f.instagram || ""); setFacebook(f.facebook || ""); setTiktok(f.tiktok || "");
     setWebsite(f.website || ""); setLogoUrl(f.logo_url || ""); setAddress(f.address || "");
@@ -140,7 +142,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
   function buildFormData() {
     const fd = new FormData();
     fd.set("name", name); fd.set("city", city); fd.set("state", state);
-    fd.set("segment", segment); fd.set("status", status);
+    fd.set("segment", segment); fd.set("store_type", storeType); fd.set("status", status);
     fd.set("phone", phone); fd.set("whatsapp", whatsapp); fd.set("email", email);
     fd.set("instagram", instagram); fd.set("facebook", facebook); fd.set("tiktok", tiktok);
     fd.set("website", website); fd.set("logo_url", logoUrl); fd.set("address", address);
@@ -347,6 +349,10 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Segmento</label>
                 <CustomSelect options={[{ value: "franquia", label: "Franquia" }, { value: "multimarca_pdv", label: "Multimarca / PDV" }]} value={segment} onChange={setSegment} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-ink-700 mb-1 block">Tipo</label>
+                <CustomSelect options={[{ value: "loja", label: "Loja" }, { value: "quiosque", label: "Quiosque" }]} value={storeType} onChange={setStoreType} />
               </div>
               {editing && (
                 <div>
