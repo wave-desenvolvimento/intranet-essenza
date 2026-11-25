@@ -59,10 +59,14 @@ export function CoursePlayerView({
   module,
   videos,
   sidebarModules,
+  sequential,
+  backHref,
 }: {
   module: ModuleData;
   videos: VideoItem[];
   sidebarModules: SidebarModule[];
+  sequential: boolean;
+  backHref: string;
 }) {
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -76,6 +80,7 @@ export function CoursePlayerView({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxPctRef = useRef(0);
+  const maxTimeRef = useRef(0);
   const ytPlayingRef = useRef(false);
 
   const activeVideo = videos[activeIndex];
@@ -115,7 +120,7 @@ export function CoursePlayerView({
   // Load progress
   useEffect(() => {
     async function load() {
-      const records = await getLessonProgress(module.id);
+      const records = await getLessonProgress(sidebarModules.map((m) => m.id));
       const map: Record<string, number> = {};
       const completed = new Set<string>();
       for (const r of records) {
@@ -127,16 +132,18 @@ export function CoursePlayerView({
       setLoadingProgress(false);
     }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [module.id]);
 
   // Fetch video URL
   useEffect(() => {
     if (!activeVideo || loadingProgress) return;
     setActiveUrl("");
+    maxTimeRef.current = 0;
     setLoadingUrl(true);
     let cancelled = false;
     async function fetchUrl() {
-      const res = await getVideoUrl(activeVideo.id, module.id);
+      const res = await getVideoUrl(activeVideo.id);
       if (cancelled) return;
       if ("url" in res) setActiveUrl(res.url);
       else {
@@ -212,12 +219,13 @@ export function CoursePlayerView({
   function completeLesson(videoId: string) {
     maxPctRef.current = 100;
     setCurrentPct(100);
-    saveProgress(videoId, 100);
-    markCompleted(videoId);
+    // espera gravar: a proxima aula so libera no servidor depois disso
+    saveProgress(videoId, 100).then(() => markCompleted(videoId));
   }
   function handleNativeTimeUpdate(e: React.SyntheticEvent<HTMLVideoElement>) {
     const vid = e.currentTarget;
-    if (vid.duration > 0) {
+    if (vid.duration > 0 && !vid.seeking) {
+      maxTimeRef.current = Math.max(maxTimeRef.current, vid.currentTime);
       const pct = Math.round((vid.currentTime / vid.duration) * 100);
       if (pct > maxPctRef.current) maxPctRef.current = pct;
       setCurrentPct(maxPctRef.current);
@@ -226,18 +234,28 @@ export function CoursePlayerView({
       }
     }
   }
+  // Sequencia obrigatoria: nao deixa avancar alem do ponto ja assistido
+  function handleNativeSeeking(e: React.SyntheticEvent<HTMLVideoElement>) {
+    const vid = e.currentTarget;
+    if (!sequential || !activeVideo || completedSet.has(activeVideo.id) || !vid.duration) return;
+    const limit = Math.max(maxTimeRef.current, (maxPctRef.current / 100) * vid.duration);
+    if (vid.currentTime > limit + 1) vid.currentTime = limit;
+  }
   function handleNativeEnded() { if (activeVideo) completeLesson(activeVideo.id); }
   async function saveProgress(videoId: string, pct: number) {
     setProgressMap((prev) => ({ ...prev, [videoId]: Math.max(prev[videoId] || 0, pct) }));
-    await updateLessonProgress(videoId, module.id, pct);
+    const res = await updateLessonProgress(videoId, pct);
+    if (res.error) toast.error("Nao foi possivel salvar seu progresso.");
   }
   function markCompleted(videoId: string) {
     setCompletedSet((prev) => new Set([...prev, videoId]));
     if (activeIndex < videos.length - 1) setTimeout(() => setActiveIndex(activeIndex + 1), 1500);
   }
   function isLessonUnlocked(index: number): boolean {
-    if (index === 0) return true;
-    return completedSet.has(videos[index - 1].id);
+    if (!sequential) return true;
+    const ordered = sidebarModules.flatMap((m) => m.videos);
+    const position = ordered.findIndex((v) => v.id === videos[index].id);
+    return ordered.slice(0, position).every((v) => completedSet.has(v.id));
   }
   function handleLessonClick(index: number) {
     if (!isLessonUnlocked(index)) { toast.error("Conclua a aula anterior para desbloquear esta."); return; }
@@ -250,7 +268,7 @@ export function CoursePlayerView({
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Link href="/cursos" className="rounded-lg p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors">
+          <Link href={backHref} className="rounded-lg p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors">
             <ArrowLeft size={18} />
           </Link>
           <h1 className="text-lg font-semibold text-ink-900">{module.title}</h1>
@@ -264,7 +282,7 @@ export function CoursePlayerView({
     <div className="flex flex-col h-[calc(100vh-64px)] -m-6">
       {/* Top bar */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-ink-100 bg-white shrink-0">
-        <Link href="/cursos" className="rounded-lg p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors">
+        <Link href={backHref} className="rounded-lg p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors">
           <ArrowLeft size={16} />
         </Link>
         <div className="flex-1 min-w-0">
@@ -308,6 +326,7 @@ export function CoursePlayerView({
                   className="absolute inset-0 w-full h-full object-contain"
                   controls
                   onTimeUpdate={handleNativeTimeUpdate}
+                  onSeeking={handleNativeSeeking}
                   onEnded={handleNativeEnded}
                   onContextMenu={(e) => e.preventDefault()}
                   controlsList="nodownload noplaybackrate nofullscreen"
@@ -359,7 +378,7 @@ export function CoursePlayerView({
               onToggleSection={toggleSection}
               onLessonClick={handleLessonClick}
               isLessonUnlocked={isLessonUnlocked}
-              onNavigateModule={(slug) => router.push(`/cursos/${slug}`)}
+              onNavigateModule={(slug) => router.push(`${backHref}/${slug}`)}
             />
           </div>
         </div>
@@ -382,7 +401,7 @@ export function CoursePlayerView({
               onToggleSection={toggleSection}
               onLessonClick={handleLessonClick}
               isLessonUnlocked={isLessonUnlocked}
-              onNavigateModule={(slug) => router.push(`/cursos/${slug}`)}
+              onNavigateModule={(slug) => router.push(`${backHref}/${slug}`)}
             />
           </div>
         )}

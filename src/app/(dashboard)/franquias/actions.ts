@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { requireAuth, requirePermission } from "@/lib/permissions";
+import { requireAuth, requirePermission, getUserScope } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
 export async function getFranchises() {
@@ -44,7 +44,9 @@ export async function getFranchiseBySlug(slug: string) {
 }
 
 export async function getFranchiseUsers(franchiseId: string) {
-  await requireAuth();
+  const { user } = await requireAuth();
+  const scope = await getUserScope(user.id);
+  if (!scope.isStaff && scope.franchiseId !== franchiseId) return [];
   const supabase = await createClient();
   const { data: profiles } = await supabase
     .from("profiles")

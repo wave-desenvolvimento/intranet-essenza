@@ -9,6 +9,7 @@ import {
   UserCheck,
   UserX,
   Building2,
+  GraduationCap,
 } from "lucide-react";
 import { toggleUserStatus, deleteUser } from "./actions";
 import { cn } from "@/lib/utils";
@@ -41,7 +42,6 @@ interface UserProfile {
 interface Props {
   users: UserProfile[];
   franchises: Franchise[];
-  roles: Role[];
   currentUserId: string;
 }
 
@@ -233,6 +233,14 @@ export function UsersManager({ users, franchises, currentUserId }: Props) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/usuarios/${user.id}`}
+                          className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive hover:bg-ink-100 transition-colors"
+                          aria-label="Ver treinamentos"
+                          title="Ver treinamentos"
+                        >
+                          <GraduationCap size={14} />
+                        </Link>
                         {user.franchise && (
                           <Link
                             href={`/franquias/${user.franchise.slug}`}

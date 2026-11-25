@@ -15,10 +15,12 @@ function formatDurationHuman(seconds: number): string {
 }
 
 export function CourseCatalog({
+  basePath,
   data,
   userName,
   userAvatar,
 }: {
+  basePath: string;
   data: CourseCatalogData;
   userName: string;
   userAvatar: string;
@@ -109,7 +111,7 @@ export function CourseCatalog({
             {continueWatching.watched_pct > 0 ? "Retomar de onde parou" : "Iniciar proximo curso"}
           </h2>
           <Link
-            href={`/cursos/${continueWatching.module_slug}`}
+            href={`${basePath}/${continueWatching.module_slug}`}
             className="group flex items-center gap-4 rounded-xl border border-ink-100 bg-white p-4 hover:border-brand-olive/30 hover:shadow-sm transition-all"
           >
             {/* Thumbnail */}
@@ -168,7 +170,7 @@ export function CourseCatalog({
               return (
                 <Link
                   key={mod.id}
-                  href={`/cursos/${mod.slug}`}
+                  href={`${basePath}/${mod.slug}`}
                   className="group flex flex-col rounded-xl border border-ink-100 bg-white overflow-hidden hover:border-ink-200 hover:shadow-sm transition-all"
                 >
                   {/* Cover */}

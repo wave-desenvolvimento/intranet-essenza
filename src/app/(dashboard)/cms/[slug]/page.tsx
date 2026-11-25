@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permissions";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CollectionDetail } from "./collection-detail";
@@ -7,6 +8,8 @@ export default async function CollectionDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const p = await requirePermission("cms", "view");
+  if (p.error) notFound();
   const { slug } = await params;
   const supabase = await createClient();
 

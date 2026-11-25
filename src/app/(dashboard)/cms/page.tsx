@@ -1,7 +1,11 @@
+import { requirePermission } from "@/lib/permissions";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CmsShell } from "./cms-shell";
 
 export default async function CmsPage() {
+  const p = await requirePermission("cms", "view");
+  if (p.error) notFound();
   const supabase = await createClient();
 
   const [collectionsRes, pagesRes, folderStyleRes] = await Promise.all([

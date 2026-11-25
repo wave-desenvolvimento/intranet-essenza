@@ -1,7 +1,11 @@
+import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { OrderPage } from "./order-page";
 
 export default async function PedidosPage() {
+  const p = await requirePermission("pedidos", "view");
+  if (p.error) notFound();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || "";

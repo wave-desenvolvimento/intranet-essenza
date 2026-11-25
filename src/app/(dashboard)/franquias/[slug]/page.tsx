@@ -4,7 +4,7 @@ import { getFranchiseUsers } from "../actions";
 import { getFranchiseStock } from "../stock-actions";
 import { FranchiseDetail } from "./franchise-detail";
 import { StockTab } from "./stock-tab";
-import { getRolesForContext } from "@/lib/permissions";
+import { getRolesForContext, getUserScope, requirePermission } from "@/lib/permissions";
 
 export default async function FranchiseDetailPage({
   params,
@@ -12,6 +12,8 @@ export default async function FranchiseDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const p = await requirePermission("franquias", "view");
+  if (p.error) notFound();
   const supabase = await createClient();
 
   // Franchise + auth em paralelo
@@ -26,6 +28,9 @@ export default async function FranchiseDetailPage({
   const userId = user?.id || "";
 
   // Profile, permissao, users, roles, stock - tudo em paralelo
+  const scope = await getUserScope(userId);
+  if (!scope.isStaff && scope.franchiseId !== franchise.id) notFound();
+
   const [profileRes, canManageRolesRes, users, availableRoles, stock] = await Promise.all([
     supabase.from("profiles").select("franchise_id, is_franchise_admin").eq("id", userId).single(),
     supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "manage" }),
@@ -43,6 +48,7 @@ export default async function FranchiseDetailPage({
       users={users}
       roles={availableRoles}
       canManageUsers={canManageUsers}
+      isStaff={scope.isStaff}
       canManageRoles={!!canManageRolesRes.data}
       stockTab={<StockTab franchiseId={franchise.id} stock={stock} canEdit={canManageUsers} />}
     />
