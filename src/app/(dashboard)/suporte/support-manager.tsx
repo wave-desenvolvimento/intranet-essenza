@@ -123,8 +123,8 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
 
   async function handleDelete(id: string) {
     const ok = await confirmAction({
-      title: "Remover ticket",
-      message: "Deseja remover este ticket? Esta acao nao pode ser desfeita.",
+      title: "Remover chamado",
+      message: "Deseja remover este chamado? Esta ação não pode ser desfeita.",
       confirmLabel: "Remover",
       destructive: true,
     });
@@ -158,8 +158,8 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900">{canEdit ? "Tickets de Suporte" : "Meus chamados"}</h1>
-          <p className="text-sm text-ink-500 mt-0.5">{totalAll} tickets no total</p>
+          <h1 className="text-xl font-semibold text-ink-900">{canEdit ? "Chamados de suporte" : "Meus chamados"}</h1>
+          <p className="text-sm text-ink-500 mt-0.5">{totalAll} {totalAll === 1 ? "chamado" : "chamados"}</p>
         </div>
         <div className="flex items-center gap-2">
           {canCreate && <NewTicket onCreated={() => applyFilter("novo")} />}
@@ -167,10 +167,10 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
             <button
               onClick={openEmailSettings}
               className="inline-flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
-              title="Emails de notificacao"
+              title="E-mails de notificação"
             >
               <Settings size={16} />
-              <span className="hidden sm:inline">Notificacoes</span>
+              <span className="hidden sm:inline">Notificações</span>
             </button>
           )}
         </div>
@@ -202,7 +202,7 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
           type="text"
           value={search}
           onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Buscar por nome, email ou descricao..."
+          placeholder="Buscar por nome, e-mail ou descrição..."
           className="w-full h-10 rounded-xl border border-ink-200 bg-white pl-9 pr-4 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/15"
         />
         {(isPending || isLoading) && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 animate-spin" />}
@@ -231,7 +231,7 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
           </thead>
           <tbody>
             {tickets.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-ink-400">Nenhum ticket encontrado</td></tr>
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-ink-400">Nenhum chamado encontrado</td></tr>
             ) : tickets.map((t) => {
               const expanded = expandedId === t.id;
               const TipoIcon = TIPO_ICONS[t.tipo] || HelpCircle;
@@ -273,7 +273,7 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
                       <div className="border-b border-ink-100 bg-ink-50/30 px-6 py-4 space-y-4">
                         {/* Description */}
                         <div>
-                          <p className="text-xs font-medium text-ink-500 mb-1">Descricao</p>
+                          <p className="text-xs font-medium text-ink-500 mb-1">Descrição</p>
                           <p className="text-sm text-ink-800 whitespace-pre-wrap">{t.descricao}</p>
                         </div>
 
@@ -390,7 +390,7 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
       )}
 
       {/* Email settings sheet */}
-      <Sheet open={emailsOpen} onClose={() => setEmailsOpen(false)} title="Emails de notificacao">
+      <Sheet open={emailsOpen} onClose={() => setEmailsOpen(false)} title="E-mails de notificação">
         <p className="text-sm text-ink-500 mb-4">
           Novos tickets de suporte serao enviados para os emails abaixo.
         </p>

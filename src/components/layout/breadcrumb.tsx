@@ -33,7 +33,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "posts-redes": "Posts Redes Sociais",
   fotos: "Fotos",
   "docs-cigam": "Documentação CIGAM",
-  cursos: "Cursos",
+  cursos: "Universo da Marca",
   "universo-da-marca": "Universo da Marca",
   "material-corporativo": "Material Corporativo",
   campanhas: "Campanhas",
@@ -44,18 +44,19 @@ const ROUTE_LABELS: Record<string, string> = {
   cigam: "CIGAM",
 };
 
-export function Breadcrumb() {
+export function Breadcrumb({ pageTitles = {} }: { pageTitles?: Record<string, string> }) {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
 
   const crumbs = segments
     .map((segment, i) => ({
       href: "/" + segments.slice(0, i + 1).join("/"),
-      label: segments[0] === "acompanhamento" && i === 1 ? "Funcionário" : ROUTE_LABELS[segment],
+      label: segments[0] === "acompanhamento" && i === 1 ? "Funcionário" : pageTitles[segment] ?? ROUTE_LABELS[segment],
       segment,
       isLast: i === segments.length - 1,
     }))
-    .filter((c) => c.label !== "");
+    // Codigo sem nome (modulo, franquia): o titulo ja esta na pagina
+    .filter((c) => c.label && c.segment !== "pagina");
 
   // Mobile: show only last crumb
   // Desktop: show full path

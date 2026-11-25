@@ -114,7 +114,7 @@ export function CmsOverview({ collections }: { collections: Collection[] }) {
   }
 
   async function handleDelete(id: string) {
-    const ok = await confirmAction({ title: "Remover collection", message: "Remover esta collection e todos os seus itens? Essa ação não pode ser desfeita.", confirmLabel: "Remover", destructive: true });
+    const ok = await confirmAction({ title: "Remover coleção", message: "Remover esta coleção e todos os seus itens? Essa ação não pode ser desfeita.", confirmLabel: "Remover", destructive: true });
     if (!ok) return;
     startTransition(async () => { const r = await deleteCollection(id); if (r?.error) setError(r.error); });
   }

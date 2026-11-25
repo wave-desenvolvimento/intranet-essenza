@@ -702,7 +702,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
       {tab === "franchises" && (
         <div className="flex flex-col gap-5">
           {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
               <p className="text-[11px] text-ink-500 mb-1">Franquias ativas</p>
               <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.filter((f) => f.totalPageViews > 0).length}</p>
@@ -715,10 +715,6 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
               <p className="text-[11px] text-ink-500 mb-1">Total de usuários</p>
               <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.totalUsers, 0)}</p>
             </div>
-            {canSeeOrders && <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
-              <p className="text-[11px] text-ink-500 mb-1">Total pedidos</p>
-              <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.ordersCount, 0)}</p>
-            </div>}
             <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
               <p className="text-[11px] text-ink-500 mb-1">Pesquisas respondidas</p>
               <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.surveysResponded, 0)}</p>
@@ -810,23 +806,11 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                             <tr>
                               <td colSpan={9} className="bg-ink-50/40 px-5 py-4">
                                 {/* KPI cards */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                                   <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
                                     <p className="text-[10px] text-ink-400">Conteúdos vistos</p>
                                     <p className="text-sm font-semibold text-ink-900">{f.contentViews}</p>
                                   </div>
-                                  <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
-                                    <p className="text-[10px] text-ink-400">Downloads</p>
-                                    <p className="text-sm font-semibold text-ink-900">{f.contentDownloads}</p>
-                                  </div>
-                                  {canSeeOrders && <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
-                                    <p className="text-[10px] text-ink-400">Pedidos</p>
-                                    <p className="text-sm font-semibold text-ink-900">{f.ordersCount}</p>
-                                  </div>}
-                                  {canSeeOrders && <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
-                                    <p className="text-[10px] text-ink-400">Receita pedidos</p>
-                                    <p className="text-sm font-semibold text-ink-900">{formatPrice(f.ordersRevenue)}</p>
-                                  </div>}
                                   <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
                                     <p className="text-[10px] text-ink-400">Pesquisas resp.</p>
                                     <p className="text-sm font-semibold text-ink-900">{f.surveysResponded}</p>

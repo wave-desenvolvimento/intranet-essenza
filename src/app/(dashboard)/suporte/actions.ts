@@ -128,14 +128,14 @@ export async function updateTicketNotes(id: string, notas: string) {
 
 const REPLY_TEMPLATES: Record<string, { subject: string; title: string; body: string }> = {
   em_andamento: {
-    subject: "Seu ticket esta sendo analisado",
-    title: "Estamos analisando seu ticket",
+    subject: "Seu chamado está sendo analisado",
+    title: "Estamos analisando seu chamado",
     body: "Recebemos sua solicitacao e nossa equipe ja esta trabalhando nela.\n\nEntraremos em contato assim que tivermos uma resolucao. Se precisar de algo urgente, responda este email.",
   },
   resolvido: {
-    subject: "Seu ticket foi resolvido",
-    title: "Seu ticket foi resolvido",
-    body: "Sua solicitacao foi resolvida pela nossa equipe.\n\nCaso o problema persista ou precise de mais ajuda, responda este email ou abra um novo ticket.",
+    subject: "Seu chamado foi resolvido",
+    title: "Seu chamado foi resolvido",
+    body: "Sua solicitação foi resolvida pela nossa equipe.\n\nCaso o problema persista ou precise de mais ajuda, responda este email ou abra um novo chamado.",
   },
 };
 
@@ -152,8 +152,8 @@ export async function replyToTicket(id: string, newStatus: "em_andamento" | "res
     .eq("id", id)
     .single();
 
-  if (!ticket) return { error: "Ticket nao encontrado." };
-  if (ticket.status === newStatus) return { error: "Ticket ja esta nesse status." };
+  if (!ticket) return { error: "Chamado não encontrado." };
+  if (ticket.status === newStatus) return { error: "Chamado já está nesse status." };
 
   const template = REPLY_TEMPLATES[newStatus];
   if (!template) return { error: "Status invalido." };

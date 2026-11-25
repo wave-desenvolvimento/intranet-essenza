@@ -84,7 +84,7 @@ export function TrainingOverview({ data, groupByFranchise }: { data: TrainingOve
         return (
           <details key={key} open={!groupByFranchise || undefined} onToggle={(e) => setGroupOpen(key, e.currentTarget.open)} className="group rounded-xl border border-ink-100 bg-white">
             <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3">
-              <h2 className="min-w-40 flex-1 text-sm font-semibold text-ink-900">{group.name}</h2>
+              <h2 className="min-w-40 flex-1 text-sm font-semibold text-ink-900">{groupByFranchise ? group.name : "Resumo"}</h2>
               <span className="text-xs text-ink-500">{group.people.length} {group.people.length === 1 ? "funcionário" : "funcionários"}</span>
               <span className="text-xs text-ink-500">{finished} {finished === 1 ? "concluiu" : "concluíram"} tudo</span>
               <span className="text-xs text-ink-500">{notStarted} não {notStarted === 1 ? "iniciou" : "iniciaram"}</span>

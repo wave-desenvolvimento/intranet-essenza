@@ -47,5 +47,5 @@ export async function CoursePage({ pageSlug, title }: { pageSlug: string; title:
     );
   }
 
-  return <CourseCatalog basePath={coursePath(pageSlug)} data={catalogData} userName={userName} userAvatar={userAvatar} hasCertificate={!!pageRes.data?.certificate} certificateId={certificateRes.data?.id ?? null} />;
+  return <CourseCatalog basePath={coursePath(pageSlug)} title={title} data={catalogData} userName={userName} userAvatar={userAvatar} hasCertificate={!!pageRes.data?.certificate} certificateId={certificateRes.data?.id ?? null} />;
 }

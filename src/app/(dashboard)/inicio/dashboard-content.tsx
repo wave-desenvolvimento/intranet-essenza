@@ -165,8 +165,6 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
 
   const visibleStats = statCards.filter((s) => s.visible);
 
-  const contextText = "Confira as novidades e acesse seus materiais.";
-
   // Relógio ao vivo (atualiza a cada minuto)
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -193,9 +191,6 @@ export function DashboardContent({ userName, franchiseName, permissions, banners
         <h1 className="text-2xl md:text-3xl font-semibold text-ink-900 leading-tight">
           {greeting},<br />{firstName}.
         </h1>
-        <p className="text-sm text-ink-500 mt-2 max-w-lg leading-relaxed">
-          {contextText}
-        </p>
         <div className="flex items-center gap-3 mt-4">
           {showMaterials && (
             <Link href="/pagina/material-corporativo" className="rounded-lg border border-ink-200 px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors">
