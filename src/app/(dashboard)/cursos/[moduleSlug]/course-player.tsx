@@ -1,10 +1,10 @@
 "use client";
 
+import { SafeHtml } from "@/components/ui/safe-html";
 import { useState, useEffect, useRef } from "react";
 import { Play, Lock, Check, Clock, ArrowLeft, ChevronDown, ChevronUp, Square, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import DOMPurify from "dompurify";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -148,7 +148,7 @@ export function CoursePlayerView({
       if ("url" in res) setActiveUrl(res.url);
       else {
         setActiveUrl("");
-        if (res.error && res.error !== "URL nao definida") toast.error(res.error);
+        if (res.error && res.error !== "URL não definida") toast.error(res.error);
       }
       setLoadingUrl(false);
     }
@@ -245,7 +245,7 @@ export function CoursePlayerView({
   async function saveProgress(videoId: string, pct: number) {
     setProgressMap((prev) => ({ ...prev, [videoId]: Math.max(prev[videoId] || 0, pct) }));
     const res = await updateLessonProgress(videoId, pct);
-    if (res.error) toast.error("Nao foi possivel salvar seu progresso.");
+    if (res.error) toast.error("Não foi possível salvar seu progresso.");
   }
   function markCompleted(videoId: string) {
     setCompletedSet((prev) => new Set([...prev, videoId]));
@@ -273,7 +273,7 @@ export function CoursePlayerView({
           </Link>
           <h1 className="text-lg font-semibold text-ink-900">{module.title}</h1>
         </div>
-        <p className="text-center text-sm text-ink-400 py-8">Nenhuma aula disponivel</p>
+        <p className="text-center text-sm text-ink-400 py-8">Nenhuma aula disponível</p>
       </div>
     );
   }
@@ -287,13 +287,13 @@ export function CoursePlayerView({
         </Link>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-ink-900 truncate">{module.title}</p>
-          <p className="text-xs text-ink-500">{completedCount}/{videos.length} aulas concluidas</p>
+          <p className="text-xs text-ink-500">{completedCount}/{videos.length} aulas concluídas</p>
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="hidden lg:flex items-center gap-1.5 rounded-lg border border-ink-100 px-3 py-1.5 text-xs font-medium text-ink-600 hover:bg-ink-50 transition-colors"
         >
-          Conteudo do curso
+          Conteúdo do curso
           {sidebarOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
       </div>
@@ -337,7 +337,7 @@ export function CoursePlayerView({
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2">
                   <Lock size={24} className="text-white/30" />
-                  <span className="text-white/50 text-sm">Video bloqueado</span>
+                  <span className="text-white/50 text-sm">Vídeo bloqueado</span>
                 </div>
               </div>
             )}
@@ -357,10 +357,7 @@ export function CoursePlayerView({
               )}
             </div>
             {activeVideo.description && (
-              <div
-                className="text-sm text-ink-500 leading-relaxed prose prose-sm prose-ink max-w-none"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activeVideo.description) }}
-              />
+              <SafeHtml className="text-sm text-ink-500 leading-relaxed prose prose-sm prose-ink max-w-none" html={activeVideo.description} />
             )}
           </div>
 
@@ -387,7 +384,7 @@ export function CoursePlayerView({
         {sidebarOpen && (
           <div className="hidden lg:flex flex-col w-[380px] shrink-0 border-l border-ink-100 bg-white overflow-y-auto">
             <div className="px-4 py-3 border-b border-ink-50 shrink-0">
-              <p className="text-sm font-semibold text-ink-900">Conteudo do curso</p>
+              <p className="text-sm font-semibold text-ink-900">Conteúdo do curso</p>
             </div>
             <SidebarContent
               sidebarModules={sidebarModules}

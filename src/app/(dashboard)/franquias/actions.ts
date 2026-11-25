@@ -5,44 +5,6 @@ import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermission, getUserScope } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
-export async function getFranchises() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("franchises")
-    .select("*, profiles(id, status)")
-    .order("name");
-
-  return (data || []).map((f) => ({
-    ...f,
-    totalUsers: f.profiles?.length || 0,
-    activeUsers: f.profiles?.filter((p: { status: string }) => p.status === "active").length || 0,
-    inactiveUsers: f.profiles?.filter((p: { status: string }) => p.status === "inactive").length || 0,
-  }));
-}
-
-export async function getFranchise(id: string) {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("franchises")
-    .select("*")
-    .eq("id", id)
-    .single();
-  return data;
-}
-
-export async function getFranchiseBySlug(slug: string) {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("franchises")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-  return data;
-}
-
 export async function getFranchiseUsers(franchiseId: string) {
   const { user } = await requireAuth();
   const scope = await getUserScope(user.id);
@@ -97,17 +59,6 @@ function extractFranchiseFields(formData: FormData) {
     address_number: formData.get("address_number") as string || null,
     complemento: formData.get("complemento") as string || null,
   };
-}
-
-export async function getCommercialUsers() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data: commercialRole } = await supabase.from("roles").select("id").eq("name", "Comercial Matriz").single();
-  if (!commercialRole) return [];
-  const { data: userRoles } = await supabase.from("user_roles").select("user_id").eq("role_id", commercialRole.id);
-  if (!userRoles?.length) return [];
-  const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userRoles.map((ur) => ur.user_id));
-  return profiles || [];
 }
 
 export async function createFranchise(formData: FormData) {

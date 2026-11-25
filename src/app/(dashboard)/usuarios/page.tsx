@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getRolesForContext, getUserScope, requirePermission } from "@/lib/permissions";
 import { getFranchiseUsers } from "../franquias/actions";
+import { getFranchiseTraining } from "../acompanhamento/franchise-training";
 import { FranchiseDetail } from "../franquias/[slug]/franchise-detail";
 import { UsersManager } from "./users-manager";
 
@@ -15,24 +16,28 @@ export default async function UsuariosPage() {
   // Franqueado: so a propria loja
   if (!scope.isStaff) {
     if (!scope.franchiseId) notFound();
-    const [franchiseRes, users, roles, canCreateRes, canEditRes] = await Promise.all([
+    const [franchiseRes, users, roles, canCreateRes, canEditRes, trainingTab] = await Promise.all([
       supabase.from("franchises").select("*").eq("id", scope.franchiseId).single(),
       getFranchiseUsers(scope.franchiseId),
       getRolesForContext(userId),
       supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "create" }),
       supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "edit" }),
+      getFranchiseTraining(userId, scope.franchiseId),
     ]);
     if (!franchiseRes.data) notFound();
     const canManage = !!canCreateRes.data && !!canEditRes.data;
     return (
-      <FranchiseDetail
-        franchise={franchiseRes.data}
-        users={users}
-        roles={roles}
-        canManageUsers={canManage}
-        canManageRoles={canManage}
-        isStaff={false}
-      />
+      <div>
+        <FranchiseDetail
+          franchise={franchiseRes.data}
+          users={users}
+          roles={roles}
+          canManageUsers={canManage}
+          canManageRoles={canManage}
+          isStaff={false}
+          trainingTab={trainingTab}
+        />
+      </div>
     );
   }
 
@@ -53,5 +58,9 @@ export default async function UsuariosPage() {
       .map((ur) => ({ role_id: ur.role_id, role: Array.isArray(ur.role) ? ur.role[0] : ur.role })),
   }));
 
-  return <UsersManager users={users} franchises={franchisesRes.data || []} currentUserId={userId} />;
+  return (
+    <div>
+      <UsersManager users={users} franchises={franchisesRes.data || []} currentUserId={userId} />
+    </div>
+  );
 }

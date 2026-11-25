@@ -131,7 +131,7 @@ export function CourseManager({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold text-ink-900">{title}</h1>
-            <p className="text-sm text-ink-500 mt-0.5">{modules.length} modulo{modules.length !== 1 ? "s" : ""}</p>
+            <p className="text-sm text-ink-500 mt-0.5">{modules.length} módulo{modules.length !== 1 ? "s" : ""}</p>
           </div>
           {canEdit && (
             <button
@@ -139,7 +139,7 @@ export function CourseManager({
               className="flex items-center gap-2 rounded-lg bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors"
             >
               <Plus size={16} />
-              Novo modulo
+              Novo módulo
             </button>
           )}
         </div>
@@ -147,13 +147,13 @@ export function CourseManager({
         {modules.length === 0 ? (
           <div className="rounded-xl border border-ink-100 bg-white px-6 py-16 text-center">
             <Film size={40} className="mx-auto text-ink-200 mb-3" />
-            <p className="text-sm text-ink-500">Nenhum modulo criado ainda</p>
+            <p className="text-sm text-ink-500">Nenhum módulo criado ainda</p>
             {canEdit && (
               <button
                 onClick={() => setModuleSheet({ open: true })}
                 className="mt-3 text-sm font-medium text-brand-olive hover:underline"
               >
-                Criar primeiro modulo
+                Criar primeiro módulo
               </button>
             )}
           </div>
@@ -199,7 +199,7 @@ export function CourseManager({
                     <p className="text-xs text-ink-500 mt-0.5 truncate">{mod.description}</p>
                   )}
                   <p className="text-xs text-ink-400 mt-1">
-                    {mod.video_count || 0} video{(mod.video_count || 0) !== 1 ? "s" : ""}
+                    {mod.video_count || 0} vídeo{(mod.video_count || 0) !== 1 ? "s" : ""}
                   </p>
                 </div>
 
@@ -210,7 +210,7 @@ export function CourseManager({
                       <button
                         onClick={(e) => { e.stopPropagation(); setModuleSheet({ open: true, module: mod }); }}
                         className="rounded-lg p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors"
-                        title="Editar modulo"
+                        title="Editar módulo"
                       >
                         <Pencil size={15} />
                       </button>
@@ -219,21 +219,21 @@ export function CourseManager({
                           e.stopPropagation();
                           setConfirm({
                             open: true,
-                            title: "Remover modulo",
+                            title: "Remover módulo",
                             message: `Tem certeza que deseja remover "${mod.title}"? Todos os videos serao removidos.`,
                             onConfirm: () => {
                               startTransition(async () => {
                                 const res = await deleteModule(mod.id);
                                 if (res.error) { toast.error(res.error); return; }
                                 setModules((prev) => prev.filter((m) => m.id !== mod.id));
-                                toast.success("Modulo removido");
+                                toast.success("Módulo removido");
                               });
                               setConfirm((c) => ({ ...c, open: false }));
                             },
                           });
                         }}
                         className="rounded-lg p-2 text-ink-400 hover:text-danger hover:bg-danger/5 transition-colors"
-                        title="Remover modulo"
+                        title="Remover módulo"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -290,7 +290,7 @@ export function CourseManager({
           </button>
           <div>
             <h1 className="text-lg font-semibold text-ink-900">{activeModule?.title}</h1>
-            <p className="text-sm text-ink-500 mt-0.5">{videos.length} video{videos.length !== 1 ? "s" : ""}</p>
+            <p className="text-sm text-ink-500 mt-0.5">{videos.length} vídeo{videos.length !== 1 ? "s" : ""}</p>
           </div>
         </div>
         {canEdit && (
@@ -299,7 +299,7 @@ export function CourseManager({
             className="flex items-center gap-2 rounded-lg bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors"
           >
             <Plus size={16} />
-            Novo video
+            Novo vídeo
           </button>
         )}
       </div>
@@ -311,13 +311,13 @@ export function CourseManager({
       ) : videos.length === 0 ? (
         <div className="rounded-xl border border-ink-100 bg-white px-6 py-16 text-center">
           <Play size={40} className="mx-auto text-ink-200 mb-3" />
-          <p className="text-sm text-ink-500">Nenhum video neste modulo</p>
+          <p className="text-sm text-ink-500">Nenhum vídeo neste módulo</p>
           {canEdit && (
             <button
               onClick={() => setVideoSheet({ open: true })}
               className="mt-3 text-sm font-medium text-brand-olive hover:underline"
             >
-              Adicionar primeiro video
+              Adicionar primeiro vídeo
             </button>
           )}
         </div>
@@ -381,7 +381,7 @@ export function CourseManager({
                   <button
                     onClick={() => setVideoSheet({ open: true, video: vid })}
                     className="rounded-lg p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors"
-                    title="Editar video"
+                    title="Editar vídeo"
                   >
                     <Pencil size={14} />
                   </button>
@@ -389,21 +389,21 @@ export function CourseManager({
                     onClick={() => {
                       setConfirm({
                         open: true,
-                        title: "Remover video",
+                        title: "Remover vídeo",
                         message: `Tem certeza que deseja remover "${vid.title}"?`,
                         onConfirm: () => {
                           startTransition(async () => {
                             const res = await deleteVideo(vid.id);
                             if (res.error) { toast.error(res.error); return; }
                             setVideos((prev) => prev.filter((v) => v.id !== vid.id));
-                            toast.success("Video removido");
+                            toast.success("Vídeo removido");
                           });
                           setConfirm((c) => ({ ...c, open: false }));
                         },
                       });
                     }}
                     className="rounded-lg p-2 text-ink-400 hover:text-danger hover:bg-danger/5 transition-colors"
-                    title="Remover video"
+                    title="Remover vídeo"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -484,7 +484,7 @@ function ModuleSheet({
         const res = await updateModule(module.id, formData);
         if (res.error) { toast.error(res.error); return; }
         onSaved({ ...module, title: formData.get("title") as string, description: formData.get("description") as string, cover_url: coverUrl || null, status: status as "draft" | "published" });
-        toast.success("Modulo atualizado");
+        toast.success("Módulo atualizado");
       } else {
         const res = await createModule(pageSlug, formData);
         if (res.error) { toast.error(res.error); return; }
@@ -500,7 +500,7 @@ function ModuleSheet({
           updated_at: new Date().toISOString(),
           video_count: 0,
         });
-        toast.success("Modulo criado");
+        toast.success("Módulo criado");
       }
     });
   }
@@ -514,15 +514,15 @@ function ModuleSheet({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} onSubmit={handleSubmit} title={module ? "Editar modulo" : "Novo modulo"}>
+    <Sheet open={open} onClose={onClose} onSubmit={handleSubmit} title={module ? "Editar módulo" : "Novo módulo"}>
       <form ref={formRef} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-ink-700 mb-1">Titulo <span className="text-danger">*</span></label>
+          <label className="block text-xs font-medium text-ink-700 mb-1">Título <span className="text-danger">*</span></label>
           <input name="title" defaultValue={module?.title || ""} className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm focus:border-brand-olive focus:ring-1 focus:ring-brand-olive outline-none" autoFocus />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-ink-700 mb-1">Descricao</label>
+          <label className="block text-xs font-medium text-ink-700 mb-1">Descrição</label>
           <textarea name="description" rows={3} defaultValue={module?.description || ""} className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm focus:border-brand-olive focus:ring-1 focus:ring-brand-olive outline-none resize-none" />
         </div>
 
@@ -571,7 +571,7 @@ function ModuleSheet({
             disabled={isPending}
             className="w-full rounded-lg bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors disabled:opacity-50"
           >
-            {isPending ? "Salvando..." : module ? "Salvar" : "Criar modulo"}
+            {isPending ? "Salvando..." : module ? "Salvar" : "Criar módulo"}
           </button>
         </div>
       </form>
@@ -639,7 +639,7 @@ function VideoSheet({
           size_bytes: formData.get("size_bytes") ? parseInt(formData.get("size_bytes") as string) : null,
           status: status as "draft" | "published",
         });
-        toast.success("Video atualizado");
+        toast.success("Vídeo atualizado");
       } else {
         const res = await createVideo(moduleId, formData);
         if (res.error) { toast.error(res.error); return; }
@@ -659,7 +659,7 @@ function VideoSheet({
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
-        toast.success("Video adicionado");
+        toast.success("Vídeo adicionado");
       }
     });
   }
@@ -674,7 +674,7 @@ function VideoSheet({
     if ("path" in res) {
       setStoragePath(res.path);
       setUploadProgress(null);
-      toast.success("Video enviado");
+      toast.success("Vídeo enviado");
 
       // Auto-fill size
       if (formRef.current) {
@@ -696,21 +696,21 @@ function VideoSheet({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} onSubmit={handleSubmit} title={video ? "Editar video" : "Novo video"} wide>
+    <Sheet open={open} onClose={onClose} onSubmit={handleSubmit} title={video ? "Editar vídeo" : "Novo vídeo"} wide>
       <form ref={formRef} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-ink-700 mb-1">Titulo <span className="text-danger">*</span></label>
+          <label className="block text-xs font-medium text-ink-700 mb-1">Título <span className="text-danger">*</span></label>
           <input name="title" defaultValue={video?.title || ""} className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm focus:border-brand-olive focus:ring-1 focus:ring-brand-olive outline-none" autoFocus />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-ink-700 mb-1">Descricao</label>
+          <label className="block text-xs font-medium text-ink-700 mb-1">Descrição</label>
           <textarea name="description" rows={3} defaultValue={video?.description || ""} className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm focus:border-brand-olive focus:ring-1 focus:ring-brand-olive outline-none resize-none" />
         </div>
 
         {/* Source Type */}
         <div>
-          <label className="block text-xs font-medium text-ink-700 mb-1">Tipo de video</label>
+          <label className="block text-xs font-medium text-ink-700 mb-1">Tipo de vídeo</label>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -740,7 +740,7 @@ function VideoSheet({
         {(sourceType === "youtube" || sourceType === "external") && (
           <div>
             <label className="block text-xs font-medium text-ink-700 mb-1">
-              {sourceType === "youtube" ? "URL do YouTube" : "URL do video"} <span className="text-danger">*</span>
+              {sourceType === "youtube" ? "URL do YouTube" : "URL do vídeo"} <span className="text-danger">*</span>
             </label>
             <input
               name="video_url"
@@ -754,7 +754,7 @@ function VideoSheet({
         {/* Video Upload */}
         {sourceType === "upload" && (
           <div>
-            <label className="block text-xs font-medium text-ink-700 mb-1">Arquivo de video <span className="text-danger">*</span></label>
+            <label className="block text-xs font-medium text-ink-700 mb-1">Arquivo de vídeo <span className="text-danger">*</span></label>
             {storagePath ? (
               <div className="flex items-center gap-3 rounded-lg border border-brand-olive/30 bg-brand-olive/5 p-3">
                 <Film size={18} className="text-brand-olive shrink-0" />
@@ -777,8 +777,8 @@ function VideoSheet({
             ) : (
               <label className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-ink-200 p-6 cursor-pointer hover:border-brand-olive/50 hover:bg-ink-50/50 transition-colors">
                 <Upload size={24} className="text-ink-300" />
-                <span className="text-sm text-ink-500">Clique para enviar um video</span>
-                <span className="text-xs text-ink-400">MP4, WebM, MOV (max 500MB)</span>
+                <span className="text-sm text-ink-500">Clique para enviar um vídeo</span>
+                <span className="text-xs text-ink-400">MP4, WebM, MOV</span>
                 <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
               </label>
             )}
@@ -807,7 +807,7 @@ function VideoSheet({
         {/* Duration & Size */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-ink-700 mb-1">Duracao (segundos)</label>
+            <label className="block text-xs font-medium text-ink-700 mb-1">Duração (segundos)</label>
             <input name="duration_seconds" type="number" min="0" defaultValue={video?.duration_seconds || ""} placeholder="120" className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm focus:border-brand-olive focus:ring-1 focus:ring-brand-olive outline-none" />
           </div>
           <div>
@@ -844,7 +844,7 @@ function VideoSheet({
             disabled={isPending || uploadProgress !== null}
             className="w-full rounded-lg bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors disabled:opacity-50"
           >
-            {isPending ? "Salvando..." : video ? "Salvar" : "Adicionar video"}
+            {isPending ? "Salvando..." : video ? "Salvar" : "Adicionar vídeo"}
           </button>
         </div>
       </form>

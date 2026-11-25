@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Circle, CircleDashed } from "lucide-react";
+import { ArrowLeft, Award, CheckCircle2, Circle, CircleDashed } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/lib/permissions";
 
@@ -8,14 +8,14 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZo
 
 export default async function UserTrainingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const p = await requirePermission("usuarios", "view");
+  const p = await requirePermission("treinamentos", "view");
   if (p.error) notFound();
   const supabase = await createClient();
 
-  const { data: allowed } = await supabase.rpc("can_manage_user", { _target: id, _action: "view" });
+  const { data: allowed } = await supabase.rpc("can_access_user", { _target: id, _module: "treinamentos", _action: "view" });
   if (!allowed) notFound();
 
-  const [profileRes, modulesRes, pagesRes, progressRes] = await Promise.all([
+  const [profileRes, modulesRes, pagesRes, progressRes, permsRes, certsRes] = await Promise.all([
     supabase.from("profiles").select("full_name, franchise:franchises(name)").eq("id", id).single(),
     supabase
       .from("course_modules")
@@ -28,9 +28,11 @@ export default async function UserTrainingPage({ params }: { params: Promise<{ i
       .select("video_id, watched_pct, completed_at, updated_at")
       .eq("user_id", id)
       .not("video_id", "is", null),
+    supabase.rpc("get_user_permissions", { _user_id: id }),
+    supabase.from("course_certificates").select("id, page_slug").eq("user_id", id),
   ]);
   if (!profileRes.data) notFound();
-  if (modulesRes.error || pagesRes.error || progressRes.error) throw new Error("Erro ao carregar os treinamentos do usuário");
+  if (modulesRes.error || pagesRes.error || progressRes.error || permsRes.error || certsRes.error) throw new Error("Erro ao carregar os treinamentos do usuário");
 
   const franchise = Array.isArray(profileRes.data.franchise) ? profileRes.data.franchise[0] : profileRes.data.franchise;
   const progress = new Map(progressRes.data.map((r) => [r.video_id as string, r]));
@@ -43,7 +45,10 @@ export default async function UserTrainingPage({ params }: { params: Promise<{ i
       .map((v) => ({ id: v.id, title: v.title, progress: progress.get(v.id) })),
   }));
 
+  const certificates = new Map(certsRes.data.map((c) => [c.page_slug as string, c.id as string]));
+  const accessible = new Set((permsRes.data || []).map((perm: { module: string }) => perm.module));
   const trainings = pagesRes.data
+    .filter((page) => accessible.has(page.slug))
     .map((page) => {
       const pageModules = modules.filter((m) => m.page_slug === page.slug && m.lessons.length > 0);
       const lessons = pageModules.flatMap((m) => m.lessons);
@@ -51,17 +56,36 @@ export default async function UserTrainingPage({ params }: { params: Promise<{ i
     })
     .filter((t) => t.total > 0);
 
+  const lessons = trainings.flatMap((t) => t.modules.flatMap((m) => m.lessons));
+  const doneLessons = lessons.filter((l) => l.progress?.completed_at).length;
+  const startedLessons = lessons.filter((l) => l.progress && !l.progress.completed_at && l.progress.watched_pct > 0).length;
+  const summary = [
+    { label: "Aulas concluídas", value: `${doneLessons} de ${lessons.length}` },
+    { label: "Em andamento", value: startedLessons },
+    { label: "Não iniciadas", value: lessons.length - doneLessons - startedLessons },
+    { label: "Treinamentos concluídos", value: `${trainings.filter((t) => t.done === t.total).length} de ${trainings.length}` },
+  ];
+
   return (
     <div className="space-y-5">
-      <Link href="/usuarios" className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-700 transition-colors">
+      <Link href="/acompanhamento" className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-700 transition-colors">
         <ArrowLeft size={14} />
-        Voltar para Usuários
+        Voltar para Acompanhamento
       </Link>
 
       <div>
         <h1 className="text-lg font-semibold text-ink-900">Treinamentos de {profileRes.data.full_name}</h1>
         {franchise?.name && <p className="text-sm text-ink-500">{franchise.name}</p>}
       </div>
+
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-ink-100 bg-ink-100 lg:grid-cols-4">
+        {summary.map((s) => (
+          <div key={s.label} className="bg-white px-4 py-3">
+            <dt className="text-xs text-ink-500">{s.label}</dt>
+            <dd className="text-lg font-semibold text-ink-900">{s.value}</dd>
+          </div>
+        ))}
+      </dl>
 
       {trainings.length === 0 && (
         <p className="rounded-xl border border-ink-100 bg-white px-6 py-12 text-center text-sm text-ink-500">Nenhum treinamento publicado</p>
@@ -70,7 +94,14 @@ export default async function UserTrainingPage({ params }: { params: Promise<{ i
       {trainings.map((t) => (
         <section key={t.slug} className="rounded-xl border border-ink-100 bg-white overflow-hidden">
           <header className="flex items-center justify-between gap-3 border-b border-ink-100 px-4 py-3">
-            <h2 className="text-sm font-semibold text-ink-900">{t.title}</h2>
+            <h2 className="flex items-center gap-3 text-sm font-semibold text-ink-900">
+              {t.title}
+              {certificates.has(t.slug) && (
+                <Link href={`/certificado/${certificates.get(t.slug)}`} target="_blank" className="inline-flex items-center gap-1 text-xs font-medium text-brand-olive hover:underline">
+                  <Award size={13} aria-hidden /> Ver certificado
+                </Link>
+              )}
+            </h2>
             <span className="text-xs text-ink-500">
               {t.done === t.total ? "Concluído" : `${t.done} de ${t.total} aulas concluídas`}
             </span>

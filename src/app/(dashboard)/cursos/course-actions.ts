@@ -204,21 +204,11 @@ export async function getCourseCatalogData(pageSlug: string): Promise<CourseCata
   return { modules: publishedModules, continueWatching, totalCompleted, totalVideos, totalDurationSeconds };
 }
 
-export async function getModule(id: string): Promise<CourseModule | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("course_modules")
-    .select("*")
-    .eq("id", id)
-    .single();
-  return data as CourseModule | null;
-}
-
 export async function createModule(pageSlug: string, formData: FormData): Promise<{ id?: string; error?: string }> {
   const supabase = await createClient();
 
   const title = formData.get("title") as string;
-  if (!title?.trim()) return { error: "Titulo obrigatorio" };
+  if (!title?.trim()) return { error: "Título obrigatório" };
 
   const titleSlug = title
     .toLowerCase()
@@ -253,7 +243,7 @@ export async function createModule(pageSlug: string, formData: FormData): Promis
     .single();
 
   if (error) {
-    if (error.code === "23505") return { error: "Ja existe um modulo com esse nome" };
+    if (error.code === "23505") return { error: "Já existe um módulo com esse nome" };
     return { error: error.message };
   }
 
@@ -265,7 +255,7 @@ export async function updateModule(id: string, formData: FormData): Promise<{ er
   const supabase = await createClient();
 
   const title = formData.get("title") as string;
-  if (!title?.trim()) return { error: "Titulo obrigatorio" };
+  if (!title?.trim()) return { error: "Título obrigatório" };
 
   const { error } = await supabase
     .from("course_modules")
@@ -345,15 +335,15 @@ export async function createVideo(moduleId: string, formData: FormData): Promise
   const supabase = await createClient();
 
   const title = formData.get("title") as string;
-  if (!title?.trim()) return { error: "Titulo obrigatorio" };
+  if (!title?.trim()) return { error: "Título obrigatório" };
 
   const sourceType = (formData.get("source_type") as string) || "upload";
   const videoUrl = (formData.get("video_url") as string)?.trim() || null;
   const storagePath = (formData.get("storage_path") as string)?.trim() || null;
 
-  if (sourceType === "youtube" && !videoUrl) return { error: "URL do YouTube obrigatoria" };
-  if (sourceType === "upload" && !storagePath) return { error: "Faca upload do video" };
-  if (sourceType === "external" && !videoUrl) return { error: "URL do video obrigatoria" };
+  if (sourceType === "youtube" && !videoUrl) return { error: "URL do YouTube obrigatória" };
+  if (sourceType === "upload" && !storagePath) return { error: "Envie o vídeo" };
+  if (sourceType === "external" && !videoUrl) return { error: "URL do vídeo obrigatória" };
 
   // Get next sort_order
   const { data: last } = await supabase
@@ -395,14 +385,14 @@ export async function updateVideo(id: string, formData: FormData): Promise<{ err
   const supabase = await createClient();
 
   const title = formData.get("title") as string;
-  if (!title?.trim()) return { error: "Titulo obrigatorio" };
+  if (!title?.trim()) return { error: "Título obrigatório" };
 
   const sourceType = (formData.get("source_type") as string) || "upload";
   const videoUrl = (formData.get("video_url") as string)?.trim() || null;
   const storagePath = (formData.get("storage_path") as string)?.trim() || null;
 
   if (formData.get("status") === "published" && !(sourceType === "upload" ? storagePath : videoUrl)) {
-    return { error: "Envie o video antes de publicar" };
+    return { error: "Envie o vídeo antes de publicar" };
   }
 
   const durationStr = formData.get("duration_seconds") as string;
@@ -480,7 +470,7 @@ export async function getVideoUrl(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
+  if (!user) return { error: "Não autenticado" };
 
   const { data: video } = await supabase
     .from("course_videos")
@@ -488,7 +478,7 @@ export async function getVideoUrl(
     .eq("id", videoId)
     .eq("status", "published")
     .single();
-  if (!video) return { error: "Video nao encontrado" };
+  if (!video) return { error: "Vídeo não encontrado" };
 
   const { data: unlocked } = await supabase.rpc("course_video_unlocked", { _video_id: videoId });
   if (!unlocked) return { error: "Conclua as aulas anteriores primeiro" };
@@ -500,7 +490,7 @@ export async function getVideoUrl(
       .createSignedUrl(video.storage_path, 7200);
 
     if (signErr || !signedData?.signedUrl) {
-      return { error: "Erro ao gerar URL do video" };
+      return { error: "Erro ao gerar URL do vídeo" };
     }
     return { url: signedData.signedUrl };
   }
@@ -510,7 +500,7 @@ export async function getVideoUrl(
     return { url: video.video_url };
   }
 
-  return { error: "URL nao definida" };
+  return { error: "URL não definida" };
 }
 
 // ============================================================
@@ -541,4 +531,17 @@ export async function updateLessonProgress(videoId: string, watchedPct: number):
     p_watched_pct: Math.min(100, Math.max(0, Math.round(watchedPct))),
   });
   return error ? { error: error.message } : {};
+}
+
+export async function setCourseSettings(pageSlug: string, settings: { sequential: boolean; certificate: boolean }): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_course_settings", {
+    _page_slug: pageSlug,
+    _sequential: settings.sequential,
+    _certificate: settings.certificate,
+  });
+  if (error) return { error: error.message };
+
+  revalidateCourses();
+  return {};
 }

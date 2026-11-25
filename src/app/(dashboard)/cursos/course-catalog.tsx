@@ -19,11 +19,15 @@ export function CourseCatalog({
   data,
   userName,
   userAvatar,
+  hasCertificate,
+  certificateId,
 }: {
   basePath: string;
   data: CourseCatalogData;
   userName: string;
   userAvatar: string;
+  hasCertificate: boolean;
+  certificateId: string | null;
 }) {
   const { modules, continueWatching, totalCompleted, totalVideos, totalDurationSeconds } = data;
   const overallPct = totalVideos > 0 ? Math.round((totalCompleted / totalVideos) * 100) : 0;
@@ -56,7 +60,7 @@ export function CourseCatalog({
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
             <div className="flex-1">
               <p className="text-sm font-semibold text-ink-900">Seu progresso</p>
-              <p className="text-xs text-ink-500 mt-0.5">Continue assistindo para concluir todos os modulos</p>
+              <p className="text-xs text-ink-500 mt-0.5">Continue assistindo para concluir todos os módulos</p>
             </div>
 
             <div className="flex items-center gap-6">
@@ -87,7 +91,7 @@ export function CourseCatalog({
                 <div className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand-olive" />
                   <span className="text-ink-600">
-                    {totalCompleted}/{totalVideos} aulas concluidas
+                    {totalCompleted}/{totalVideos} aulas concluídas
                   </span>
                 </div>
                 {totalDurationSeconds > 0 && (
@@ -108,7 +112,7 @@ export function CourseCatalog({
       {continueWatching && (
         <div>
           <h2 className="text-sm font-semibold text-ink-900 mb-3">
-            {continueWatching.watched_pct > 0 ? "Retomar de onde parou" : "Iniciar proximo curso"}
+            {continueWatching.watched_pct > 0 ? "Retomar de onde parou" : "Iniciar próximo curso"}
           </h2>
           <Link
             href={`${basePath}/${continueWatching.module_slug}`}
@@ -152,13 +156,13 @@ export function CourseCatalog({
         </div>
       )}
 
-      {/* Modulos disponiveis */}
+      {/* Módulos disponíveis */}
       <div>
-        <h2 className="text-sm font-semibold text-ink-900 mb-3">Modulos disponiveis</h2>
+        <h2 className="text-sm font-semibold text-ink-900 mb-3">Módulos disponíveis</h2>
         {modules.length === 0 ? (
           <div className="rounded-xl border border-ink-100 bg-white px-6 py-16 text-center">
             <Film size={40} className="mx-auto text-ink-200 mb-3" />
-            <p className="text-sm text-ink-500">Nenhum curso disponivel no momento</p>
+            <p className="text-sm text-ink-500">Nenhum curso disponível no momento</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -201,7 +205,7 @@ export function CourseCatalog({
                     {isComplete && (
                       <div className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-full bg-brand-olive px-2.5 py-1 text-[10px] font-semibold text-white">
                         <CheckCircle2 size={12} />
-                        Concluido
+                        Concluído
                       </div>
                     )}
 
@@ -247,20 +251,30 @@ export function CourseCatalog({
         )}
       </div>
 
-      {/* Meus certificados - em breve */}
-      <div>
-        <h2 className="text-sm font-semibold text-ink-900 mb-3">Meus certificados</h2>
-        <div className="rounded-xl border border-ink-100 bg-white p-6 flex items-center gap-4 opacity-60">
-          <div className="h-12 w-12 rounded-full bg-ink-50 flex items-center justify-center shrink-0">
-            <Award size={22} className="text-ink-300" />
+      {/* Certificado do treinamento (o ja emitido continua disponivel) */}
+      {(hasCertificate || certificateId) && (
+        <div>
+          <h2 className="text-sm font-semibold text-ink-900 mb-3">Meu certificado</h2>
+          <div className="rounded-xl border border-ink-100 bg-white p-6 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-ink-50 flex items-center justify-center shrink-0">
+              <Award size={22} className={certificateId ? "text-brand-olive" : "text-ink-300"} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-ink-700">{certificateId ? "Certificado disponível" : "Certificado ainda não liberado"}</p>
+              <p className="text-xs text-ink-400 mt-0.5">
+                {certificateId ? "Abra para imprimir ou salvar em PDF" : `Conclua todas as aulas (${totalCompleted} de ${totalVideos})`}
+              </p>
+            </div>
+            {certificateId ? (
+              <Link href={`/certificado/${certificateId}`} target="_blank" className="rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors">
+                Ver certificado
+              </Link>
+            ) : (
+              <Lock size={16} className="text-ink-300 shrink-0" />
+            )}
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-ink-700">Certificados</p>
-            <p className="text-xs text-ink-400 mt-0.5">Conclua os modulos para gerar seus certificados</p>
-          </div>
-          <Lock size={16} className="text-ink-300 shrink-0" />
         </div>
-      </div>
+      )}
     </div>
   );
 }

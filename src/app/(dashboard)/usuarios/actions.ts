@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { notifyUsers } from "@/app/(dashboard)/notifications-actions";
+import { notifyUsers } from "@/lib/notify";
 import { z } from "zod";
 import { requirePermission, getRolesForContext, getUserRoleLevel, getUserScope } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
@@ -96,11 +96,14 @@ export async function inviteUser(formData: FormData) {
   await logAudit({ action: "invite", entityType: "user", entityId: userId, description: `Convidou "${fullName}" (${email})` });
 
   // Create welcome notification for the new user
-  notifyUsers([userId], {
-    title: "Bem-vindo ao Hub Empório Essenza!",
-    body: "Explore os conteúdos e materiais disponíveis para sua franquia",
-    href: "/inicio",
-    icon: "bell",
+  notifyUsers({
+    userIds: [userId],
+    notification: {
+      title: "Bem-vindo ao Hub Empório Essenza!",
+      body: "Explore os conteúdos e materiais disponíveis para sua franquia",
+      href: "/inicio",
+      icon: "bell",
+    },
   }).catch(() => {});
 
   revalidatePath("/usuarios");

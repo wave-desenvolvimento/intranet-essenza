@@ -145,7 +145,9 @@ export async function importFranchisesFromXlsx(formData: FormData): Promise<Impo
     } else {
       const resend = getResend();
       if (resend) {
-        const confirmUrl = linkData.properties?.action_link;
+        // token_hash: e o formato que /auth/callback le no servidor (o action_link cai no login)
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+        const confirmUrl = `${siteUrl}/auth/callback?token_hash=${linkData.properties.hashed_token}&type=invite&next=/inicio`;
         await resend.emails.send({
           from: FROM_EMAIL,
           to: email,
