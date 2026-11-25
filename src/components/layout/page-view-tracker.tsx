@@ -10,6 +10,7 @@ const MODULE_MAP: Record<string, string> = {
   "/novo-pedido": "pedidos",
   "/franquias": "franquias",
   "/usuarios": "usuarios",
+  "/acompanhamento": "treinamentos",
   "/comunicados": "comunicados",
   "/faq": "faq",
   "/pesquisas": "pesquisas",

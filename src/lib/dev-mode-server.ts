@@ -19,13 +19,6 @@ async function getServerDevMode(): Promise<DevViewMode> {
   return mode;
 }
 
-// Server-only: check if current dev mode is admin
-export async function isServerAdmin(realPermKeys: string[]): Promise<boolean> {
-  const mode = await getServerDevMode();
-  if (mode === "") return realPermKeys.includes("configuracoes.manage") || realPermKeys.includes("cms.create");
-  return mode === "admin";
-}
-
 // Server-only: get permission keys (dev or real)
 export async function getEffectivePermissions(realPermKeys: string[]): Promise<string[]> {
   const mode = await getServerDevMode();

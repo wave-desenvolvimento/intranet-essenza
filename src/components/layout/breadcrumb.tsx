@@ -7,6 +7,7 @@ import { ChevronRight, Home } from "lucide-react";
 const ROUTE_LABELS: Record<string, string> = {
   inicio: "Início",
   usuarios: "Usuários",
+  acompanhamento: "Acompanhamento",
   cms: "CMS",
   franquias: "Franquias",
   configuracoes: "Permissões",
@@ -50,7 +51,7 @@ export function Breadcrumb() {
   const crumbs = segments
     .map((segment, i) => ({
       href: "/" + segments.slice(0, i + 1).join("/"),
-      label: segments[0] === "usuarios" && i === 1 ? "Treinamentos" : ROUTE_LABELS[segment],
+      label: segments[0] === "acompanhamento" && i === 1 ? "Funcionário" : ROUTE_LABELS[segment],
       segment,
       isLast: i === segments.length - 1,
     }))

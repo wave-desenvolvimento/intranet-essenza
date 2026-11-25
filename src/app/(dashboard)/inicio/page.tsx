@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { DashboardContent } from "./dashboard-content";
 import { getFavorites } from "../favorites-actions";
+import { getUserScope } from "@/lib/permissions";
 import { getEffectivePermissions } from "@/lib/dev-mode-server"; // kept for dev mode switcher
 
 export default async function DashboardPage() {
@@ -51,6 +52,10 @@ export default async function DashboardPage() {
     (p: { module: string; action: string }) => `${p.module}.${p.action}`
   );
   const permissionKeys = await getEffectivePermissions(realPermKeys);
+  const scope = await getUserScope(user.id);
+  const franchiseUsersRes = !scope.isStaff && scope.franchiseId
+    ? await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("status", "active").eq("franchise_id", scope.franchiseId)
+    : null;
 
   const userName = profile?.full_name || user.email?.split("@")[0] || "Usuário";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -177,11 +182,11 @@ export default async function DashboardPage() {
   return (
     <DashboardContent
       userName={userName}
-      franchiseName={franchise?.name}
+      franchiseName={scope.isStaff ? undefined : franchise?.name}
       permissions={permissionKeys}
       banners={banners}
       stats={{
-        activeUsers: totalUsers || 0,
+        activeUsers: (franchiseUsersRes ? franchiseUsersRes.count : totalUsers) || 0,
         activeFranchises: totalFranchises || 0,
         campaigns: campaignCountResult.count || 0,
         materials: materialCountResult.count || 0,

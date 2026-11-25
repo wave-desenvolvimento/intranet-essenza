@@ -2,25 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { requireAuth, requirePermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
-
-export async function getFaqCategories() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase.from("faq_categories").select("*").order("sort_order");
-  return data || [];
-}
-
-export async function getFaqItems() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("faq_items")
-    .select("*, category:faq_categories(id, name, slug, icon)")
-    .order("sort_order");
-  return data || [];
-}
 
 export async function createFaqCategory(name: string, icon: string) {
   const p = await requirePermission("faq", "create"); if (p.error) return p;

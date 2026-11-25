@@ -14,6 +14,7 @@ import { SurveyWidget } from "@/components/layout/survey-widget";
 import { PageViewTracker } from "@/components/layout/page-view-tracker";
 import { IdleLogout } from "@/components/layout/idle-logout";
 import { PageTransition } from "@/components/layout/page-transition";
+import { logout } from "./actions";
 import { getEffectivePermissions } from "@/lib/dev-mode-server";
 
 export default async function DashboardLayout({
@@ -25,7 +26,7 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   // All layout queries in parallel
-  const [{ data: userRole }, { data: allActiveSurveys }, { data: respondedSurveys }, { data: cmsPages }, { data: permissions }] = await Promise.all([
+  const [{ data: userRole }, { data: allActiveSurveys }, { data: respondedSurveys }, { data: cmsPages }, { data: permissions }, { data: profile }] = await Promise.all([
     supabase
       .from("user_roles")
       .select("role:roles(name, level)")
@@ -49,7 +50,20 @@ export default async function DashboardLayout({
       .order("sort_order"),
     // Permissions for sidebar (avoids client-side fetch + skeleton flash)
     supabase.rpc("get_user_permissions", { _user_id: user?.id || "" }),
+    supabase.from("profiles").select("status").eq("id", user?.id || "").single(),
   ]);
+
+  if (profile?.status === "inactive") {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-brand-cream p-6 text-center font-sans">
+        <h1 className="text-lg font-semibold text-ink-900">Acesso inativo</h1>
+        <p className="text-sm text-ink-500">Fale com o responsável da sua loja para reativar.</p>
+        <form action={logout}>
+          <button type="submit" className="rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark">Sair</button>
+        </form>
+      </main>
+    );
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawRole = userRole?.role as any;

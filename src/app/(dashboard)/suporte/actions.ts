@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermission } from "@/lib/permissions";
@@ -68,6 +69,29 @@ export async function getTickets(params?: {
       resolvido: cResolvido.count || 0,
     },
   };
+}
+
+const ticketSchema = z.object({
+  tipo: z.enum(["acesso", "senha", "outro"]),
+  descricao: z.string().trim().min(5, "Descreva o problema.").max(5000, "Descrição muito longa."),
+});
+
+export async function createTicket(formData: FormData) {
+  const p = await requirePermission("suporte", "create");
+  if (p.error) return { error: p.error };
+  const parsed = ticketSchema.safeParse({ tipo: formData.get("tipo"), descricao: formData.get("descricao") ?? "" });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!p.user!.email) return { error: "Usuário sem e-mail." };
+
+  const { error } = await p.supabase!.from("support_tickets").insert({
+    ...parsed.data,
+    nome: p.user!.user_metadata?.full_name || p.user!.email,
+    email: p.user!.email,
+  });
+  if (error) return { error: "Erro ao abrir o chamado." };
+
+  revalidatePath("/suporte");
+  return { success: true };
 }
 
 export async function updateTicketStatus(id: string, status: string) {

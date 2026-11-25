@@ -1,7 +1,11 @@
+import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { FaqManager } from "./faq-manager";
 
 export default async function FaqPage() {
+  const p = await requirePermission("faq", "view");
+  if (p.error) notFound();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || "";

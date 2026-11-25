@@ -13,6 +13,7 @@ import {
 import type { SupportTicket, SupportNotificationEmail } from "./actions";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { NewTicket } from "./new-ticket";
 import { useConfirm } from "@/hooks/use-confirm";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { Sheet } from "@/components/ui/sheet";
@@ -43,9 +44,10 @@ interface Props {
   initialCounts: Record<string, number>;
   canEdit: boolean;
   canDelete: boolean;
+  canCreate: boolean;
 }
 
-export function SupportManager({ initialData, initialTotal, initialCounts, canEdit, canDelete }: Props) {
+export function SupportManager({ initialData, initialTotal, initialCounts, canEdit, canDelete, canCreate }: Props) {
   const { confirm: confirmAction, dialogProps } = useConfirm();
   const [tickets, setTickets] = useState(initialData);
   const [total, setTotal] = useState(initialTotal);
@@ -156,10 +158,11 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900">Tickets de Suporte</h1>
+          <h1 className="text-xl font-semibold text-ink-900">{canEdit ? "Tickets de Suporte" : "Meus chamados"}</h1>
           <p className="text-sm text-ink-500 mt-0.5">{totalAll} tickets no total</p>
         </div>
         <div className="flex items-center gap-2">
+          {canCreate && <NewTicket onCreated={() => applyFilter("novo")} />}
           {canEdit && (
             <button
               onClick={openEmailSettings}

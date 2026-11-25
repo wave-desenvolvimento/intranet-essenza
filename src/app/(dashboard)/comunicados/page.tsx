@@ -1,7 +1,11 @@
+import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { AnnouncementsManager } from "./announcements-manager";
 
 export default async function ComunicadosPage() {
+  const p = await requirePermission("comunicados", "view");
+  if (p.error) notFound();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || "";

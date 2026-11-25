@@ -4,25 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/permissions";
 
-export async function getTemplates() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("banner_templates")
-    .select("*")
-    .order("sort_order");
-  return data || [];
-}
-
-export async function getPublishedTemplates() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("banner_templates")
-    .select("*")
-    .eq("status", "published")
-    .order("sort_order");
-  return data || [];
-}
-
 export async function createTemplate(formData: FormData) {
   const p = await requirePermission("templates", "create"); if (p.error) return p;
   const supabase = await createClient();

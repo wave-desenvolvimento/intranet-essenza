@@ -4,33 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getResend, FROM_EMAIL } from "@/lib/email";
 import { OrderNotificationEmail } from "@/emails/order-notification";
-import { notifyByPermission, notifyFranchise } from "@/app/(dashboard)/notifications-actions";
-import { requireAuth, requirePermission } from "@/lib/permissions";
+import { notifyByPermission, notifyFranchise } from "@/lib/notify";
+import { requirePermission } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
 // === Products ===
-
-export async function getProducts() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("products")
-    .select("*, prices:product_prices(*), product_category:product_categories(id, name)")
-    .order("sort_order");
-  return data || [];
-}
-
-export async function getActiveProducts() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("products")
-    .select("*, prices:product_prices(*), product_category:product_categories(id, name)")
-    .eq("active", true)
-    .order("category")
-    .order("name");
-  return data || [];
-}
 
 export async function createProduct(formData: FormData) {
   const p = await requirePermission("produtos", "edit"); if (p.error) return p;
@@ -120,32 +98,9 @@ export async function deleteProduct(id: string) {
 
 // === Orders ===
 
-export async function getOrders() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("orders")
-    .select("*, franchise:franchises(name, segment), items:order_items(*), creator:profiles!orders_created_by_fkey(full_name)")
-    .order("created_at", { ascending: false });
-  return data || [];
-}
-
-export async function getMyOrders() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const { data: profile } = await supabase.from("profiles").select("franchise_id").eq("id", user.id).single();
-  if (!profile?.franchise_id) return [];
-
-  const { data } = await supabase
-    .from("orders")
-    .select("*, items:order_items(*)")
-    .eq("franchise_id", profile.franchise_id)
-    .order("created_at", { ascending: false });
-  return data || [];
-}
-
 export async function createOrder(formData: FormData) {
+  const permission = await requirePermission("pedidos", "create");
+  if (permission.error) return { error: permission.error };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Não autenticado." };
@@ -247,12 +202,17 @@ export async function createOrder(formData: FormData) {
   }
 
   // Notify admins with orders permission
-  notifyByPermission("pedidos", "approve", {
-    title: `Novo pedido - ${franchise?.name || "Franquia"}`,
-    body: `${validatedItems.length} itens · R$ ${total.toFixed(2)}`,
-    href: "/gestao-de-pedidos",
-    icon: "cart",
-  }, user.id).catch(() => {});
+  notifyByPermission({
+    module: "pedidos",
+    action: "approve",
+    notification: {
+      title: `Novo pedido - ${franchise?.name || "Franquia"}`,
+      body: `${validatedItems.length} itens · R$ ${total.toFixed(2)}`,
+      href: "/gestao-de-pedidos",
+      icon: "cart",
+    },
+    excludeUserId: user.id,
+  }).catch(() => {});
 
   await logAudit({ action: "create", entityType: "order", entityId: order.id, description: `Criou pedido ${ocNumber} - R$ ${total.toFixed(2)}` });
 
@@ -265,20 +225,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 // === Payment Plans & Shipping Types ===
-
-export async function getPaymentPlans() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase.from("payment_plans").select("*").eq("active", true).order("sort_order");
-  return data || [];
-}
-
-export async function getShippingTypes() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase.from("shipping_types").select("*").eq("active", true).order("sort_order");
-  return data || [];
-}
 
 export async function updateOrderStatus(orderId: string, status: string) {
   const p = await requirePermission("pedidos", "approve"); if (p.error) return p;
@@ -300,12 +246,16 @@ export async function updateOrderStatus(orderId: string, status: string) {
   // Notify the franchise that placed the order
   const { data: order } = await supabase.from("orders").select("franchise_id, id").eq("id", orderId).single();
   if (order?.franchise_id) {
-    notifyFranchise(order.franchise_id, {
-      title: `Pedido atualizado - ${STATUS_LABELS[status] || status}`,
-      body: `Status do seu pedido foi atualizado`,
-      href: "/novo-pedido",
-      icon: "cart",
-    }, user?.id).catch(() => {});
+    notifyFranchise({
+      franchiseId: order.franchise_id,
+      notification: {
+        title: `Pedido atualizado - ${STATUS_LABELS[status] || status}`,
+        body: `Status do seu pedido foi atualizado`,
+        href: "/novo-pedido",
+        icon: "cart",
+      },
+      excludeUserId: user?.id,
+    }).catch(() => {});
   }
 
   // Get OC for audit
@@ -313,37 +263,6 @@ export async function updateOrderStatus(orderId: string, status: string) {
   const ocLabel = orderData?.purchase_order || `#${orderId.slice(0, 8)}`;
   await logAudit({ action: "approve", entityType: "order", entityId: orderId, description: `Atualizou pedido ${ocLabel} → ${STATUS_LABELS[status] || status}` });
 
-  revalidatePath("/novo-pedido");
-  return { success: true };
-}
-
-export async function updateOrderItem(itemId: string, quantity: number) {
-  const p = await requirePermission("pedidos", "approve"); if (p.error) return p;
-  const supabase = await createClient();
-
-  const { data: item } = await supabase.from("order_items").select("order_id, unit_price").eq("id", itemId).single();
-  if (!item) return { error: "Item não encontrado." };
-
-  if (quantity <= 0) {
-    await supabase.from("order_items").delete().eq("id", itemId);
-  } else {
-    await supabase.from("order_items").update({ quantity, subtotal: quantity * item.unit_price }).eq("id", itemId);
-  }
-
-  // Recalculate order total
-  const { data: items } = await supabase.from("order_items").select("subtotal").eq("order_id", item.order_id);
-  const total = (items || []).reduce((sum, i) => sum + Number(i.subtotal), 0);
-  await supabase.from("orders").update({ total }).eq("id", item.order_id);
-
-  revalidatePath("/novo-pedido");
-  return { success: true };
-}
-
-export async function updateOrderNotes(orderId: string, adminNotes: string) {
-  const p = await requirePermission("pedidos", "approve"); if (p.error) return p;
-  const supabase = await createClient();
-  const { error } = await supabase.from("orders").update({ admin_notes: adminNotes }).eq("id", orderId);
-  if (error) return { error: error.message };
   revalidatePath("/novo-pedido");
   return { success: true };
 }
@@ -441,43 +360,7 @@ export async function getAllOrders(filters?: { status?: string; franchiseId?: st
   return orders;
 }
 
-export async function getOrderStats() {
-  const supabase = await createClient();
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const weekAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
-  const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString();
-
-  const [
-    { count: totalPending },
-    { count: totalToday },
-    { count: totalWeek },
-    { count: totalMonth },
-  ] = await Promise.all([
-    supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "pendente"),
-    supabase.from("orders").select("*", { count: "exact", head: true }).gte("created_at", today),
-    supabase.from("orders").select("*", { count: "exact", head: true }).gte("created_at", weekAgo),
-    supabase.from("orders").select("*", { count: "exact", head: true }).gte("created_at", monthAgo),
-  ]);
-
-  return {
-    pending: totalPending || 0,
-    today: totalToday || 0,
-    week: totalWeek || 0,
-    month: totalMonth || 0,
-  };
-}
-
 // === Product Categories ===
-
-export async function getProductCategories() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("product_categories")
-    .select("*")
-    .order("sort_order");
-  return data || [];
-}
 
 export async function createProductCategory(name: string) {
   const p = await requirePermission("produtos", "edit"); if (p.error) return p;
