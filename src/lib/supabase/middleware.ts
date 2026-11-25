@@ -35,7 +35,9 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith("/auth") &&
     !request.nextUrl.pathname.startsWith("/s/") &&
     !request.nextUrl.pathname.startsWith("/status") &&
-    !request.nextUrl.pathname.startsWith("/api/health")
+    !request.nextUrl.pathname.startsWith("/api/health") &&
+    // Autenticam por token proprio (triggers do banco); status-report e o formulario publico de /status
+    !["/api/leads/notify", "/api/support/notify", "/api/status-report"].includes(request.nextUrl.pathname)
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

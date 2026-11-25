@@ -41,6 +41,8 @@ interface Props {
   collections: Collection[];
 }
 
+const VIEW_LABELS: Record<string, string> = { table: "Tabela", gallery: "Galeria", files: "Arquivos", course: "Treinamento", custom: "Personalizada" };
+
 interface LinkedCollection {
   collectionId: string;
   role: string;
@@ -67,7 +69,7 @@ function PageRowContent({ page, isSystem }: { page: Page; isSystem: boolean }) {
         </div>
         <div className="flex items-center gap-2 text-xs text-ink-400">
           {isSystem && page.href ? <span>{page.href}</span> : <span>/pagina/{page.slug}</span>}
-          {linkedCount > 0 && <span>· {linkedCount} coleção{linkedCount > 1 ? "s" : ""}</span>}
+          {linkedCount > 0 && <span>· {linkedCount} {linkedCount > 1 ? "coleções" : "coleção"}</span>}
         </div>
       </div>
     </div>
@@ -128,8 +130,8 @@ function SortablePageRow({
           ) : (
             <span>/pagina/{page.slug}</span>
           )}
-          {!page.is_group && page.view_type && <span>· {page.view_type}</span>}
-          {linkedCount > 0 && <span>· {linkedCount} coleção{linkedCount > 1 ? "s" : ""}</span>}
+          {!page.is_group && !isSystem && page.view_type && <span>· {VIEW_LABELS[page.view_type] || page.view_type}</span>}
+          {linkedCount > 0 && <span>· {linkedCount} {linkedCount > 1 ? "coleções" : "coleção"}</span>}
           {page.module && <span>· {page.module}{page.required_action ? `.${page.required_action}` : ""}</span>}
         </div>
       </div>
@@ -138,7 +140,7 @@ function SortablePageRow({
         {!isSystem && (
           <Tooltip content="Duplicar página"><button onClick={() => onDuplicate(page.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"><Copy size={13} /></button></Tooltip>
         )}
-        <Tooltip content="Remover página"><button onClick={() => onDelete(page.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors"><Trash2 size={13} /></button></Tooltip>
+        {!isSystem && <Tooltip content="Remover página"><button onClick={() => onDelete(page.id)} disabled={isPending} className="rounded-md p-1.5 text-ink-400 hover:text-danger hover:bg-danger-soft transition-colors"><Trash2 size={13} /></button></Tooltip>}
         {!page.is_group && (
           <a
             href={isSystem && page.href ? page.href : `/pagina/${page.slug}`}
@@ -203,7 +205,7 @@ function SortableSection({
           <span className="text-[10px] font-medium text-brand-olive ml-auto">Soltar aqui</span>
         )}
         <Tooltip content="Editar seção"><button onClick={() => onEdit(group)} className="rounded-md p-0.5 text-ink-300 hover:text-ink-500"><Pencil size={10} /></button></Tooltip>
-        <Tooltip content="Remover seção"><button onClick={() => onDelete(group.id)} disabled={isPending} className="rounded-md p-0.5 text-ink-300 hover:text-danger"><Trash2 size={10} /></button></Tooltip>
+        {!isSystem && <Tooltip content="Remover seção"><button onClick={() => onDelete(group.id)} disabled={isPending} className="rounded-md p-0.5 text-ink-300 hover:text-danger"><Trash2 size={10} /></button></Tooltip>}
       </div>
       {childrenContent}
     </div>
@@ -498,7 +500,7 @@ export function PagesManager({ pages: initialPages, collections }: Props) {
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-lg font-semibold text-ink-900">Pages</h1>
+          <h1 className="text-lg font-semibold text-ink-900">Páginas</h1>
           <p className="text-sm text-ink-500">Arraste páginas entre seções para reorganizar</p>
         </div>
         <div className="flex items-center gap-2">

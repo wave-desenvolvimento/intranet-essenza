@@ -27,6 +27,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 interface Role {
   id: string;
   name: string;
+  description?: string | null;
 }
 
 interface UserProfile {
@@ -55,11 +56,12 @@ interface Props {
   canManageUsers: boolean;
   canManageRoles: boolean;
   isStaff: boolean;
+  trainingTab?: React.ReactNode;
   stockTab?: React.ReactNode;
 }
 
-export function FranchiseDetail({ franchise, users, roles, canManageUsers, canManageRoles, isStaff, stockTab }: Props) {
-  const [tab, setTab] = useState<"users" | "stock">("users");
+export function FranchiseDetail({ franchise, users, roles, canManageUsers, canManageRoles, isStaff, trainingTab, stockTab }: Props) {
+  const [tab, setTab] = useState<"users" | "training" | "stock">("users");
   const [editing, setEditing] = useState<UserProfile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
@@ -214,14 +216,17 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
       </div>
 
       {/* Tabs */}
-      {stockTab && (
+      {(trainingTab || stockTab) && (
         <div className="flex items-center gap-1 rounded-lg bg-ink-50 p-1 w-fit mb-5">
           <button onClick={() => setTab("users")} className={cn("rounded-md px-4 py-1.5 text-sm font-medium transition-colors", tab === "users" ? "bg-white text-ink-900 shadow-sm" : "text-ink-500")}>
             <span className="flex items-center gap-1.5"><UsersIcon size={14} /> Usuários</span>
           </button>
-          <button onClick={() => setTab("stock")} className={cn("rounded-md px-4 py-1.5 text-sm font-medium transition-colors", tab === "stock" ? "bg-white text-ink-900 shadow-sm" : "text-ink-500")}>
+          {trainingTab && <button onClick={() => setTab("training")} className={cn("rounded-md px-4 py-1.5 text-sm font-medium transition-colors", tab === "training" ? "bg-white text-ink-900 shadow-sm" : "text-ink-500")}>
+            <span className="flex items-center gap-1.5"><GraduationCap size={14} /> Treinamentos</span>
+          </button>}
+          {stockTab && <button onClick={() => setTab("stock")} className={cn("rounded-md px-4 py-1.5 text-sm font-medium transition-colors", tab === "stock" ? "bg-white text-ink-900 shadow-sm" : "text-ink-500")}>
             <span className="flex items-center gap-1.5"><Package size={14} /> Estoque</span>
-          </button>
+          </button>}
         </div>
       )}
 
@@ -229,6 +234,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
         <p className="mb-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>
       )}
 
+      {tab === "training" && trainingTab}
       {tab === "stock" && stockTab}
 
       {tab === "users" && <div className="flex flex-col gap-6 lg:flex-row">
@@ -238,7 +244,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
             <thead>
               <tr className="border-b border-ink-100">
                 <th className="px-4 py-3 text-left font-medium text-ink-500">Usuário</th>
-                <th className="px-4 py-3 text-left font-medium text-ink-500 hidden md:table-cell">Roles</th>
+                <th className="px-4 py-3 text-left font-medium text-ink-500 hidden md:table-cell">Tipo de acesso</th>
                 <th className="px-4 py-3 text-left font-medium text-ink-500">Status</th>
                 <th className="px-4 py-3 text-left font-medium text-ink-500 hidden lg:table-cell">Último acesso</th>
                 <th className="px-4 py-3 text-right font-medium text-ink-500">Ações</th>
@@ -271,7 +277,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                             {initial}
                           </div>
                           <div>
-                            <Link href={`/usuarios/${user.id}`} className="font-medium text-ink-900 hover:underline">{user.full_name}</Link>
+                            <Link href={`/acompanhamento/${user.id}`} className="font-medium text-ink-900 hover:underline">{user.full_name}</Link>
                             {user.is_franchise_admin && (
                               <span className="text-[10px] font-medium text-brand-olive">Admin da franquia</span>
                             )}
@@ -285,7 +291,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                               {ur.role.name}
                             </span>
                           ))}
-                          {user.user_roles.length === 0 && <span className="text-xs text-ink-400">Sem role</span>}
+                          {user.user_roles.length === 0 && <span className="text-xs text-ink-400">Sem acesso</span>}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -309,7 +315,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <Link href={`/usuarios/${user.id}`} className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive hover:bg-ink-100 transition-colors" aria-label="Ver treinamentos" title="Ver treinamentos">
+                          <Link href={`/acompanhamento/${user.id}`} className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive hover:bg-ink-100 transition-colors" aria-label="Ver treinamentos" title="Ver treinamentos">
                             <GraduationCap size={14} />
                           </Link>
                           {canManageUsers && (
@@ -373,13 +379,13 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                 {franchise.name}
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer">
+              {isStaff && <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={isFranchiseAdmin} onChange={(e) => setIsFranchiseAdmin(e.target.checked)} className="sr-only" />
                 <div className={cn("flex h-4 w-4 items-center justify-center rounded border-[1.5px] transition-colors", isFranchiseAdmin ? "border-brand-olive bg-brand-olive" : "border-ink-300")}>
                   {isFranchiseAdmin && <svg width="9" height="9" viewBox="0 0 9 9" className="text-white"><path d="M1 4.5L3.5 7L8 2" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                 </div>
                 <span className="text-xs text-ink-700">Admin desta franquia</span>
-              </label>
+              </label>}
 
               {editing && (
                 <div>
@@ -406,10 +412,13 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                     {roles.map((role) => (
                       <label key={role.id} className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" checked={selectedRoles.has(role.id)} onChange={() => toggleRole(role.id)} className="sr-only" />
-                        <div className={cn("flex h-3.5 w-3.5 items-center justify-center rounded border transition-colors", selectedRoles.has(role.id) ? "border-brand-olive bg-brand-olive" : "border-ink-300")}>
+                        <div className={cn("flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors", selectedRoles.has(role.id) ? "border-brand-olive bg-brand-olive" : "border-ink-300")}>
                           {selectedRoles.has(role.id) && <svg width="8" height="8" viewBox="0 0 9 9" className="text-white"><path d="M1 4.5L3.5 7L8 2" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                         </div>
-                        <span className="text-xs text-ink-700">{role.name}</span>
+                        <span className="text-xs text-ink-700">
+                          {role.name}
+                          {role.description && <span className="block text-[11px] text-ink-400">{role.description}</span>}
+                        </span>
                       </label>
                     ))}
                   </div>

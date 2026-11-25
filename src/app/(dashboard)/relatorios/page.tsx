@@ -8,7 +8,9 @@ export default async function AnalyticsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/inicio");
-  const { data: canView } = await supabase.rpc("has_permission", { _user_id: user.id, _module: "relatorios", _action: "view" });
+  const { data: perms } = await supabase.rpc("get_user_permissions", { _user_id: user.id });
+  const keys = new Set((perms || []).map((perm: { module: string; action: string }) => `${perm.module}.${perm.action}`));
+  const canView = keys.has("relatorios.view");
   if (!canView) redirect("/inicio");
 
   try {
@@ -18,7 +20,7 @@ export default async function AnalyticsPage() {
       getDetailedAnalytics(),
     ]);
     if ("error" in data || "error" in ordersData || "error" in detailedData) redirect("/inicio");
-    return <AnalyticsContent data={data} ordersData={ordersData} detailedData={detailedData} />;
+    return <AnalyticsContent data={data} ordersData={ordersData} detailedData={detailedData} canExport={keys.has("relatorios.export")} canSeeOrders={keys.has("pedidos.view_all")} canSeeTraining={keys.has("treinamentos.view")} />;
   } catch {
     redirect("/inicio");
   }

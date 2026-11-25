@@ -1,7 +1,7 @@
 "use client";
 
+import { SafeHtml } from "@/components/ui/safe-html";
 import { useState, useEffect, useTransition, useMemo } from "react";
-import DOMPurify from "dompurify";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
@@ -751,7 +751,7 @@ function CellValue({ value, field }: { value: unknown; field: Field }) {
   }
 
   if (type === "rich_text") {
-    return <span className="text-ink-900 truncate block prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(str) }} />;
+    return <SafeHtml className="text-ink-900 truncate block prose prose-sm max-w-none" html={str} />;
   }
 
   return <span className="text-ink-900 truncate block">{str}</span>;

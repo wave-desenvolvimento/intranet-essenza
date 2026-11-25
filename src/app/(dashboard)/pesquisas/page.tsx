@@ -1,7 +1,11 @@
+import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { SurveysManager } from "./surveys-manager";
 
 export default async function PesquisasPage() {
+  const p = await requirePermission("pesquisas", "view");
+  if (p.error) notFound();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || "";

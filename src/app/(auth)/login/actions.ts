@@ -26,10 +26,16 @@ export async function login(formData: FormData) {
   if (!rl.success) return { error: "Muitas tentativas. Aguarde 1 minuto." };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { error: "E-mail ou senha incorretos." };
+  }
+
+  const { data: profile } = await supabase.from("profiles").select("status").eq("id", data.user.id).single();
+  if (profile?.status === "inactive") {
+    await supabase.auth.signOut();
+    return { error: "Seu acesso está inativo. Fale com o responsável da sua loja." };
   }
 
   redirect("/inicio");

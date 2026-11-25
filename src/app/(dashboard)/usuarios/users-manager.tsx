@@ -148,7 +148,7 @@ export function UsersManager({ users, franchises, currentUserId }: Props) {
             <tr className="border-b border-ink-100">
               <th className="px-4 py-3 text-left font-medium text-ink-500">Usuário</th>
               <th className="px-4 py-3 text-left font-medium text-ink-500 hidden md:table-cell">Franquia</th>
-              <th className="px-4 py-3 text-left font-medium text-ink-500 hidden lg:table-cell">Roles</th>
+              <th className="px-4 py-3 text-left font-medium text-ink-500 hidden lg:table-cell">Tipo de acesso</th>
               <th className="px-4 py-3 text-left font-medium text-ink-500">Status</th>
               <th className="px-4 py-3 text-left font-medium text-ink-500 hidden lg:table-cell">Último acesso</th>
               <th className="px-4 py-3 text-right font-medium text-ink-500">Ações</th>
@@ -203,7 +203,7 @@ export function UsersManager({ users, franchises, currentUserId }: Props) {
                           </span>
                         ))}
                         {user.user_roles.length === 0 && (
-                          <span className="text-ink-400 text-xs">Sem role</span>
+                          <span className="text-ink-400 text-xs">Sem acesso</span>
                         )}
                       </div>
                     </td>
@@ -234,7 +234,7 @@ export function UsersManager({ users, franchises, currentUserId }: Props) {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <Link
-                          href={`/usuarios/${user.id}`}
+                          href={`/acompanhamento/${user.id}`}
                           className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive hover:bg-ink-100 transition-colors"
                           aria-label="Ver treinamentos"
                           title="Ver treinamentos"

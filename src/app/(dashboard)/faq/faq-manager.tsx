@@ -1,5 +1,6 @@
 "use client";
 
+import { SafeHtml } from "@/components/ui/safe-html";
 import { useState, useTransition } from "react";
 import {
   Plus, Pencil, Trash2, Search, ChevronDown, BookOpen, HelpCircle, Tag,
@@ -125,7 +126,7 @@ export function FaqManager({ items, categories, canManage }: Props) {
         </div>
         {isOpen && (
           <div className="px-5 pb-4 pl-12">
-            <div className="prose prose-sm max-w-none text-ink-700" dangerouslySetInnerHTML={{ __html: item.answer }} />
+            <SafeHtml className="prose prose-sm max-w-none text-ink-700" html={item.answer} />
           </div>
         )}
       </div>

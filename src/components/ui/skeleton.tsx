@@ -4,16 +4,6 @@ export function Skeleton({ className }: { className?: string }) {
   return <div className={cn("animate-pulse rounded-lg bg-ink-100", className)} />;
 }
 
-export function SkeletonText({ className, lines = 1 }: { className?: string; lines?: number }) {
-  return (
-    <div className={cn("space-y-2", className)}>
-      {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className={cn("h-3 animate-pulse rounded bg-ink-100", i === lines - 1 && lines > 1 && "w-2/3")} />
-      ))}
-    </div>
-  );
-}
-
 export function SkeletonCard() {
   return (
     <div className="rounded-xl border border-ink-100 bg-white overflow-hidden">
@@ -49,12 +39,3 @@ export function SkeletonTable({ rows = 5 }: { rows?: number }) {
   );
 }
 
-export function SkeletonGrid({ count = 8 }: { count?: number }) {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-      {Array.from({ length: count }).map((_, i) => (
-        <SkeletonCard key={i} />
-      ))}
-    </div>
-  );
-}

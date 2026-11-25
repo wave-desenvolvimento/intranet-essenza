@@ -227,12 +227,19 @@ const MODULE_LABELS: Record<string, string> = {
   biblioteca: "Biblioteca", cms: "CMS", templates: "Templates", configuracoes: "Configurações",
   "universo-da-marca": "Universo da Marca", "material-corporativo": "Material Corp.",
   campanhas: "Campanhas", "redes-sociais": "Redes Sociais", videos: "Vídeos",
-  treinamento: "Treinamento", cigam: "CIGAM", outro: "Outro",
+  treinamentos: "Acompanhamento", outro: "Outro",
 };
 
 export async function getDetailedAnalytics(from?: string, to?: string) {
   const p = await requirePermission("relatorios", "view"); if (p.error) return p;
   const supabase = await createClient();
+
+  // Paginas do CMS usam o proprio titulo como rotulo
+  const { data: pageTitles } = await supabase.from("cms_pages").select("slug, title");
+  const moduleLabels: Record<string, string> = {
+    ...MODULE_LABELS,
+    ...Object.fromEntries((pageTitles || []).map((page) => [page.slug, page.title])),
+  };
 
   const dateFrom = from || new Date(Date.now() - 30 * 86400000).toISOString();
   const dateTo = to || new Date().toISOString();
@@ -252,7 +259,7 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
   const moduleMap = new Map<string, { module: string; label: string; views: number; uniqueUsers: Set<string>; uniqueFranchises: Set<string> }>();
   for (const pv of pvRows) {
     const m = pv.module;
-    const existing = moduleMap.get(m) || { module: m, label: MODULE_LABELS[m] || m, views: 0, uniqueUsers: new Set(), uniqueFranchises: new Set() };
+    const existing = moduleMap.get(m) || { module: m, label: moduleLabels[m] || m, views: 0, uniqueUsers: new Set(), uniqueFranchises: new Set() };
     existing.views++;
     if (pv.user_id) existing.uniqueUsers.add(pv.user_id);
     if (pv.franchise_id) existing.uniqueFranchises.add(pv.franchise_id);
@@ -370,7 +377,7 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
     const content = contentByFranchise.get(f.id);
     const orders = ordersByFranchise.get(f.id);
     const modulesArr = detail
-      ? [...detail.modules.entries()].map(([mod, count]) => ({ module: mod, label: MODULE_LABELS[mod] || mod, count })).sort((a, b) => b.count - a.count)
+      ? [...detail.modules.entries()].map(([mod, count]) => ({ module: mod, label: moduleLabels[mod] || mod, count })).sort((a, b) => b.count - a.count)
       : [];
     const usersArr = detail
       ? [...detail.users.values()].sort((a, b) => b.pageViews - a.pageViews)
@@ -393,44 +400,14 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
     };
   }).sort((a, b) => b.totalPageViews - a.totalPageViews);
 
-  // 3. Recent activity log (last 50 actions across audit + page views)
-  const { data: recentAudit } = await supabase
-    .from("audit_log")
-    .select("id, user_id, user_name, action, entity_type, description, created_at")
-    .gte("created_at", dateFrom)
-    .lte("created_at", dateTo)
-    .order("created_at", { ascending: false })
-    .limit(100);
-
-  // Enrich audit with franchise info
-  const auditUserIds = [...new Set((recentAudit || []).map((a) => a.user_id).filter(Boolean))];
-  const { data: auditProfiles } = auditUserIds.length > 0
-    ? await supabase.from("profiles").select("id, franchise_id, franchises(name)").in("id", auditUserIds)
-    : { data: [] };
-  const auditProfileMap = new Map((auditProfiles || []).map((p) => [p.id, p]));
-
-  const activityLog = (recentAudit || []).map((a) => {
-    const profile = auditProfileMap.get(a.user_id);
-    const franchise = profile?.franchises as unknown as { name: string } | null;
-    return {
-      id: a.id,
-      userName: a.user_name,
-      action: a.action,
-      entityType: a.entity_type,
-      description: a.description,
-      franchiseName: franchise?.name || null,
-      createdAt: a.created_at,
-    };
-  });
-
-  // 4. Total page views count
+  // 3. Total page views count
   const { count: totalPageViews } = await supabase
     .from("page_views")
     .select("*", { count: "exact", head: true })
     .gte("created_at", dateFrom)
     .lte("created_at", dateTo);
 
-  // 5. Unique sessions
+  // 4. Unique sessions
   const sessionSet = new Set(pvRows.map((r) => r.user_id).filter(Boolean));
 
   return {
@@ -438,6 +415,5 @@ export async function getDetailedAnalytics(from?: string, to?: string) {
     totalSessions: sessionSet.size,
     moduleUsage,
     franchiseDetails,
-    activityLog,
   };
 }

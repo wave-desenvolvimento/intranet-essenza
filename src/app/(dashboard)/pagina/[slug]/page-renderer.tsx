@@ -1,7 +1,7 @@
 "use client";
 
+import { SafeHtml } from "@/components/ui/safe-html";
 import { useState, useEffect, useTransition, useRef, useCallback } from "react";
-import DOMPurify from "dompurify";
 import { DndContext, DragOverlay, useDroppable, useDraggable, pointerWithin, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
 import { Download, Eye, ZoomIn, X, FileText, File, Image, Trash2, Search, Plus, Pencil, Check, Upload, Play, Clock, GraduationCap, Lock, FileDown, Copy, ChevronRight, ChevronUp, ChevronDown, ImageIcon, Folder, FolderPlus, FolderOpen, ArrowLeft, MoreVertical, FolderInput, GripVertical, Video } from "lucide-react";
 import { motion } from "motion/react";
@@ -2096,7 +2096,7 @@ function GalleryDetailModal({ item, collection, onClose }: { item: Item; collect
     switch (type) {
       case "rich_text": {
         const html = String(raw);
-        return <div className="rounded-lg bg-ink-50 px-4 py-3 text-sm text-ink-700 leading-relaxed prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />;
+        return <SafeHtml className="rounded-lg bg-ink-50 px-4 py-3 text-sm text-ink-700 leading-relaxed prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0" html={html} />;
       }
       case "textarea":
         return <p className="text-sm text-ink-700 whitespace-pre-wrap rounded-lg bg-ink-50 px-4 py-3">{String(raw)}</p>;
@@ -2484,7 +2484,7 @@ function TablePageView({ collection, filterCollections, canEdit, onEdit, onDelet
                         <span className="text-xs font-mono text-ink-500">{String(item.data[f.slug] || "")}</span>
                       </span>
                     ) : f.field_type === "rich_text" ? (
-                      <span className="prose prose-sm max-w-none truncate block" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(item.data[f.slug] || "-")) }} />
+                      <SafeHtml className="prose prose-sm max-w-none truncate block" html={String(item.data[f.slug] || "-")} />
                     ) : String(item.data[f.slug] || "-")}
                   </td>
                 ))}

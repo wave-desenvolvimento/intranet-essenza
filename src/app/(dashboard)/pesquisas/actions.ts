@@ -6,21 +6,6 @@ import { requireAuth, requirePermission } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 import { notifyAllActive } from "@/lib/notify";
 
-export async function getSurveys() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("surveys")
-    .select("*, questions:survey_questions(id, label, type, options, required, sort_order), responses:survey_responses(id, score, comment, user_id, franchise_id, created_at, franchise:franchises(name), answers:survey_answers(question_id, value))")
-    .order("created_at", { ascending: false });
-
-  // Sort questions by sort_order
-  return (data || []).map((s) => ({
-    ...s,
-    questions: (s.questions || []).sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order),
-  }));
-}
-
 interface QuestionInput {
   label: string;
   type: "nps" | "rating" | "text" | "choice" | "multiple_choice";

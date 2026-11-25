@@ -11,6 +11,7 @@ export interface DevPermission {
 const MODULE_ACTIONS: Record<string, string[]> = {
   dashboard:            ["view"],
   usuarios:             ["view", "create", "edit", "delete", "manage"],
+  treinamentos:         ["view", "manage"],
   franquias:            ["view", "create", "edit", "delete"],
   cms:                  ["view", "create", "edit", "delete"],
   templates:            ["view", "create", "edit", "delete"],
@@ -69,28 +70,3 @@ export const DEV_PRESETS: Record<string, DevPermission[]> = {
 
 export const DEV_COOKIE_NAME = "dev-view-mode";
 
-// Server-side: read from cookies
-export function getDevModeFromCookies(cookieHeader: string | null): DevViewMode {
-  if (process.env.NODE_ENV !== "development" || !cookieHeader) return "";
-  const match = cookieHeader.match(new RegExp(`${DEV_COOKIE_NAME}=([^;]+)`));
-  return (match?.[1] || "") as DevViewMode;
-}
-
-// Check if a dev mode is active and return permissions, or null to use real perms
-export function getDevPermissions(mode: DevViewMode): DevPermission[] | null {
-  if (!mode || !DEV_PRESETS[mode]) return null;
-  return DEV_PRESETS[mode];
-}
-
-// Helper: check if dev mode grants a specific permission
-export function devCan(mode: DevViewMode, key: string): boolean {
-  const perms = getDevPermissions(mode);
-  if (!perms) return true; // no dev mode = use real perms
-  const [module, action] = key.split(".");
-  return perms.some((p) => p.module === module && p.action === action);
-}
-
-// Helper: check if dev mode is admin
-export function devIsAdmin(mode: DevViewMode): boolean {
-  return mode === "admin" || mode === "";
-}

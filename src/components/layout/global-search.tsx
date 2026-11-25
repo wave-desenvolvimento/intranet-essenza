@@ -6,6 +6,7 @@ import {
   Building2, Package, ShoppingCart, Users, MessageSquare, HelpCircle, BarChart3,
   Film,
 } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { createClient } from "@/lib/supabase/client";
 import { cn, isAssetVisible } from "@/lib/utils";
 import { getIconComponent } from "@/components/ui/icon-picker";
@@ -54,6 +55,7 @@ export function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMac = useIsMac();
+  const { can, permissions } = usePermissions();
   const isMobile = useIsMobile();
   const router = useRouter();
 
@@ -83,6 +85,13 @@ export function GlobalSearch() {
     const supabase = createClient();
     const all: SearchResult[] = [];
 
+    // Franqueado (sem acesso a Franquias) so encontra usuarios da propria loja
+    let usersQuery = supabase.from("profiles").select("id, full_name, franchise_id, franchises(name)").ilike("full_name", `%${q}%`).limit(5);
+    if (!can("franquias.view")) {
+      const { data: franchiseId } = await supabase.rpc("my_franchise_id");
+      usersQuery = usersQuery.eq("franchise_id", franchiseId ?? "00000000-0000-0000-0000-000000000000");
+    }
+
     // Run all searches in parallel
     const [pages, items, franchises, products, orders, profiles, announcements, faqItems, surveys, mediaFields, matchingFolders, matchingCollections] = await Promise.all([
       // Pages
@@ -96,7 +105,7 @@ export function GlobalSearch() {
       // Orders
       supabase.from("orders").select("id, status, total, created_at, purchase_order, franchises(name)").or(`id.ilike.%${q}%,purchase_order.ilike.%${q}%`).order("created_at", { ascending: false }).limit(5),
       // Users/Profiles
-      supabase.from("profiles").select("id, full_name, franchise_id, franchises(name)").ilike("full_name", `%${q}%`).limit(5),
+      usersQuery,
       // Announcements
       supabase.from("announcements").select("id, title, priority, created_at").ilike("title", `%${q}%`).order("created_at", { ascending: false }).limit(5),
       // FAQ
@@ -325,7 +334,7 @@ export function GlobalSearch() {
       all.push({
         id: `user-${u.id}`, type: "user", title: u.full_name,
         subtitle: fname?.name || "Sem franquia",
-        icon: "users", href: u.franchise_id ? `/franquias/${u.franchise_id}` : "/usuarios",
+        icon: "users", href: `/acompanhamento/${u.id}`,
       });
     }
 
@@ -357,9 +366,14 @@ export function GlobalSearch() {
       });
     }
 
-    setResults(all);
+    // Nao sugere paginas que o usuario nao pode abrir
+    const required: Partial<Record<SearchResult["type"], string>> = {
+      franchise: "franquias.view", product: "produtos.view", order: "pedidos.view_all", user: "treinamentos.view",
+    };
+    setResults(all.filter((r) => !required[r.type] || can(required[r.type]!)));
     setLoading(false);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissions]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

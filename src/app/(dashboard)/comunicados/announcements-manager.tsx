@@ -1,5 +1,6 @@
 "use client";
 
+import { SafeHtml } from "@/components/ui/safe-html";
 import { useState, useTransition } from "react";
 import {
   Plus, Pencil, Trash2, Megaphone, Pin, AlertTriangle, Clock,
@@ -196,9 +197,9 @@ export function AnnouncementsManager({ announcements, franchises, canManage, cur
                           </span>
                         )}
                       </div>
-                      <div
+                      <SafeHtml
                         className={cn("text-sm prose prose-sm max-w-none mb-2", read ? "[&_*]:text-ink-500" : "[&_*]:text-ink-700")}
-                        dangerouslySetInnerHTML={{ __html: a.body }}
+                        html={a.body}
                       />
                       <div className="flex items-center gap-4 text-[11px] text-ink-400">
                         <span>{authorName}</span>

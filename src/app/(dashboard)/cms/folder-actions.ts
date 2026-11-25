@@ -23,84 +23,6 @@ export interface Folder {
 
 // === Queries ===
 
-export async function getFolders(pageId: string): Promise<Folder[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("cms_folders")
-    .select("*")
-    .eq("page_id", pageId)
-    .order("sort_order")
-    .order("name");
-  return (data || []) as Folder[];
-}
-
-export async function getFolder(id: string): Promise<Folder | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("cms_folders")
-    .select("*")
-    .eq("id", id)
-    .single();
-  return data as Folder | null;
-}
-
-// Build breadcrumb path from folder to root
-export async function getFolderBreadcrumb(folderId: string): Promise<{ id: string; name: string }[]> {
-  const supabase = await createClient();
-  const path: { id: string; name: string }[] = [];
-  let currentId: string | null = folderId;
-  let depth = 0;
-
-  while (currentId && depth < 20) {
-    const { data } = await supabase
-      .from("cms_folders")
-      .select("id, name, parent_id")
-      .eq("id", currentId)
-      .single() as { data: { id: string; name: string; parent_id: string | null } | null };
-    if (!data) break;
-    path.unshift({ id: data.id, name: data.name });
-    currentId = data.parent_id;
-    depth++;
-  }
-
-  return path;
-}
-
-// Resolve effective collection_id (walk up tree, fallback to page main collection)
-export async function resolveCollectionForFolder(
-  folderId: string | null,
-  pageId: string
-): Promise<string | null> {
-  const supabase = await createClient();
-
-  // Walk up folder tree
-  if (folderId) {
-    let currentId: string | null = folderId;
-    let depth = 0;
-    while (currentId && depth < 20) {
-      const { data } = await supabase
-        .from("cms_folders")
-        .select("collection_id, parent_id")
-        .eq("id", currentId)
-        .single() as { data: { collection_id: string | null; parent_id: string | null } | null };
-      if (!data) break;
-      if (data.collection_id) return data.collection_id;
-      currentId = data.parent_id;
-      depth++;
-    }
-  }
-
-  // Fallback: page main collection
-  const { data: pc } = await supabase
-    .from("cms_page_collections")
-    .select("collection_id")
-    .eq("page_id", pageId)
-    .eq("role", "main")
-    .single();
-
-  return pc?.collection_id || null;
-}
-
 // === Mutations ===
 
 export async function createFolder(formData: FormData) {
@@ -221,22 +143,6 @@ export async function moveFolder(id: string, newParentId: string | null) {
   return { success: true };
 }
 
-export async function moveItemToFolder(itemId: string, folderId: string | null) {
-  const p = await requirePermission("cms", "edit");
-  if (p.error) return p;
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("cms_items")
-    .update({ folder_id: folderId })
-    .eq("id", itemId);
-
-  if (error) return { error: "Erro ao mover item." };
-
-  revalidatePath("/pagina");
-  return { success: true };
-}
-
 export async function moveItemsToFolder(itemIds: string[], folderId: string | null) {
   const p = await requirePermission("cms", "edit");
   if (p.error) return p;
@@ -253,17 +159,3 @@ export async function moveItemsToFolder(itemIds: string[], folderId: string | nu
   return { success: true };
 }
 
-export async function reorderFolders(orderedIds: string[]) {
-  const p = await requirePermission("cms", "edit");
-  if (p.error) return p;
-
-  const supabase = await createClient();
-  await Promise.all(
-    orderedIds.map((id, i) =>
-      supabase.from("cms_folders").update({ sort_order: i }).eq("id", id)
-    )
-  );
-
-  revalidatePath("/pagina");
-  return { success: true };
-}

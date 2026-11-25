@@ -2,17 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { requireAuth, requirePermission } from "@/lib/permissions";
-
-export async function getPages() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("cms_pages")
-    .select("*, page_collections:cms_page_collections(collection_id, role, collection:cms_collections(id, name, slug))")
-    .order("sort_order");
-  return data || [];
-}
+import { requirePermission } from "@/lib/permissions";
 
 export async function createPage(formData: FormData) {
   const p = await requirePermission("cms", "create"); if (p.error) return p;
@@ -64,8 +54,13 @@ export async function updatePage(formData: FormData) {
 
   if (!id || !title) return { error: "Dados inválidos." };
 
+  // Permissoes e treinamentos sao ligados pelo slug: em paginas de sistema e de curso ele nao muda
+  const { data: current } = await supabase.from("cms_pages").select("slug, page_type, view_type").eq("id", id).single();
+  if (!current) return { error: "Página não encontrada." };
+  const lockSlug = current.page_type === "system" || current.view_type === "course";
+
   await supabase.from("cms_pages").update({
-    title, slug: slug || undefined, icon, view_type: isGroup ? "table" : viewType,
+    title, slug: lockSlug ? undefined : slug || undefined, icon, view_type: isGroup ? "table" : viewType,
     parent_id: parentId || null, is_group: isGroup,
   }).eq("id", id);
 
@@ -91,6 +86,12 @@ export async function updatePage(formData: FormData) {
 export async function deletePage(id: string) {
   const p = await requirePermission("cms", "delete"); if (p.error) return p;
   const supabase = await createClient();
+  const { data: page } = await supabase.from("cms_pages").select("slug, page_type, view_type").eq("id", id).single();
+  if (page?.page_type === "system") return { error: "Páginas do sistema não podem ser removidas. Para esconder, use Permissões." };
+  if (page?.view_type === "course") {
+    const { count } = await supabase.from("course_modules").select("id", { count: "exact", head: true }).eq("page_slug", page.slug);
+    if (count) return { error: "Remova os módulos deste treinamento antes de apagar a página." };
+  }
   const { error } = await supabase.from("cms_pages").delete().eq("id", id);
   if (error) return { error: "Erro ao remover page." };
   revalidatePath("/cms");

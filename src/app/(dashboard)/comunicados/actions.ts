@@ -6,32 +6,6 @@ import { requireAuth, requirePermission } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 import { notifyAllActive } from "@/lib/notify";
 
-export async function getAnnouncements() {
-  await requireAuth();
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("announcements")
-    .select("*, reads:announcement_reads(user_id)")
-    .order("priority", { ascending: false })
-    .order("created_at", { ascending: false });
-
-  if (!data || data.length === 0) return [];
-
-  // Fetch author names separately (author_id → profiles.id)
-  const authorIds = [...new Set(data.map((a) => a.author_id))];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, full_name")
-    .in("id", authorIds);
-
-  const profileMap = new Map((profiles || []).map((p) => [p.id, p.full_name]));
-
-  return data.map((a) => ({
-    ...a,
-    author: { full_name: profileMap.get(a.author_id) || "-" },
-  }));
-}
-
 export async function createAnnouncement(formData: FormData) {
   const p = await requirePermission("comunicados", "create"); if (p.error) return p;
   const supabase = await createClient();

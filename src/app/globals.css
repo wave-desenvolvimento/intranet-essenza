@@ -221,3 +221,22 @@
 .driver-popover.essenza-tour-popover .driver-popover-arrow {
   border-color: #ffffff;
 }
+
+/* Certificado: uma pagina A4 deitada */
+@page certificate {
+  size: A4 landscape;
+  margin: 10mm;
+}
+@media print {
+  .certificate-page {
+    page: certificate;
+    min-height: 0;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .certificate-page article {
+    aspect-ratio: auto;
+    max-width: none;
+    height: 188mm;
+  }
+}

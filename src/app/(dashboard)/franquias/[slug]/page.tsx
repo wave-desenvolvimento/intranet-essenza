@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getFranchiseUsers } from "../actions";
 import { getFranchiseStock } from "../stock-actions";
+import { getFranchiseTraining } from "@/app/(dashboard)/acompanhamento/franchise-training";
 import { FranchiseDetail } from "./franchise-detail";
 import { StockTab } from "./stock-tab";
 import { getRolesForContext, getUserScope, requirePermission } from "@/lib/permissions";
@@ -31,16 +32,16 @@ export default async function FranchiseDetailPage({
   const scope = await getUserScope(userId);
   if (!scope.isStaff && scope.franchiseId !== franchise.id) notFound();
 
-  const [profileRes, canManageRolesRes, users, availableRoles, stock] = await Promise.all([
-    supabase.from("profiles").select("franchise_id, is_franchise_admin").eq("id", userId).single(),
-    supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "manage" }),
+  const [canCreateRes, canEditRes, users, availableRoles, stock, trainingTab] = await Promise.all([
+    supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "create" }),
+    supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "edit" }),
     getFranchiseUsers(franchise.id),
     getRolesForContext(userId),
     getFranchiseStock(franchise.id),
+    getFranchiseTraining(userId, franchise.id),
   ]);
 
-  const isFranchiseAdmin = !!profileRes.data?.is_franchise_admin && profileRes.data?.franchise_id === franchise.id;
-  const canManageUsers = !!canManageRolesRes.data || isFranchiseAdmin;
+  const canManageUsers = !!canCreateRes.data && !!canEditRes.data;
 
   return (
     <FranchiseDetail
@@ -49,7 +50,8 @@ export default async function FranchiseDetailPage({
       roles={availableRoles}
       canManageUsers={canManageUsers}
       isStaff={scope.isStaff}
-      canManageRoles={!!canManageRolesRes.data}
+      canManageRoles={canManageUsers}
+      trainingTab={trainingTab}
       stockTab={<StockTab franchiseId={franchise.id} stock={stock} canEdit={canManageUsers} />}
     />
   );
