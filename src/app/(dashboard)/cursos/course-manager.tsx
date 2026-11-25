@@ -787,7 +787,7 @@ function VideoSheet({
 
         {/* Thumbnail */}
         <div>
-          <label className="block text-xs font-medium text-ink-700 mb-1">Thumbnail</label>
+          <label className="block text-xs font-medium text-ink-700 mb-1">Miniatura</label>
           <div className="flex items-center gap-3">
             <div className="h-14 w-24 rounded-lg border border-ink-200 bg-ink-50 overflow-hidden flex items-center justify-center">
               {thumbnailUrl ? (

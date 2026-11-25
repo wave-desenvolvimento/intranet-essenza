@@ -166,7 +166,7 @@ export function MobileNav({ cmsPages = [], permissionKeys = [] }: Props) {
               rel="noopener noreferrer"
               className="block mt-auto pb-2 text-center text-[10px] text-ink-300 hover:text-ink-500 transition-colors"
             >
-              construido por WaveCommerce
+              construído por WaveCommerce
             </a>
           </div>
         </div>

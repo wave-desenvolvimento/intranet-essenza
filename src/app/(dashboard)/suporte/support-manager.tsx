@@ -222,7 +222,7 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
           <thead>
             <tr className="border-b border-ink-100 bg-ink-50/50">
               <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-500">Nome</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-500">Email</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-500">E-mail</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-500">Tipo</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-500">Status</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-500">Data</th>
@@ -297,7 +297,7 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-700 hover:bg-yellow-100 disabled:opacity-50 transition-colors"
                                 >
                                   {replying === t.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-                                  Informar que esta em andamento
+                                  Informar que está em andamento
                                 </button>
                               )}
                               {t.status !== "resolvido" && (
@@ -307,7 +307,7 @@ export function SupportManager({ initialData, initialTotal, initialCounts, canEd
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors"
                                 >
                                   {replying === t.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-                                  Informar resolucao
+                                  Informar resolução
                                 </button>
                               )}
                             </div>
