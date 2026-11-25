@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { coursePath } from "./course-path";
 import { Sheet } from "@/components/ui/sheet";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { uploadToStorage, uploadVideoWithProgress } from "@/lib/upload";
@@ -31,9 +32,13 @@ import {
 // ============================================================
 
 export function CourseManager({
+  pageSlug,
+  title,
   modules: initialModules,
   canEdit,
 }: {
+  pageSlug: string;
+  title: string;
   modules: CourseModule[];
   canEdit: boolean;
   canView: boolean;
@@ -125,7 +130,7 @@ export function CourseManager({
       <div className="space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-ink-900">Cursos</h1>
+            <h1 className="text-lg font-semibold text-ink-900">{title}</h1>
             <p className="text-sm text-ink-500 mt-0.5">{modules.length} modulo{modules.length !== 1 ? "s" : ""}</p>
           </div>
           {canEdit && (
@@ -162,7 +167,7 @@ export function CourseManager({
                 onDragOver={(e) => handleModuleDragOver(e, i)}
                 onDragEnd={handleModuleDragEnd}
                 className="group flex items-center gap-4 rounded-xl border border-ink-100 bg-white p-4 hover:border-ink-200 transition-colors cursor-pointer"
-                onClick={() => canEdit ? openModule(mod.id) : router.push(`/cursos/${mod.slug}`)}
+                onClick={() => canEdit ? openModule(mod.id) : router.push(`${coursePath(pageSlug)}/${mod.slug}`)}
               >
                 {canEdit && (
                   <div
@@ -243,6 +248,7 @@ export function CourseManager({
 
         {/* Module Sheet */}
         <ModuleSheet
+          pageSlug={pageSlug}
           open={moduleSheet.open}
           module={moduleSheet.module}
           onClose={() => setModuleSheet({ open: false })}
@@ -442,11 +448,13 @@ export function CourseManager({
 // ============================================================
 
 function ModuleSheet({
+  pageSlug,
   open,
   module,
   onClose,
   onSaved,
 }: {
+  pageSlug: string;
   open: boolean;
   module?: CourseModule;
   onClose: () => void;
@@ -457,10 +465,10 @@ function ModuleSheet({
   const [status, setStatus] = useState(module?.status || "draft");
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Reset state when module changes
-  const prevId = useRef(module?.id);
-  if (prevId.current !== module?.id) {
-    prevId.current = module?.id;
+  // Reseta a cada abertura: comparar so o id mantinha o arquivo anterior ao criar varios em sequencia
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
     setCoverUrl(module?.cover_url || "");
     setStatus(module?.status || "draft");
   }
@@ -478,7 +486,7 @@ function ModuleSheet({
         onSaved({ ...module, title: formData.get("title") as string, description: formData.get("description") as string, cover_url: coverUrl || null, status: status as "draft" | "published" });
         toast.success("Modulo atualizado");
       } else {
-        const res = await createModule(formData);
+        const res = await createModule(pageSlug, formData);
         if (res.error) { toast.error(res.error); return; }
         onSaved({
           id: res.id!,
@@ -589,17 +597,18 @@ function VideoSheet({
   onSaved: (vid: CourseVideo) => void;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [sourceType, setSourceType] = useState<"youtube" | "upload" | "external">(video?.source_type || "youtube");
+  const [sourceType, setSourceType] = useState<"youtube" | "upload" | "external">(video?.source_type || "upload");
   const [storagePath, setStoragePath] = useState(video?.storage_path || "");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [status, setStatus] = useState(video?.status || "draft");
   const [thumbnailUrl, setThumbnailUrl] = useState(video?.thumbnail_url || "");
   const formRef = useRef<HTMLFormElement>(null);
 
-  const prevId = useRef(video?.id);
-  if (prevId.current !== video?.id) {
-    prevId.current = video?.id;
-    setSourceType(video?.source_type || "youtube");
+  // Reseta a cada abertura: comparar so o id mantinha o arquivo anterior ao criar varios em sequencia
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    setSourceType(video?.source_type || "upload");
     setStoragePath(video?.storage_path || "");
     setStatus(video?.status || "draft");
     setThumbnailUrl(video?.thumbnail_url || "");
@@ -705,17 +714,17 @@ function VideoSheet({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setSourceType("youtube")}
-              className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors", sourceType === "youtube" ? "border-red-300 bg-red-50 text-red-600" : "border-ink-100 text-ink-400 hover:bg-ink-50")}
-            >
-              <Video size={14} /> YouTube
-            </button>
-            <button
-              type="button"
               onClick={() => setSourceType("upload")}
               className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors", sourceType === "upload" ? "border-brand-olive bg-brand-olive/5 text-brand-olive" : "border-ink-100 text-ink-400 hover:bg-ink-50")}
             >
               <Upload size={14} /> Upload
+            </button>
+            <button
+              type="button"
+              onClick={() => setSourceType("youtube")}
+              className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors", sourceType === "youtube" ? "border-red-300 bg-red-50 text-red-600" : "border-ink-100 text-ink-400 hover:bg-ink-50")}
+            >
+              <Video size={14} /> YouTube
             </button>
             <button
               type="button"

@@ -448,3 +448,6 @@ insert into public.cms_items (collection_id, data, status, sort_order) select c.
 -- =============================================
 -- Notificações são inseridas após o usuário ser criado via Admin API.
 -- Execute: bash scripts/setup-test-user.sh
+
+-- Treinamento on-line: aulas em sequência obrigatória
+update public.cms_pages set sequential = true where slug = 'treinamento';

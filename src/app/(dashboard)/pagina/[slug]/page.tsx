@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageRenderer } from "./page-renderer";
+import { CoursePage } from "@/app/(dashboard)/cursos/course-page";
 import { getEffectivePermissions } from "@/lib/dev-mode-server";
 
 export default async function DynamicPage({
@@ -33,6 +34,8 @@ export default async function DynamicPage({
 
   if (!page || page.is_group) notFound();
 
+  if (page.view_type === "course") return <CoursePage pageSlug={page.slug} title={page.title} />;
+
   // Fetch linked collections with fields and items in a single query
   const { data: pageCollections } = await supabase
     .from("cms_page_collections")
@@ -59,22 +62,6 @@ export default async function DynamicPage({
       }),
     };
   }).filter(Boolean);
-
-  // Course pages: strip video URLs from items to prevent client-side inspection
-  if (page.view_type === "course") {
-    for (const col of validCollections) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const urlField = (col as any).fields?.find((f: { field_type: string }) => f.field_type === "url");
-      if (urlField) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const item of (col as any).items || []) {
-          if (item.data?.[urlField.slug]) {
-            item.data[urlField.slug] = "__protected__";
-          }
-        }
-      }
-    }
-  }
 
   // Fetch folders, collections, folder style in parallel
   const [foldersRes, allCollectionsRes, folderStyleRes] = await Promise.all([

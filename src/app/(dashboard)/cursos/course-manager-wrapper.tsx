@@ -4,10 +4,13 @@ import { useState } from "react";
 import { Settings, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CourseManager } from "./course-manager";
+import { coursePath } from "./course-path";
 import { CourseCatalog } from "./course-catalog";
 import type { CourseModule, CourseCatalogData } from "./course-actions";
 
 export function CourseManagerWithToggle({
+  pageSlug,
+  title,
   modules,
   catalogData,
   userName,
@@ -15,6 +18,8 @@ export function CourseManagerWithToggle({
   canEdit,
   canView,
 }: {
+  pageSlug: string;
+  title: string;
   modules: CourseModule[];
   catalogData: CourseCatalogData;
   userName: string;
@@ -51,9 +56,9 @@ export function CourseManagerWithToggle({
       </div>
 
       {view === "admin" ? (
-        <CourseManager modules={modules} canEdit={canEdit} canView={canView} />
+        <CourseManager pageSlug={pageSlug} title={title} modules={modules} canEdit={canEdit} canView={canView} />
       ) : (
-        <CourseCatalog data={catalogData} userName={userName} userAvatar={userAvatar} />
+        <CourseCatalog basePath={coursePath(pageSlug)} data={catalogData} userName={userName} userAvatar={userAvatar} />
       )}
     </div>
   );

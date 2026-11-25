@@ -3,6 +3,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+function revalidateCourses() {
+  revalidatePath("/cursos");
+  revalidatePath("/pagina/[slug]", "layout");
+}
+
 // ============================================================
 // Types
 // ============================================================
@@ -47,11 +52,12 @@ export interface LessonProgressRecord {
 // Modules CRUD
 // ============================================================
 
-export async function getModules(): Promise<CourseModule[]> {
+export async function getModules(pageSlug: string): Promise<CourseModule[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("course_modules")
     .select("*, course_videos(id)")
+    .eq("page_slug", pageSlug)
     .order("sort_order");
 
   return (data || []).map((m) => ({
@@ -91,13 +97,14 @@ export interface CourseCatalogData {
   totalDurationSeconds: number;
 }
 
-export async function getCourseCatalogData(): Promise<CourseCatalogData> {
+export async function getCourseCatalogData(pageSlug: string): Promise<CourseCatalogData> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: modules } = await supabase
     .from("course_modules")
     .select("id, title, description, cover_url, slug, course_videos(id, duration_seconds, sort_order, title, status)")
+    .eq("page_slug", pageSlug)
     .eq("status", "published")
     .order("sort_order");
 
@@ -207,23 +214,26 @@ export async function getModule(id: string): Promise<CourseModule | null> {
   return data as CourseModule | null;
 }
 
-export async function createModule(formData: FormData): Promise<{ id?: string; error?: string }> {
+export async function createModule(pageSlug: string, formData: FormData): Promise<{ id?: string; error?: string }> {
   const supabase = await createClient();
 
   const title = formData.get("title") as string;
   if (!title?.trim()) return { error: "Titulo obrigatorio" };
 
-  const slug = title
+  const titleSlug = title
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+  // slug e unico na tabela: o prefixo permite o mesmo titulo em treinamentos diferentes
+  const slug = pageSlug === "universo-da-marca" ? titleSlug : `${pageSlug}-${titleSlug}`;
 
   // Get next sort_order
   const { data: last } = await supabase
     .from("course_modules")
     .select("sort_order")
+    .eq("page_slug", pageSlug)
     .order("sort_order", { ascending: false })
     .limit(1)
     .single();
@@ -235,6 +245,7 @@ export async function createModule(formData: FormData): Promise<{ id?: string; e
       description: (formData.get("description") as string)?.trim() || null,
       cover_url: (formData.get("cover_url") as string)?.trim() || null,
       slug,
+      page_slug: pageSlug,
       sort_order: (last?.sort_order ?? -1) + 1,
       status: (formData.get("status") as string) || "draft",
     })
@@ -246,7 +257,7 @@ export async function createModule(formData: FormData): Promise<{ id?: string; e
     return { error: error.message };
   }
 
-  revalidatePath("/cursos");
+  revalidateCourses();
   return { id: data.id };
 }
 
@@ -268,7 +279,7 @@ export async function updateModule(id: string, formData: FormData): Promise<{ er
 
   if (error) return { error: error.message };
 
-  revalidatePath("/cursos");
+  revalidateCourses();
   return {};
 }
 
@@ -296,7 +307,7 @@ export async function deleteModule(id: string): Promise<{ error?: string }> {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/cursos");
+  revalidateCourses();
   return {};
 }
 
@@ -311,7 +322,7 @@ export async function reorderModules(orderedIds: string[]): Promise<{ error?: st
   const failed = results.find((r) => r.error);
   if (failed?.error) return { error: failed.error.message };
 
-  revalidatePath("/cursos");
+  revalidateCourses();
   return {};
 }
 
@@ -336,7 +347,7 @@ export async function createVideo(moduleId: string, formData: FormData): Promise
   const title = formData.get("title") as string;
   if (!title?.trim()) return { error: "Titulo obrigatorio" };
 
-  const sourceType = (formData.get("source_type") as string) || "youtube";
+  const sourceType = (formData.get("source_type") as string) || "upload";
   const videoUrl = (formData.get("video_url") as string)?.trim() || null;
   const storagePath = (formData.get("storage_path") as string)?.trim() || null;
 
@@ -376,7 +387,7 @@ export async function createVideo(moduleId: string, formData: FormData): Promise
 
   if (error) return { error: error.message };
 
-  revalidatePath("/cursos");
+  revalidateCourses();
   return { id: data.id };
 }
 
@@ -386,9 +397,13 @@ export async function updateVideo(id: string, formData: FormData): Promise<{ err
   const title = formData.get("title") as string;
   if (!title?.trim()) return { error: "Titulo obrigatorio" };
 
-  const sourceType = (formData.get("source_type") as string) || "youtube";
+  const sourceType = (formData.get("source_type") as string) || "upload";
   const videoUrl = (formData.get("video_url") as string)?.trim() || null;
   const storagePath = (formData.get("storage_path") as string)?.trim() || null;
+
+  if (formData.get("status") === "published" && !(sourceType === "upload" ? storagePath : videoUrl)) {
+    return { error: "Envie o video antes de publicar" };
+  }
 
   const durationStr = formData.get("duration_seconds") as string;
   const sizeStr = formData.get("size_bytes") as string;
@@ -410,7 +425,7 @@ export async function updateVideo(id: string, formData: FormData): Promise<{ err
 
   if (error) return { error: error.message };
 
-  revalidatePath("/cursos");
+  revalidateCourses();
   return {};
 }
 
@@ -435,7 +450,7 @@ export async function deleteVideo(id: string): Promise<{ error?: string }> {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/cursos");
+  revalidateCourses();
   return {};
 }
 
@@ -450,7 +465,7 @@ export async function reorderVideos(moduleId: string, orderedIds: string[]): Pro
   const failed = results.find((r) => r.error);
   if (failed?.error) return { error: failed.error.message };
 
-  revalidatePath("/cursos");
+  revalidateCourses();
   return {};
 }
 
@@ -459,8 +474,7 @@ export async function reorderVideos(moduleId: string, orderedIds: string[]): Pro
 // ============================================================
 
 export async function getVideoUrl(
-  videoId: string,
-  moduleId: string
+  videoId: string
 ): Promise<{ url: string } | { error: string }> {
   const supabase = await createClient();
   const {
@@ -468,43 +482,16 @@ export async function getVideoUrl(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Nao autenticado" };
 
-  // Load all published videos in module ordered by sort_order
-  const { data: videos } = await supabase
+  const { data: video } = await supabase
     .from("course_videos")
-    .select("id, video_url, storage_path, source_type, sort_order")
-    .eq("module_id", moduleId)
+    .select("video_url, storage_path, source_type")
+    .eq("id", videoId)
     .eq("status", "published")
-    .order("sort_order");
+    .single();
+  if (!video) return { error: "Video nao encontrado" };
 
-  if (!videos?.length) return { error: "Modulo vazio" };
-
-  const targetIndex = videos.findIndex((v) => v.id === videoId);
-  if (targetIndex === -1) return { error: "Video nao encontrado" };
-
-  // Sequential unlock: all previous videos must be completed
-  if (targetIndex > 0) {
-    const previousIds = videos.slice(0, targetIndex).map((v) => v.id);
-    const { data: progress } = await supabase
-      .from("lesson_progress")
-      .select("video_id, completed_at")
-      .eq("user_id", user.id)
-      .eq("module_id", moduleId)
-      .in("video_id", previousIds);
-
-    const completedIds = new Set(
-      (progress || [])
-        .filter((p) => p.completed_at !== null)
-        .map((p) => p.video_id)
-    );
-
-    for (const prevId of previousIds) {
-      if (!completedIds.has(prevId)) {
-        return { error: "Conclua as aulas anteriores primeiro" };
-      }
-    }
-  }
-
-  const video = videos[targetIndex];
+  const { data: unlocked } = await supabase.rpc("course_video_unlocked", { _video_id: videoId });
+  if (!unlocked) return { error: "Conclua as aulas anteriores primeiro" };
 
   // Uploaded video: generate signed URL
   if (video.source_type === "upload" && video.storage_path) {
@@ -530,7 +517,7 @@ export async function getVideoUrl(
 // Lesson Progress
 // ============================================================
 
-export async function getLessonProgress(moduleId: string): Promise<LessonProgressRecord[]> {
+export async function getLessonProgress(moduleIds: string[]): Promise<LessonProgressRecord[]> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -541,94 +528,17 @@ export async function getLessonProgress(moduleId: string): Promise<LessonProgres
     .from("lesson_progress")
     .select("video_id, watched_pct, completed_at")
     .eq("user_id", user.id)
-    .eq("module_id", moduleId)
+    .in("module_id", moduleIds)
     .not("video_id", "is", null);
 
   return (data || []) as LessonProgressRecord[];
 }
 
-export async function updateLessonProgress(
-  videoId: string,
-  moduleId: string,
-  watchedPct: number
-): Promise<{ error?: string }> {
+export async function updateLessonProgress(videoId: string, watchedPct: number): Promise<{ error?: string }> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado" };
-
-  // Validate sequential unlock
-  const { data: videos } = await supabase
-    .from("course_videos")
-    .select("id")
-    .eq("module_id", moduleId)
-    .eq("status", "published")
-    .order("sort_order");
-
-  if (videos?.length) {
-    const targetIndex = videos.findIndex((v) => v.id === videoId);
-    if (targetIndex > 0) {
-      const previousIds = videos.slice(0, targetIndex).map((v) => v.id);
-      const { data: progress } = await supabase
-        .from("lesson_progress")
-        .select("video_id, completed_at")
-        .eq("user_id", user.id)
-        .eq("module_id", moduleId)
-        .in("video_id", previousIds);
-
-      const completedIds = new Set(
-        (progress || [])
-          .filter((p) => p.completed_at !== null)
-          .map((p) => p.video_id)
-      );
-
-      for (const prevId of previousIds) {
-        if (!completedIds.has(prevId)) {
-          return { error: "Conclua as aulas anteriores primeiro" };
-        }
-      }
-    }
-  }
-
-  const pct = Math.min(100, Math.max(0, Math.round(watchedPct)));
-  const completedAt = pct >= 95 ? new Date().toISOString() : null;
-
-  const { error } = await supabase.rpc("upsert_lesson_progress", {
-    p_user_id: user.id,
+  const { error } = await supabase.rpc("save_lesson_progress", {
     p_video_id: videoId,
-    p_module_id: moduleId,
-    p_watched_pct: pct,
-    p_completed_at: completedAt,
+    p_watched_pct: Math.min(100, Math.max(0, Math.round(watchedPct))),
   });
-
-  if (error) {
-    // Fallback manual
-    const { data: existing } = await supabase
-      .from("lesson_progress")
-      .select("id, watched_pct")
-      .eq("user_id", user.id)
-      .eq("video_id", videoId)
-      .single();
-
-    if (existing) {
-      if (pct <= existing.watched_pct) return {};
-      await supabase
-        .from("lesson_progress")
-        .update({ watched_pct: pct, completed_at: completedAt })
-        .eq("id", existing.id);
-    } else {
-      await supabase
-        .from("lesson_progress")
-        .insert({
-          user_id: user.id,
-          video_id: videoId,
-          module_id: moduleId,
-          watched_pct: pct,
-          completed_at: completedAt,
-        });
-    }
-  }
-
-  return {};
+  return error ? { error: error.message } : {};
 }
