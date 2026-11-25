@@ -16,6 +16,7 @@ import {
   UserX,
   Package,
   Users as UsersIcon,
+  GraduationCap,
 } from "lucide-react";
 import { inviteUser, updateUser, toggleUserStatus, deleteUser } from "@/app/(dashboard)/usuarios/actions";
 import { cn } from "@/lib/utils";
@@ -53,10 +54,11 @@ interface Props {
   roles: Role[];
   canManageUsers: boolean;
   canManageRoles: boolean;
+  isStaff: boolean;
   stockTab?: React.ReactNode;
 }
 
-export function FranchiseDetail({ franchise, users, roles, canManageUsers, canManageRoles, stockTab }: Props) {
+export function FranchiseDetail({ franchise, users, roles, canManageUsers, canManageRoles, isStaff, stockTab }: Props) {
   const [tab, setTab] = useState<"users" | "stock">("users");
   const [editing, setEditing] = useState<UserProfile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -171,13 +173,15 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
   return (
     <div>
       {/* Back + Header */}
-      <Link
-        href="/franquias"
-        className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-700 transition-colors mb-4"
-      >
-        <ArrowLeft size={14} />
-        Voltar para Franquias
-      </Link>
+      {isStaff && (
+        <Link
+          href="/franquias"
+          className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-700 transition-colors mb-4"
+        >
+          <ArrowLeft size={14} />
+          Voltar para Franquias
+        </Link>
+      )}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -267,7 +271,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                             {initial}
                           </div>
                           <div>
-                            <p className="font-medium text-ink-900">{user.full_name}</p>
+                            <Link href={`/usuarios/${user.id}`} className="font-medium text-ink-900 hover:underline">{user.full_name}</Link>
                             {user.is_franchise_admin && (
                               <span className="text-[10px] font-medium text-brand-olive">Admin da franquia</span>
                             )}
@@ -287,7 +291,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                       <td className="px-4 py-3">
                         <button
                           onClick={() => handleToggleStatus(user.id)}
-                          disabled={isPending}
+                          disabled={isPending || !canManageUsers}
                           className={cn(
                             "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors",
                             user.status === "active"
@@ -305,6 +309,9 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          <Link href={`/usuarios/${user.id}`} className="rounded-md p-1.5 text-ink-400 hover:text-brand-olive hover:bg-ink-100 transition-colors" aria-label="Ver treinamentos" title="Ver treinamentos">
+                            <GraduationCap size={14} />
+                          </Link>
                           {canManageUsers && (
                             <>
                               <button onClick={() => startEdit(user)} className="rounded-md p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors" aria-label="Editar usuário" title="Editar usuário">
@@ -350,7 +357,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              {isStaff && <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-ink-700 mb-1 block">ID Externo (Allcance)</label>
                   <input value={externalId} onChange={(e) => setExternalId(e.target.value)} type="number" className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10 transition-colors" placeholder="674276" />
@@ -359,7 +366,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                   <label className="text-xs font-medium text-ink-700 mb-1 block">Comissão (%)</label>
                   <input value={comissaoPercentual} onChange={(e) => setComissaoPercentual(e.target.value)} type="number" step="0.01" className="h-9 w-full rounded-lg border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/10 transition-colors" placeholder="1.5" />
                 </div>
-              </div>
+              </div>}
 
               <div className="rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-600 flex items-center gap-2">
                 <Building2 size={13} className="text-ink-400" />
@@ -389,7 +396,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
                 </div>
               )}
 
-              {/* Roles - only system admins can assign roles */}
+              {/* Roles - apenas perfis que o usuario logado pode atribuir */}
               {canManageRoles && roles.length > 0 && (
                 <div>
                   <label className="text-xs font-medium text-ink-700 mb-2 block flex items-center gap-1.5">
@@ -423,7 +430,7 @@ export function FranchiseDetail({ franchise, users, roles, canManageUsers, canMa
               {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
               <div className="flex gap-2 pt-1">
-                <button onClick={handleSave} disabled={isPending || !fullName || (isCreating && !email)} className="flex-1 rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-50 transition-colors">
+                <button onClick={handleSave} disabled={isPending || !fullName || (isCreating && (!email || selectedRoles.size === 0))} className="flex-1 rounded-lg bg-brand-olive px-4 py-2 text-sm font-medium text-white hover:bg-brand-olive-dark disabled:opacity-50 transition-colors">
                   {isPending ? "Salvando..." : isCreating ? "Enviar Convite" : "Salvar"}
                 </button>
                 <button onClick={cancel} className="rounded-lg border border-ink-100 px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors">

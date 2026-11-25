@@ -60,7 +60,7 @@ export async function getAssignableRoles(userId: string) {
   return roles || [];
 }
 
-// Get roles filtered: users with configuracoes.edit see all, others see non-system only
+// Get roles filtered: configuracoes.edit sees franchise roles + system roles up to own level, others see non-system only
 export async function getRolesForContext(userId: string) {
   const supabase = await createClient();
   const { data: canManageConfig } = await supabase.rpc("has_permission", {
@@ -71,17 +71,26 @@ export async function getRolesForContext(userId: string) {
 
   if (canManageConfig) {
     const { data } = await supabase.from("roles").select("id, name, slug, is_system, level").order("level", { ascending: false });
-    return data || [];
+    // Perfil de sistema so ate o proprio nivel: evita autopromocao a Owner
+    const userLevel = await getUserRoleLevel(userId);
+    return (data || []).filter((r) => !r.is_system || r.level <= userLevel);
   }
 
-  // Non-admin: only see non-system roles at or below their level
-  const userLevel = await getUserRoleLevel(userId);
-  const { data } = await supabase
-    .from("roles")
-    .select("id, name, slug, is_system, level")
-    .eq("is_system", false)
-    .lte("level", userLevel)
-    .order("level", { ascending: false });
+  // Matriz sem acesso a configuracoes atribui qualquer perfil de franquia; franqueado, ate o proprio nivel
+  const { data: isStaff } = await supabase.rpc("is_network_staff", { _user_id: userId });
+  let query = supabase.from("roles").select("id, name, slug, is_system, level").eq("is_system", false);
+  if (!isStaff) query = query.lte("level", await getUserRoleLevel(userId));
+  const { data } = await query.order("level", { ascending: false });
 
   return data || [];
+}
+
+/** Escopo do usuario logado: equipe da matriz alcanca a rede; franqueado, so a propria loja. */
+export async function getUserScope(userId: string) {
+  const supabase = await createClient();
+  const [{ data: isStaff }, { data: profile }] = await Promise.all([
+    supabase.rpc("is_network_staff", { _user_id: userId }),
+    supabase.from("profiles").select("franchise_id").eq("id", userId).single(),
+  ]);
+  return { isStaff: !!isStaff, franchiseId: (profile?.franchise_id as string | null) ?? null };
 }

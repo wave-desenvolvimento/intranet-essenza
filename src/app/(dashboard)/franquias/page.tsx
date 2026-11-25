@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserScope, requirePermission } from "@/lib/permissions";
 import { FranchisesManager } from "./franchises-manager";
 
 export default async function FranquiasPage() {
@@ -7,19 +8,23 @@ export default async function FranquiasPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Profile + permissao em paralelo
-  const [profileRes, isGlobalAdminRes] = await Promise.all([
+  const p = await requirePermission("franquias", "view");
+  if (p.error) notFound();
+
+  // Profile + escopo em paralelo
+  const [profileRes, scope] = await Promise.all([
     supabase.from("profiles").select("franchise_id, is_franchise_admin, franchise:franchises(slug)").eq("id", user.id).single(),
-    supabase.rpc("has_permission", { _user_id: user.id, _module: "usuarios", _action: "manage" }),
+    getUserScope(user.id),
   ]);
 
   // Franqueado: redireciona direto pro detalhe da franquia dele
-  if (profileRes.data?.franchise_id && profileRes.data?.franchise && !isGlobalAdminRes.data) {
+  if (profileRes.data?.franchise_id && profileRes.data?.franchise && !scope.isStaff) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const franchise = profileRes.data.franchise as any;
     const slug = Array.isArray(franchise) ? franchise[0]?.slug : franchise?.slug;
     if (slug) redirect(`/franquias/${slug}`);
   }
+  if (!scope.isStaff) notFound();
 
   // Dados admin - tudo em paralelo
   const [franchisesRes, commercialRoleRes] = await Promise.all([

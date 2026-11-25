@@ -50,7 +50,7 @@ export function Breadcrumb() {
   const crumbs = segments
     .map((segment, i) => ({
       href: "/" + segments.slice(0, i + 1).join("/"),
-      label: ROUTE_LABELS[segment],
+      label: segments[0] === "usuarios" && i === 1 ? "Treinamentos" : ROUTE_LABELS[segment],
       segment,
       isLast: i === segments.length - 1,
     }))
