@@ -104,7 +104,7 @@ export function LibraryPicker({ open, onClose, onSelect, multiple = false, accep
         {/* Search */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-ink-50">
           <Search size={14} className="text-ink-400 shrink-0" />
-          <input value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Buscar por titulo, colecao..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
+          <input value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Buscar por título, coleção..." className="flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-400 outline-none" />
           {search && <button onClick={() => handleSearch("")} className="text-ink-400 hover:text-ink-700"><X size={12} /></button>}
         </div>
 

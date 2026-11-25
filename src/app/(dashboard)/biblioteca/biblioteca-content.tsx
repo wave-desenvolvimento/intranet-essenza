@@ -131,7 +131,7 @@ export function BibliotecaContent({ assets, canDownload }: Props) {
             {([
               { value: "all", label: "Todos" },
               { value: "image", label: "Imagens" },
-              { value: "video", label: "Videos" },
+              { value: "video", label: "Vídeos" },
               { value: "file", label: "Arquivos" },
             ] as const).map((opt) => (
               <button

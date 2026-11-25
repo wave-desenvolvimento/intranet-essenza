@@ -16,6 +16,7 @@ function formatDurationHuman(seconds: number): string {
 
 export function CourseCatalog({
   basePath,
+  title,
   data,
   userName,
   userAvatar,
@@ -23,6 +24,7 @@ export function CourseCatalog({
   certificateId,
 }: {
   basePath: string;
+  title: string;
   data: CourseCatalogData;
   userName: string;
   userAvatar: string;
@@ -49,8 +51,7 @@ export function CourseCatalog({
           )}
         </div>
         <div>
-          <h1 className="text-lg font-bold text-ink-900">Bem-vindo(a), {userName}</h1>
-          <p className="text-sm text-ink-500">Continue sua jornada de aprendizado</p>
+          <h1 className="text-lg font-bold text-ink-900">{title}</h1>
         </div>
       </div>
 
@@ -60,7 +61,6 @@ export function CourseCatalog({
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
             <div className="flex-1">
               <p className="text-sm font-semibold text-ink-900">Seu progresso</p>
-              <p className="text-xs text-ink-500 mt-0.5">Continue assistindo para concluir todos os módulos</p>
             </div>
 
             <div className="flex items-center gap-6">

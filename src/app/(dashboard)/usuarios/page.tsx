@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getRolesForContext, getUserScope, requirePermission } from "@/lib/permissions";
 import { getFranchiseUsers } from "../franquias/actions";
-import { getFranchiseTraining } from "../acompanhamento/franchise-training";
 import { FranchiseDetail } from "../franquias/[slug]/franchise-detail";
 import { UsersManager } from "./users-manager";
 
@@ -16,13 +15,12 @@ export default async function UsuariosPage() {
   // Franqueado: so a propria loja
   if (!scope.isStaff) {
     if (!scope.franchiseId) notFound();
-    const [franchiseRes, users, roles, canCreateRes, canEditRes, trainingTab] = await Promise.all([
+    const [franchiseRes, users, roles, canCreateRes, canEditRes] = await Promise.all([
       supabase.from("franchises").select("*").eq("id", scope.franchiseId).single(),
       getFranchiseUsers(scope.franchiseId),
       getRolesForContext(userId),
       supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "create" }),
       supabase.rpc("has_permission", { _user_id: userId, _module: "usuarios", _action: "edit" }),
-      getFranchiseTraining(userId, scope.franchiseId),
     ]);
     if (!franchiseRes.data) notFound();
     const canManage = !!canCreateRes.data && !!canEditRes.data;
@@ -35,7 +33,6 @@ export default async function UsuariosPage() {
           canManageUsers={canManage}
           canManageRoles={canManage}
           isStaff={false}
-          trainingTab={trainingTab}
         />
       </div>
     );

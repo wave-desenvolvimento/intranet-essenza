@@ -69,7 +69,7 @@ export function MobileNav({ cmsPages = [], permissionKeys = [] }: Props) {
         <div className="flex items-center justify-around h-14">
           <Link href="/inicio" onClick={() => setDrawerOpen(false)} className={cn("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors", pathname === "/inicio" ? "text-brand-olive" : "text-ink-400")}>
             <LayoutDashboard size={20} />
-            <span className="text-[10px] font-medium">Inicio</span>
+            <span className="text-[10px] font-medium">Início</span>
           </Link>
           <button data-tour="mobile-menu-btn" onClick={() => setDrawerOpen(!drawerOpen)} className={cn("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors", drawerOpen ? "text-brand-olive" : "text-ink-400")}>
             <Menu size={20} />

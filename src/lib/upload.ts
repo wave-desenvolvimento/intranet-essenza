@@ -70,7 +70,7 @@ export async function uploadToStorageWithProgress(
 ): Promise<{ url: string } | { error: string }> {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) return { error: "Nao autenticado" };
+  if (!session?.access_token) return { error: "Não autenticado" };
 
   const processedFile = await compressIfImage(file, options);
   const ext = processedFile.name.split(".").pop() || "bin";
@@ -111,7 +111,7 @@ export async function uploadVideoWithProgress(
   const supabase = createClient();
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) return { error: "Nao autenticado" };
+  if (!session?.access_token) return { error: "Não autenticado" };
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;

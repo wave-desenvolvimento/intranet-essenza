@@ -258,7 +258,7 @@ export default function LoginPage() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success mx-auto mb-3">
                   <Check size={24} />
                 </div>
-                <p className="text-sm font-medium text-ink-900 mb-1">Ticket enviado</p>
+                <p className="text-sm font-medium text-ink-900 mb-1">Chamado enviado</p>
                 <p className="text-xs text-ink-500">Entraremos em contato pelo email informado.</p>
                 <button
                   onClick={() => setSupportOpen(false)}
@@ -295,13 +295,13 @@ export default function LoginPage() {
                     required
                     className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm text-ink-900 focus:border-brand-olive focus:outline-none focus:ring-2 focus:ring-brand-olive/15"
                   >
-                    <option value="acesso">Nao consigo acessar</option>
+                    <option value="acesso">Não consigo acessar</option>
                     <option value="senha">Esqueci minha senha</option>
                     <option value="outro">Outro</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-ink-700">Descricao</label>
+                  <label className="text-sm font-medium text-ink-700">Descrição</label>
                   <textarea
                     name="descricao"
                     required
@@ -323,7 +323,7 @@ export default function LoginPage() {
                   {supportStatus === "sending" ? (
                     <Loader2 size={16} className="animate-spin" />
                   ) : (
-                    "Enviar ticket"
+                    "Enviar chamado"
                   )}
                 </button>
               </form>

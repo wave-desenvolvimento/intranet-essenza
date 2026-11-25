@@ -220,7 +220,7 @@ export function CourseManager({
                           setConfirm({
                             open: true,
                             title: "Remover módulo",
-                            message: `Tem certeza que deseja remover "${mod.title}"? Todos os videos serao removidos.`,
+                            message: `Tem certeza que deseja remover "${mod.title}"? Todos os vídeos serão removidos.`,
                             onConfirm: () => {
                               startTransition(async () => {
                                 const res = await deleteModule(mod.id);
@@ -767,7 +767,7 @@ function VideoSheet({
             ) : uploadProgress !== null ? (
               <div className="rounded-lg border border-ink-200 p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-ink-500">Enviando video...</span>
+                  <span className="text-xs text-ink-500">Enviando vídeo...</span>
                   <span className="text-xs font-medium text-ink-700">{uploadProgress}%</span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-ink-100 overflow-hidden">

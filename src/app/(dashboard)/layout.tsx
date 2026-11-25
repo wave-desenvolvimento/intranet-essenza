@@ -97,7 +97,7 @@ export default async function DashboardLayout({
 
       <div className="flex flex-1 flex-col min-w-0">
         <header className="sticky top-0 z-50 flex h-12 md:h-14 items-center justify-between border-b border-ink-100 bg-white px-3 md:px-5">
-          <Breadcrumb />
+          <Breadcrumb pageTitles={Object.fromEntries((cmsPages || []).filter((page) => !page.is_group).map((page) => [page.slug, page.title]))} />
           <div className="flex items-center gap-2 md:gap-3">
             <div data-tour="search"><GlobalSearch /></div>
             <div data-tour="notifications"><NotificationBell /></div>

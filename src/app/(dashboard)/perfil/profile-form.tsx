@@ -167,9 +167,9 @@ export function ProfileForm({ fullName: initialName, email, franchiseName, avata
       <div id="notificacoes" className="rounded-xl border border-ink-100 bg-white p-5 mb-4 scroll-mt-8">
         <div className="flex items-center gap-2 mb-4">
           <Bell size={15} className="text-ink-400" />
-          <h3 className="text-sm font-semibold text-ink-900">Notificacoes por email</h3>
+          <h3 className="text-sm font-semibold text-ink-900">Notificações por e-mail</h3>
         </div>
-        <p className="text-xs text-ink-500 mb-4">Escolha quais tipos de email voce quer receber. Notificacoes no app e push continuam funcionando normalmente.</p>
+        <p className="text-xs text-ink-500 mb-4">Escolha quais tipos de e-mail você quer receber. Notificações no app e push continuam funcionando normalmente.</p>
         <div className="flex flex-col divide-y divide-ink-50">
           {EMAIL_CATEGORIES.map((cat) => {
             const enabled = prefs[cat.key] ?? PREF_DEFAULTS[cat.key];

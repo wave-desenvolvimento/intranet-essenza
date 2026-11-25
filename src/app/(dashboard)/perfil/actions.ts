@@ -46,7 +46,7 @@ export async function updateProfile(formData: FormData) {
 export async function updateEmailPrefs(prefs: Record<string, boolean>) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Nao autenticado." };
+  if (!user) return { error: "Não autenticado." };
 
   // Sanitize: only allow known keys
   const allowed = ["content", "announcements", "surveys", "orders"];

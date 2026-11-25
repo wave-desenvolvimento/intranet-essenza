@@ -29,7 +29,7 @@ export async function createCollection(formData: FormData) {
     is_group: isGroup,
     view_type: isGroup ? "table" : viewType,
   });
-  if (error) return { error: "Erro ao criar collection." };
+  if (error) return { error: "Erro ao criar coleção." };
 
   revalidatePath("/cms");
   return { success: true };
@@ -52,7 +52,7 @@ export async function updateCollection(formData: FormData) {
     .update({ name, description, icon, parent_id: parentId || null, is_group: isGroup, view_type: isGroup ? "table" : (formData.get("viewType") as string || "table") })
     .eq("id", id);
 
-  if (error) return { error: "Erro ao atualizar collection." };
+  if (error) return { error: "Erro ao atualizar coleção." };
 
   revalidatePath("/cms");
   return { success: true };
@@ -318,7 +318,7 @@ export async function duplicateCollection(id: string) {
 
   // Fetch original collection
   const { data: col } = await supabase.from("cms_collections").select("*").eq("id", id).single();
-  if (!col) return { error: "Collection não encontrada." };
+  if (!col) return { error: "Coleção não encontrada." };
 
   // Generate unique slug
   const newSlug = `${col.slug}-copia`;
@@ -334,7 +334,7 @@ export async function duplicateCollection(id: string) {
     view_type: col.view_type,
   }).select().single();
 
-  if (colErr || !newCol) return { error: "Erro ao duplicar collection." };
+  if (colErr || !newCol) return { error: "Erro ao duplicar coleção." };
 
   // Copy fields
   const { data: fields } = await supabase.from("cms_fields").select("*").eq("collection_id", id).order("sort_order");

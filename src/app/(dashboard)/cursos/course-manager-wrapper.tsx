@@ -124,7 +124,7 @@ export function CourseManagerWithToggle({
       {view === "admin" ? (
         <CourseManager pageSlug={pageSlug} title={title} modules={modules} canEdit={canEdit} canView={canView} />
       ) : (
-        <CourseCatalog basePath={coursePath(pageSlug)} data={catalogData} userName={userName} userAvatar={userAvatar} hasCertificate={settings.certificate} certificateId={certificateId} />
+        <CourseCatalog basePath={coursePath(pageSlug)} title={title} data={catalogData} userName={userName} userAvatar={userAvatar} hasCertificate={settings.certificate} certificateId={certificateId} />
       )}
     </div>
   );
