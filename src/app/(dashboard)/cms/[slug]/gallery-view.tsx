@@ -1,5 +1,6 @@
 "use client";
 
+import { SafeHtml } from "@/components/ui/safe-html";
 import { useState, useTransition, useEffect } from "react";
 import { Image as ImageIcon, Pencil, Trash2, X, ZoomIn, Copy, Download, Eye, FileText, File, Share2, Link2, Check, Loader2, Clock } from "lucide-react";
 import { cn, isAssetVisible } from "@/lib/utils";
@@ -110,7 +111,7 @@ function DetailFieldRenderer({ detail }: { detail: DetailField }) {
       const html = String(raw);
       return (
         <div className="flex items-start justify-between gap-2 rounded-lg border border-ink-100 px-3 py-2.5">
-          <div className="text-sm text-ink-800 prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0" dangerouslySetInnerHTML={{ __html: html }} />
+          <SafeHtml className="text-sm text-ink-800 prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0" html={html} />
           <CopyButton text={plainText(html)} />
         </div>
       );

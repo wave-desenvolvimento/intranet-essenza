@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useCallback, useTransition, Fragment } from "react";
 import {
   BarChart3, Eye, Download, Users, Building2, TrendingUp,
@@ -88,22 +89,12 @@ interface FranchiseDetail {
   announcementsRead: number;
 }
 
-interface ActivityLogEntry {
-  id: string;
-  userName: string;
-  action: string;
-  entityType: string;
-  description: string;
-  franchiseName: string | null;
-  createdAt: string;
-}
 
 interface DetailedData {
   totalPageViews: number;
   totalSessions: number;
   moduleUsage: ModuleUsageItem[];
   franchiseDetails: FranchiseDetail[];
-  activityLog: ActivityLogEntry[];
 }
 
 interface Props {
@@ -114,6 +105,9 @@ interface Props {
     byFranchise: FranchiseStats[];
   };
   ordersData: OrdersData;
+  canExport: boolean;
+  canSeeOrders: boolean;
+  canSeeTraining: boolean;
   detailedData: DetailedData;
 }
 
@@ -136,15 +130,6 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   aprovado: { label: "Aprovado", color: "text-success", bg: "bg-success-soft" },
 };
 
-const ACTION_LABELS: Record<string, { label: string; color: string }> = {
-  create: { label: "Criou", color: "text-success" },
-  update: { label: "Editou", color: "text-info" },
-  delete: { label: "Excluiu", color: "text-danger" },
-  approve: { label: "Aprovou", color: "text-brand-olive" },
-  invite: { label: "Convidou", color: "text-info" },
-  login: { label: "Login", color: "text-ink-500" },
-};
-
 const EXPORT_SECTIONS = [
   { key: "resumo", label: "Resumo geral" },
   { key: "mais-visualizados", label: "Conteúdo - Mais visualizados" },
@@ -154,7 +139,6 @@ const EXPORT_SECTIONS = [
   { key: "pedidos-produtos", label: "Pedidos - Top produtos" },
   { key: "pedidos-franquias", label: "Pedidos - Por franquia" },
   { key: "engajamento", label: "Franquias - Engajamento detalhado" },
-  { key: "atividade", label: "Log de atividade" },
 ] as const;
 
 type ExportKey = (typeof EXPORT_SECTIONS)[number]["key"];
@@ -192,15 +176,16 @@ function getPeriodDates(period: string): { from: string; to: string; label: stri
   }
 }
 
-type Tab = "overview" | "orders" | "franchises" | "activity";
+type Tab = "overview" | "orders" | "franchises";
 
-export function AnalyticsContent({ data: initialData, ordersData: initialOrdersData, detailedData: initialDetailedData }: Props) {
+export function AnalyticsContent({ data: initialData, ordersData: initialOrdersData, detailedData: initialDetailedData, canExport, canSeeOrders, canSeeTraining }: Props) {
   const [data, setData] = useState(initialData);
   const [ordersData, setOrdersData] = useState(initialOrdersData);
   const [detailedData, setDetailedData] = useState(initialDetailedData);
   const [tab, setTab] = useState<Tab>("overview");
   const [showExport, setShowExport] = useState(false);
-  const [selectedSections, setSelectedSections] = useState<Set<ExportKey>>(new Set(EXPORT_SECTIONS.map((s) => s.key)));
+  const exportSections = EXPORT_SECTIONS.filter((s) => canSeeOrders || !s.key.startsWith("pedidos-"));
+  const [selectedSections, setSelectedSections] = useState<Set<ExportKey>>(new Set(exportSections.map((s) => s.key)));
   const [period, setPeriod] = useState("30d");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -256,10 +241,10 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
   }
 
   function toggleAll() {
-    if (selectedSections.size === EXPORT_SECTIONS.length) {
+    if (selectedSections.size === exportSections.length) {
       setSelectedSections(new Set());
     } else {
-      setSelectedSections(new Set(EXPORT_SECTIONS.map((s) => s.key)));
+      setSelectedSections(new Set(exportSections.map((s) => s.key)));
     }
   }
 
@@ -275,9 +260,11 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
         ["Downloads", data.totals.downloads, ""],
         ["Usuários ativos", data.totals.activeUsers, ""],
         ["Page views (navegação)", detailedData.totalPageViews, ""],
-        ["Faturamento (R$)", ordersData.totalRevenue, revenueChange ? `${revenueChange > 0 ? "+" : ""}${revenueChange.toFixed(1)}%` : ""],
-        ["Pedidos", ordersData.totalOrders, ordersChange ? `${ordersChange > 0 ? "+" : ""}${ordersChange.toFixed(1)}%` : ""],
-        ["Ticket Médio (R$)", ordersData.avgTicket, ""],
+        ...(canSeeOrders ? [
+          ["Faturamento (R$)", ordersData.totalRevenue, revenueChange ? `${revenueChange > 0 ? "+" : ""}${revenueChange.toFixed(1)}%` : ""],
+          ["Pedidos", ordersData.totalOrders, ordersChange ? `${ordersChange > 0 ? "+" : ""}${ordersChange.toFixed(1)}%` : ""],
+          ["Ticket Médio (R$)", ordersData.avgTicket, ""],
+        ] : []),
       ];
       const ws = XLSX.utils.aoa_to_sheet(rows);
       ws["!cols"] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }];
@@ -362,21 +349,11 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
       }
     }
 
-    if (sel.has("atividade") && detailedData.activityLog.length > 0) {
-      const rows = [["Data/Hora", "Usuário", "Franquia", "Ação", "Módulo", "Descrição"],
-        ...detailedData.activityLog.map((a) => [
-          new Date(a.createdAt).toLocaleString("pt-BR"), a.userName, a.franchiseName || "-",
-          ACTION_LABELS[a.action]?.label || a.action, a.entityType, a.description,
-        ])];
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws["!cols"] = [{ wch: 18 }, { wch: 20 }, { wch: 25 }, { wch: 10 }, { wch: 15 }, { wch: 50 }];
-      XLSX.utils.book_append_sheet(wb, ws, "Log de Atividade");
-    }
 
     if (wb.SheetNames.length === 0) return;
     XLSX.writeFile(wb, `relatorio-essenza-${date.replace(/\//g, "-")}.xlsx`);
     setShowExport(false);
-  }, [selectedSections, data, ordersData, detailedData, revenueChange, ordersChange]);
+  }, [selectedSections, data, ordersData, detailedData, revenueChange, ordersChange, canSeeOrders]);
 
   // Franchise with highest engagement
   const topFranchise = detailedData.franchiseDetails[0];
@@ -417,7 +394,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
             </div>
           )}
           {/* Export */}
-          <div className="relative">
+          {canExport && <div className="relative">
             <button
               onClick={() => setShowExport(!showExport)}
               className="flex items-center gap-2 rounded-lg border border-ink-100 px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
@@ -432,11 +409,11 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold text-ink-900">Selecione as seções</p>
                     <button onClick={toggleAll} className="text-[11px] font-medium text-brand-olive hover:text-brand-olive-dark">
-                      {selectedSections.size === EXPORT_SECTIONS.length ? "Desmarcar tudo" : "Selecionar tudo"}
+                      {selectedSections.size === exportSections.length ? "Desmarcar tudo" : "Selecionar tudo"}
                     </button>
                   </div>
                   <div className="flex flex-col gap-1.5 mb-4 max-h-64 overflow-y-auto">
-                    {EXPORT_SECTIONS.map((s) => {
+                    {exportSections.map((s) => {
                       const checked = selectedSections.has(s.key);
                       return (
                         <button
@@ -468,19 +445,21 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                 </div>
               </>
             )}
-          </div>
+          </div>}
         </div>
       </div>
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: "Page Views", value: detailedData.totalPageViews.toLocaleString("pt-BR"), icon: MousePointerClick, color: "text-brand-olive" },
-          { label: "Views Conteúdo", value: data.totals.views.toLocaleString("pt-BR"), icon: Eye, color: "text-info" },
+          { label: "Acessos a páginas", value: detailedData.totalPageViews.toLocaleString("pt-BR"), icon: MousePointerClick, color: "text-brand-olive" },
+          { label: "Conteúdos vistos", value: data.totals.views.toLocaleString("pt-BR"), icon: Eye, color: "text-info" },
           { label: "Downloads", value: data.totals.downloads.toLocaleString("pt-BR"), icon: Download, color: "text-success" },
           { label: "Usuários ativos", value: String(data.totals.activeUsers), icon: Users, color: "text-brand-olive" },
-          { label: "Faturamento", value: formatPrice(ordersData.totalRevenue), icon: DollarSign, color: "text-success", change: revenueChange },
-          { label: "Pedidos", value: String(ordersData.totalOrders), icon: ShoppingCart, color: "text-info", change: ordersChange },
+          ...(canSeeOrders ? [
+            { label: "Faturamento", value: formatPrice(ordersData.totalRevenue), icon: DollarSign, color: "text-success", change: revenueChange },
+            { label: "Pedidos", value: String(ordersData.totalOrders), icon: ShoppingCart, color: "text-info", change: ordersChange },
+          ] : []),
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-ink-100 bg-white px-4 py-3">
             <div className="flex items-center justify-between mb-1.5">
@@ -502,9 +481,8 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
       <div className="flex items-center gap-1 rounded-lg bg-ink-50 p-1 self-start">
         {([
           { key: "overview" as Tab, label: "Conteúdo", icon: BarChart3 },
-          { key: "orders" as Tab, label: "Pedidos", icon: ShoppingCart },
-          { key: "franchises" as Tab, label: "Franquias", icon: Building2 },
-          { key: "activity" as Tab, label: "Atividade", icon: Activity },
+          ...(canSeeOrders ? [{ key: "orders" as Tab, label: "Pedidos", icon: ShoppingCart }] : []),
+          { key: "franchises" as Tab, label: "Acesso por franquia", icon: Building2 },
         ]).map((t) => (
           <button
             key={t.key}
@@ -734,13 +712,13 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
               <p className="text-lg font-semibold text-danger">{inactiveFranchises.length}</p>
             </div>
             <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
-              <p className="text-[11px] text-ink-500 mb-1">Total usuarios</p>
+              <p className="text-[11px] text-ink-500 mb-1">Total de usuários</p>
               <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.totalUsers, 0)}</p>
             </div>
-            <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
+            {canSeeOrders && <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
               <p className="text-[11px] text-ink-500 mb-1">Total pedidos</p>
               <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.ordersCount, 0)}</p>
-            </div>
+            </div>}
             <div className="rounded-xl border border-ink-100 bg-white px-4 py-3">
               <p className="text-[11px] text-ink-500 mb-1">Pesquisas respondidas</p>
               <p className="text-lg font-semibold text-ink-900">{detailedData.franchiseDetails.reduce((s, f) => s + f.surveysResponded, 0)}</p>
@@ -755,7 +733,8 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
           <div className="rounded-xl border border-ink-100 bg-white overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-4 border-b border-ink-100">
               <TrendingUp size={15} className="text-ink-400" />
-              <h3 className="text-sm font-semibold text-ink-900">Engajamento por Franquia</h3>
+              <h3 className="text-sm font-semibold text-ink-900">Acesso por franquia</h3>
+              {canSeeTraining && <Link href="/acompanhamento" className="text-xs font-medium text-brand-olive hover:underline">Ver treinamentos concluídos</Link>}
               <span className="text-[11px] text-ink-400 ml-auto">Clique para expandir</span>
             </div>
             {detailedData.franchiseDetails.length === 0 ? (
@@ -767,12 +746,12 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                     <tr className="border-b border-ink-100 bg-ink-50/30">
                       <th className="px-5 py-2.5 text-left text-xs font-medium text-ink-400 uppercase w-8"></th>
                       <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-400 uppercase">Franquia</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Usuarios</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Page Views</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Usuários</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Acessos</th>
                       <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Downloads</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Pedidos</th>
+                      {canSeeOrders && <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Pedidos</th>}
                       <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Pesquisas</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Ultima ativ.</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-medium text-ink-400 uppercase">Última atividade</th>
                       <th className="px-3 py-2.5 text-xs font-medium text-ink-400 w-24">Engajamento</th>
                     </tr>
                   </thead>
@@ -806,11 +785,11 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                             </td>
                             <td className="px-3 py-3 text-right font-medium text-ink-900">{f.totalPageViews}</td>
                             <td className="px-3 py-3 text-right text-ink-600">{f.contentDownloads}</td>
-                            <td className="px-3 py-3 text-right">
+                            {canSeeOrders && <td className="px-3 py-3 text-right">
                               {f.ordersCount > 0 ? (
                                 <span className="text-ink-900">{f.ordersCount} <span className="text-[10px] text-ink-400">({formatPrice(f.ordersRevenue)})</span></span>
                               ) : <span className="text-ink-400">-</span>}
-                            </td>
+                            </td>}
                             <td className="px-3 py-3 text-right text-ink-600">{f.surveysResponded || "-"}</td>
                             <td className="px-3 py-3 text-right text-ink-500 text-xs">
                               {f.lastActivity ? (
@@ -833,21 +812,21 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                                 {/* KPI cards */}
                                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
                                   <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
-                                    <p className="text-[10px] text-ink-400">Views conteudo</p>
+                                    <p className="text-[10px] text-ink-400">Conteúdos vistos</p>
                                     <p className="text-sm font-semibold text-ink-900">{f.contentViews}</p>
                                   </div>
                                   <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
                                     <p className="text-[10px] text-ink-400">Downloads</p>
                                     <p className="text-sm font-semibold text-ink-900">{f.contentDownloads}</p>
                                   </div>
-                                  <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
+                                  {canSeeOrders && <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
                                     <p className="text-[10px] text-ink-400">Pedidos</p>
                                     <p className="text-sm font-semibold text-ink-900">{f.ordersCount}</p>
-                                  </div>
-                                  <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
+                                  </div>}
+                                  {canSeeOrders && <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
                                     <p className="text-[10px] text-ink-400">Receita pedidos</p>
                                     <p className="text-sm font-semibold text-ink-900">{formatPrice(f.ordersRevenue)}</p>
-                                  </div>
+                                  </div>}
                                   <div className="rounded-lg bg-white px-3 py-2 border border-ink-100">
                                     <p className="text-[10px] text-ink-400">Pesquisas resp.</p>
                                     <p className="text-sm font-semibold text-ink-900">{f.surveysResponded}</p>
@@ -898,7 +877,7 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
                                             </div>
                                             <div className="flex-1 min-w-0">
                                               <p className="text-xs font-medium text-ink-900 truncate">{u.name}</p>
-                                              <p className="text-[10px] text-ink-400">{u.pageViews} page views</p>
+                                              <p className="text-[10px] text-ink-400">{u.pageViews} acessos</p>
                                             </div>
                                             <span className="text-[10px] text-ink-400 flex items-center gap-0.5">
                                               <Clock size={9} />
@@ -933,69 +912,6 @@ export function AnalyticsContent({ data: initialData, ordersData: initialOrdersD
               </p>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Tab: Activity Log */}
-      {tab === "activity" && (
-        <div className="flex flex-col gap-5">
-          {/* Module usage summary as horizontal pills */}
-          {detailedData.moduleUsage.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {detailedData.moduleUsage.slice(0, 12).map((m) => (
-                <div key={m.module} className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-white px-3 py-1.5">
-                  <span className="text-xs font-medium text-ink-700">{m.label}</span>
-                  <span className="text-[10px] text-ink-400">{m.views}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Activity log */}
-          <div className="rounded-xl border border-ink-100 bg-white overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-ink-100">
-              <Activity size={15} className="text-ink-400" />
-              <h3 className="text-sm font-semibold text-ink-900">Log de Atividade</h3>
-              <span className="text-[11px] text-ink-400 ml-auto">{detailedData.activityLog.length} ações no período</span>
-            </div>
-            {detailedData.activityLog.length === 0 ? (
-              <p className="text-xs text-ink-400 text-center py-8">Sem atividade registrada no período</p>
-            ) : (
-              <div className="divide-y divide-ink-50 max-h-[600px] overflow-y-auto">
-                {detailedData.activityLog.map((entry) => {
-                  const actionCfg = ACTION_LABELS[entry.action];
-                  return (
-                    <div key={entry.id} className="flex items-start gap-3 px-5 py-3 hover:bg-ink-50/30 transition-colors">
-                      <div className="mt-0.5 h-7 w-7 rounded-full bg-ink-50 flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-bold text-ink-500">{entry.userName.charAt(0).toUpperCase()}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-ink-900">{entry.userName}</span>
-                          {entry.franchiseName && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-ink-50 px-2 py-0.5 text-[10px] text-ink-500">
-                              <Building2 size={9} />
-                              {entry.franchiseName}
-                            </span>
-                          )}
-                          <span className={cn("text-[10px] font-medium", actionCfg?.color || "text-ink-500")}>
-                            {actionCfg?.label || entry.action}
-                          </span>
-                          <span className="text-[10px] text-ink-300">em</span>
-                          <span className="text-[10px] font-medium text-ink-500">{entry.entityType}</span>
-                        </div>
-                        <p className="text-xs text-ink-500 mt-0.5 truncate">{entry.description}</p>
-                      </div>
-                      <span className="text-[10px] text-ink-400 shrink-0 flex items-center gap-0.5 mt-1">
-                        <Clock size={9} />
-                        {timeAgo(entry.createdAt)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>

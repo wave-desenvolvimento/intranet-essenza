@@ -7,17 +7,18 @@ import { requireAuth, requirePermission, getUserRoleLevel } from "@/lib/permissi
 // Ações pertinentes por módulo - só cria o que cada módulo realmente usa
 const MODULE_ACTIONS: Record<string, string[]> = {
   dashboard:            ["view"],
-  usuarios:             ["view", "create", "edit", "delete", "manage"],
+  usuarios:             ["view", "create", "edit", "delete"],
+  treinamentos:         ["view", "manage"],
   franquias:            ["view", "create", "edit", "delete"],
   cms:                  ["view", "create", "edit", "delete"],
   templates:            ["view", "create", "edit", "delete"],
   pedidos:              ["view", "view_all", "create", "edit", "approve", "export", "manage"],
   produtos:             ["view", "edit", "delete"],
   relatorios:           ["view", "export"],
-  comunicados:          ["view", "create", "edit", "delete"],
+  comunicados:          ["view", "view_all", "create", "edit", "delete"],
   historico:            ["view"],
   faq:                  ["view", "create", "edit", "delete"],
-  pesquisas:            ["view", "create", "edit", "delete"],
+  pesquisas:            ["view", "view_all", "create", "edit", "delete"],
   leads:                ["view", "edit", "delete", "export"],
   biblioteca:           ["view", "download"],
   suporte:              ["view", "create", "edit", "delete"],
@@ -27,8 +28,6 @@ const MODULE_ACTIONS: Record<string, string[]> = {
 
 // Páginas CMS dinâmicas usam essas ações
 const CMS_PAGE_ACTIONS = ["view", "create", "edit", "download"];
-
-const ALL_MODULES = Object.keys(MODULE_ACTIONS);
 
 export async function getRoles() {
   await requireAuth();
@@ -44,18 +43,18 @@ export async function getPermissions() {
   await requireAuth();
   const supabase = await createClient();
 
-  // Ensure all module×action combinations exist
-  await ensureAllPermissions();
+  // Garante que todas as combinacoes existem e esconde as orfas (modulo ou acao que o sistema nao usa)
+  const known = await ensureAllPermissions();
 
   const { data } = await supabase
     .from("permissions")
     .select("*")
     .order("module")
     .order("action");
-  return data || [];
+  return (data || []).filter((perm) => known[perm.module]?.includes(perm.action));
 }
 
-async function ensureAllPermissions() {
+async function ensureAllPermissions(): Promise<Record<string, string[]>> {
   const supabase = await createClient();
 
   // Fetch CMS page slugs to include as dynamic modules
@@ -93,6 +92,7 @@ async function ensureAllPermissions() {
 
   // Also ensure Owner has ALL existing permissions (fixes gaps from before this logic)
   await syncOwnerPermissions(supabase, existing || []);
+  return moduleActions;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

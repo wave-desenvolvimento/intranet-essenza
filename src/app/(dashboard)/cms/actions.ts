@@ -11,46 +11,6 @@ function safeJsonParse(str: string, fallback: unknown = null) {
 
 // === Collections ===
 
-export async function getCollections() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("cms_collections")
-    .select("*, fields:cms_fields(id), items:cms_items(id)")
-    .order("sort_order");
-
-  return (data || []).map((c) => ({
-    ...c,
-    fieldCount: c.fields?.length || 0,
-    itemCount: c.items?.length || 0,
-  }));
-}
-
-export async function getCollectionsFull() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("cms_collections")
-    .select("*, fields:cms_fields(*), items:cms_items(*)")
-    .order("sort_order")
-    .order("sort_order", { referencedTable: "cms_fields" })
-    .order("sort_order", { referencedTable: "cms_items" });
-
-  return (data || []).map((c) => ({
-    ...c,
-    fields: c.fields || [],
-    items: c.items || [],
-  }));
-}
-
-export async function getCollection(slug: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("cms_collections")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-  return data;
-}
-
 export async function createCollection(formData: FormData) {
   const p = await requirePermission("cms", "create"); if (p.error) return p;
   const supabase = await createClient();
@@ -109,16 +69,6 @@ export async function deleteCollection(id: string) {
 }
 
 // === Fields ===
-
-export async function getFields(collectionId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("cms_fields")
-    .select("*")
-    .eq("collection_id", collectionId)
-    .order("sort_order");
-  return data || [];
-}
 
 export async function createField(formData: FormData) {
   const p = await requirePermission("cms", "create"); if (p.error) return p;
@@ -197,16 +147,6 @@ export async function deleteField(id: string) {
 }
 
 // === Items ===
-
-export async function getItems(collectionId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("cms_items")
-    .select("*")
-    .eq("collection_id", collectionId)
-    .order("sort_order");
-  return data || [];
-}
 
 export async function createItem(formData: FormData) {
   const p = await requirePermission("cms", "create"); if (p.error) return p;

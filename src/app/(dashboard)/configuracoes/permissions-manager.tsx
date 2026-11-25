@@ -28,6 +28,7 @@ const MODULE_LABELS: Record<string, string> = {
   "universo-da-marca": "Universo da Marca",
   "material-corporativo": "Material Corp.", campanhas: "Campanhas",
   "redes-sociais": "Redes Sociais", biblioteca: "Biblioteca", videos: "Vídeos",
+  treinamentos: "Acompanhamento",
   treinamento: "Treinamento", cigam: "CIGAM", leads: "Leads Revenda", suporte: "Suporte", configuracoes: "Configurações",
 };
 
