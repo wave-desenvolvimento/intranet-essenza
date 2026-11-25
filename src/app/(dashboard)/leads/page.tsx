@@ -1,8 +1,12 @@
+import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { type ResellerLead } from "./actions";
 import { LeadsManager } from "./leads-manager";
 
 export default async function LeadsPage() {
+  const p = await requirePermission("leads", "view");
+  if (p.error) notFound();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || "";

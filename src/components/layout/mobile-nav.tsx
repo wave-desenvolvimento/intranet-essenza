@@ -75,10 +75,12 @@ export function MobileNav({ cmsPages = [], permissionKeys = [] }: Props) {
             <Menu size={20} />
             <span className="text-[10px] font-medium">Menu</span>
           </button>
-          <Link data-tour="mobile-pedidos-btn" href="/novo-pedido" onClick={() => setDrawerOpen(false)} className={cn("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors", pathname.startsWith("/novo-pedido") ? "text-brand-olive" : "text-ink-400")}>
-            <ShoppingCart size={20} />
-            <span className="text-[10px] font-medium">Pedidos</span>
-          </Link>
+          {canModule("pedidos") && (
+            <Link data-tour="mobile-pedidos-btn" href="/novo-pedido" onClick={() => setDrawerOpen(false)} className={cn("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors", pathname.startsWith("/novo-pedido") ? "text-brand-olive" : "text-ink-400")}>
+              <ShoppingCart size={20} />
+              <span className="text-[10px] font-medium">Pedidos</span>
+            </Link>
+          )}
           <Link href="/perfil" onClick={() => setDrawerOpen(false)} className={cn("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors", pathname === "/perfil" ? "text-brand-olive" : "text-ink-400")}>
             <User size={20} />
             <span className="text-[10px] font-medium">Perfil</span>

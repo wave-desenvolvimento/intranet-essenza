@@ -1,8 +1,12 @@
+import { requirePermission } from "@/lib/permissions";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getRoles, getPermissions } from "./actions";
 import { PermissionsManager } from "./permissions-manager";
 
 export default async function ConfiguracoesPage() {
+  const p = await requirePermission("configuracoes", "view");
+  if (p.error) notFound();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const [roles, permissions, { data: cmsPages }, { data: userRoles }] = await Promise.all([
