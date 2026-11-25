@@ -260,7 +260,7 @@ export function PermissionsManager({ roles, permissions, pageModules, currentUse
                   {pageModuleEntries.length > 0 && (
                     <tr className="bg-ink-100/50">
                       <td colSpan={allActions.length + 1} className="px-3 py-2 sticky left-0 bg-ink-100/50">
-                        <span className="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Paginas CMS</span>
+                        <span className="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Páginas CMS</span>
                       </td>
                     </tr>
                   )}
