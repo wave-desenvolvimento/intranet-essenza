@@ -10,7 +10,7 @@ import { logAudit } from "@/lib/audit";
 
 const userSchema = z.object({
   fullName: z.string().trim().min(1),
-  email: z.union([z.literal(""), z.string().email()]),
+  email: z.union([z.literal(""), z.string().trim().toLowerCase().email()]),
   franchiseId: z.union([z.literal(""), z.string().uuid()]),
   isFranchiseAdmin: z.boolean(),
   status: z.enum(["active", "inactive"]),
@@ -52,7 +52,13 @@ async function checkTarget(callerId: string, targetId: string, action: "edit" | 
 export async function inviteUser(formData: FormData) {
   const p = await requirePermission("usuarios", "create"); if (p.error) return p;
   const parsed = parseUserForm(formData);
-  if (!parsed.success || !parsed.data.email) return { error: "Nome e e-mail válidos são obrigatórios." };
+  if (!parsed.success) {
+    const field = parsed.error.issues[0]?.path[0];
+    if (field === "email") return { error: "E-mail inválido. Confira se está completo e sem espaços." };
+    if (field === "fullName") return { error: "Informe o nome completo." };
+    return { error: "Dados inválidos." };
+  }
+  if (!parsed.data.email) return { error: "Informe o e-mail." };
   const { fullName, email, franchiseId, isFranchiseAdmin, roleIds, externalId, comissaoPercentual } = parsed.data;
 
   const [scope, assignable] = await Promise.all([getUserScope(p.user!.id), getRolesForContext(p.user!.id)]);
