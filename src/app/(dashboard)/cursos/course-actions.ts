@@ -33,6 +33,8 @@ export interface CourseVideo {
   source_type: "upload" | "youtube" | "external";
   video_url: string | null;
   storage_path: string | null;
+  pdf_path: string | null;
+  pdf_name: string | null;
   thumbnail_url: string | null;
   duration_seconds: number | null;
   size_bytes: number | null;
@@ -320,6 +322,10 @@ export async function reorderModules(orderedIds: string[]): Promise<{ error?: st
 // Videos CRUD
 // ============================================================
 
+function hasVideo(sourceType: string, videoUrl: string | null, storagePath: string | null) {
+  return sourceType === "upload" ? !!storagePath : !!videoUrl;
+}
+
 export async function getVideos(moduleId: string): Promise<CourseVideo[]> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -341,9 +347,8 @@ export async function createVideo(moduleId: string, formData: FormData): Promise
   const videoUrl = (formData.get("video_url") as string)?.trim() || null;
   const storagePath = (formData.get("storage_path") as string)?.trim() || null;
 
-  if (sourceType === "youtube" && !videoUrl) return { error: "URL do YouTube obrigatória" };
-  if (sourceType === "upload" && !storagePath) return { error: "Envie o vídeo" };
-  if (sourceType === "external" && !videoUrl) return { error: "URL do vídeo obrigatória" };
+  const pdfPath = (formData.get("pdf_path") as string)?.trim() || null;
+  if (!hasVideo(sourceType, videoUrl, storagePath) && !pdfPath) return { error: "Envie um vídeo ou um PDF" };
 
   // Get next sort_order
   const { data: last } = await supabase
@@ -366,6 +371,8 @@ export async function createVideo(moduleId: string, formData: FormData): Promise
       source_type: sourceType,
       video_url: videoUrl,
       storage_path: storagePath,
+      pdf_path: pdfPath,
+      pdf_name: pdfPath ? (formData.get("pdf_name") as string)?.trim() || null : null,
       thumbnail_url: (formData.get("thumbnail_url") as string)?.trim() || null,
       duration_seconds: durationStr ? parseInt(durationStr) : null,
       size_bytes: sizeStr ? parseInt(sizeStr) : null,
@@ -391,8 +398,9 @@ export async function updateVideo(id: string, formData: FormData): Promise<{ err
   const videoUrl = (formData.get("video_url") as string)?.trim() || null;
   const storagePath = (formData.get("storage_path") as string)?.trim() || null;
 
-  if (formData.get("status") === "published" && !(sourceType === "upload" ? storagePath : videoUrl)) {
-    return { error: "Envie o vídeo antes de publicar" };
+  const pdfPath = (formData.get("pdf_path") as string)?.trim() || null;
+  if (formData.get("status") === "published" && !hasVideo(sourceType, videoUrl, storagePath) && !pdfPath) {
+    return { error: "Envie um vídeo ou um PDF antes de publicar" };
   }
 
   const durationStr = formData.get("duration_seconds") as string;
@@ -406,6 +414,8 @@ export async function updateVideo(id: string, formData: FormData): Promise<{ err
       source_type: sourceType,
       video_url: videoUrl,
       storage_path: storagePath,
+      pdf_path: pdfPath,
+      pdf_name: pdfPath ? (formData.get("pdf_name") as string)?.trim() || null : null,
       thumbnail_url: (formData.get("thumbnail_url") as string)?.trim() || null,
       duration_seconds: durationStr ? parseInt(durationStr) : null,
       size_bytes: sizeStr ? parseInt(sizeStr) : null,
@@ -425,13 +435,12 @@ export async function deleteVideo(id: string): Promise<{ error?: string }> {
   // Delete storage file if uploaded
   const { data: video } = await supabase
     .from("course_videos")
-    .select("storage_path")
+    .select("storage_path, pdf_path")
     .eq("id", id)
     .single();
 
-  if (video?.storage_path) {
-    await supabase.storage.from("course-videos").remove([video.storage_path]);
-  }
+  const files = [video?.storage_path, video?.pdf_path].filter((f): f is string => !!f);
+  if (files.length) await supabase.storage.from("course-videos").remove(files);
 
   const { error } = await supabase
     .from("course_videos")
@@ -465,7 +474,7 @@ export async function reorderVideos(moduleId: string, orderedIds: string[]): Pro
 
 export async function getVideoUrl(
   videoId: string
-): Promise<{ url: string } | { error: string }> {
+): Promise<{ url: string; pdfUrl: string | null } | { error: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -474,7 +483,7 @@ export async function getVideoUrl(
 
   const { data: video } = await supabase
     .from("course_videos")
-    .select("video_url, storage_path, source_type")
+    .select("video_url, storage_path, source_type, pdf_path")
     .eq("id", videoId)
     .eq("status", "published")
     .single();
@@ -482,6 +491,13 @@ export async function getVideoUrl(
 
   const { data: unlocked } = await supabase.rpc("course_video_unlocked", { _video_id: videoId });
   if (!unlocked) return { error: "Conclua as aulas anteriores primeiro" };
+
+  let pdfUrl: string | null = null;
+  if (video.pdf_path) {
+    const { data: signedPdf } = await supabase.storage.from("course-videos").createSignedUrl(video.pdf_path, 7200);
+    if (!signedPdf?.signedUrl) return { error: "Erro ao gerar URL do PDF" };
+    pdfUrl = signedPdf.signedUrl;
+  }
 
   // Uploaded video: generate signed URL
   if (video.source_type === "upload" && video.storage_path) {
@@ -492,14 +508,15 @@ export async function getVideoUrl(
     if (signErr || !signedData?.signedUrl) {
       return { error: "Erro ao gerar URL do vídeo" };
     }
-    return { url: signedData.signedUrl };
+    return { url: signedData.signedUrl, pdfUrl };
   }
 
   // YouTube or external: return URL directly
   if (video.video_url) {
-    return { url: video.video_url };
+    return { url: video.video_url, pdfUrl };
   }
 
+  if (pdfUrl) return { url: "", pdfUrl };
   return { error: "URL não definida" };
 }
 

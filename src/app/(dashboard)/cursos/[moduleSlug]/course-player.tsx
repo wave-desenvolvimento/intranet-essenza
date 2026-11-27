@@ -2,7 +2,7 @@
 
 import { SafeHtml } from "@/components/ui/safe-html";
 import { useState, useEffect, useRef } from "react";
-import { Play, Lock, Check, Clock, ArrowLeft, ChevronDown, ChevronUp, Square, CheckSquare } from "lucide-react";
+import { Play, Lock, Check, Clock, ArrowLeft, ChevronDown, ChevronUp, Square, CheckSquare, FileText, Download } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -75,6 +75,7 @@ export function CoursePlayerView({
   const [currentPct, setCurrentPct] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(true);
   const [activeUrl, setActiveUrl] = useState("");
+  const [activePdfUrl, setActivePdfUrl] = useState("");
   const [loadingUrl, setLoadingUrl] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set([module.id]));
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -139,14 +140,17 @@ export function CoursePlayerView({
   useEffect(() => {
     if (!activeVideo || loadingProgress) return;
     setActiveUrl("");
+    setActivePdfUrl("");
     maxTimeRef.current = 0;
     setLoadingUrl(true);
     let cancelled = false;
     async function fetchUrl() {
       const res = await getVideoUrl(activeVideo.id);
       if (cancelled) return;
-      if ("url" in res) setActiveUrl(res.url);
-      else {
+      if ("url" in res) {
+        setActiveUrl(res.url);
+        setActivePdfUrl(res.pdfUrl || "");
+      } else {
         setActiveUrl("");
         if (res.error && res.error !== "URL não definida") toast.error(res.error);
       }
@@ -301,7 +305,16 @@ export function CoursePlayerView({
       <div className="flex flex-1 min-h-0">
         {/* Main - Video + info */}
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-          {/* Video */}
+          {/* Video (ou PDF, quando a aula nao tem video) */}
+          {!loadingUrl && !activeUrl && activePdfUrl ? (
+            <iframe
+              key={activePdfUrl}
+              src={activePdfUrl}
+              title={`PDF: ${activeVideo.title}`}
+              className="w-full h-[75vh] shrink-0 bg-ink-50"
+              style={{ border: 0 }}
+            />
+          ) : (
           <div className="relative aspect-video bg-black shrink-0">
             {loadingUrl ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
@@ -342,6 +355,7 @@ export function CoursePlayerView({
               </div>
             )}
           </div>
+          )}
 
           {/* Lesson info below video */}
           <div className="p-5 space-y-3">
@@ -356,6 +370,28 @@ export function CoursePlayerView({
                 </div>
               )}
             </div>
+            {activePdfUrl && (
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={activePdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-2 text-xs font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+                >
+                  {activeUrl ? <FileText size={14} /> : <Download size={14} />}
+                  {activeUrl ? "Abrir material em PDF" : "Abrir ou baixar PDF"}
+                </a>
+                {!activeUrl && !completedSet.has(activeVideo.id) && (
+                  <button
+                    type="button"
+                    onClick={() => completeLesson(activeVideo.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-brand-olive px-3 py-2 text-xs font-medium text-white hover:bg-brand-olive-dark transition-colors"
+                  >
+                    <Check size={14} /> Marcar como concluída
+                  </button>
+                )}
+              </div>
+            )}
             {activeVideo.description && (
               <SafeHtml className="text-sm text-ink-500 leading-relaxed prose prose-sm prose-ink max-w-none" html={activeVideo.description} />
             )}
