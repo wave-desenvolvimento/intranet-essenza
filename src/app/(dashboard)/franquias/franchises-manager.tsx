@@ -43,6 +43,7 @@ interface Franchise {
   cnpj: string | null;
   opening_hours: string | null;
   manager_name: string | null;
+  opening_date: string | null;
   seller_id: string | null;
   seller?: { id: string; full_name: string } | null;
   external_id: number | null;
@@ -96,6 +97,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
   const [cnpj, setCnpj] = useState("");
   const [openingHours, setOpeningHours] = useState("");
   const [managerName, setManagerName] = useState("");
+  const [openingDate, setOpeningDate] = useState("");
   const [sellerId, setSellerId] = useState("");
   const [externalId, setExternalId] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
@@ -119,7 +121,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
     setName(""); setCity(""); setState(""); setSegment("franquia"); setStoreType("loja"); setStatus("active");
     setPhone(""); setWhatsapp(""); setEmail(""); setInstagram(""); setFacebook("");
     setTiktok(""); setWebsite(""); setLogoUrl(""); setAddress(""); setNeighborhood("");
-    setCep(""); setCnpj(""); setOpeningHours(""); setManagerName(""); setSellerId("");
+    setCep(""); setCnpj(""); setOpeningHours(""); setManagerName(""); setOpeningDate(""); setSellerId("");
     setExternalId(""); setRazaoSocial(""); setInscricaoEstadual(""); setAddressNumber(""); setComplemento("");
     setError(""); setShowSheet(true);
   }
@@ -131,7 +133,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
     setInstagram(f.instagram || ""); setFacebook(f.facebook || ""); setTiktok(f.tiktok || "");
     setWebsite(f.website || ""); setLogoUrl(f.logo_url || ""); setAddress(f.address || "");
     setNeighborhood(f.neighborhood || ""); setCep(f.cep || ""); setCnpj(f.cnpj || "");
-    setOpeningHours(f.opening_hours || ""); setManagerName(f.manager_name || ""); setSellerId(f.seller_id || "");
+    setOpeningHours(f.opening_hours || ""); setManagerName(f.manager_name || ""); setOpeningDate(f.opening_date || ""); setSellerId(f.seller_id || "");
     setExternalId(f.external_id?.toString() || ""); setRazaoSocial(f.razao_social || "");
     setInscricaoEstadual(f.inscricao_estadual || ""); setAddressNumber(f.address_number || ""); setComplemento(f.complemento || "");
     setError(""); setShowSheet(true);
@@ -147,7 +149,7 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
     fd.set("instagram", instagram); fd.set("facebook", facebook); fd.set("tiktok", tiktok);
     fd.set("website", website); fd.set("logo_url", logoUrl); fd.set("address", address);
     fd.set("neighborhood", neighborhood); fd.set("cep", cep); fd.set("cnpj", cnpj);
-    fd.set("opening_hours", openingHours); fd.set("manager_name", managerName); fd.set("seller_id", sellerId);
+    fd.set("opening_hours", openingHours); fd.set("manager_name", managerName); fd.set("opening_date", openingDate); fd.set("seller_id", sellerId);
     fd.set("external_id", externalId); fd.set("razao_social", razaoSocial);
     fd.set("inscricao_estadual", inscricaoEstadual); fd.set("address_number", addressNumber); fd.set("complemento", complemento);
     return fd;
@@ -353,6 +355,10 @@ export function FranchisesManager({ franchises, commercialUsers = [] }: Props) {
               <div>
                 <label className="text-xs font-medium text-ink-700 mb-1 block">Tipo</label>
                 <CustomSelect options={[{ value: "loja", label: "Loja" }, { value: "quiosque", label: "Quiosque" }]} value={storeType} onChange={setStoreType} />
+              </div>
+              <div>
+                <label htmlFor="opening-date" className="text-xs font-medium text-ink-700 mb-1 block">Data de inauguração</label>
+                <input id="opening-date" type="date" value={openingDate} onChange={(e) => setOpeningDate(e.target.value)} className={inputCls} />
               </div>
               {editing && (
                 <div>

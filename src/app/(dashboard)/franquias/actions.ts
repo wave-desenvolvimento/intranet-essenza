@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermission, getUserScope } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { z } from "zod";
 
 export async function getFranchiseUsers(franchiseId: string) {
   const { user } = await requireAuth();
@@ -52,6 +53,7 @@ function extractFranchiseFields(formData: FormData) {
     cnpj: formData.get("cnpj") as string || null,
     opening_hours: formData.get("opening_hours") as string || null,
     manager_name: formData.get("manager_name") as string || null,
+    opening_date: z.iso.date().safeParse(formData.get("opening_date")).data ?? null,
     seller_id: formData.get("seller_id") as string || null,
     external_id: Number(formData.get("external_id")) || null,
     razao_social: formData.get("razao_social") as string || null,
