@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import {
   Plus, GripVertical, Pencil, Trash2, ChevronRight,
   Play, Upload, Link2, Clock, Film, ArrowLeft,
-  Image as ImageIcon, Eye, EyeOff, Video,
+  Image as ImageIcon, Eye, EyeOff, Video, FileText, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { coursePath } from "./course-path";
 import { Sheet } from "@/components/ui/sheet";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { uploadToStorage, uploadVideoWithProgress } from "@/lib/upload";
+import { uploadToStorage, uploadVideoWithProgress, pdfFirstPageImage } from "@/lib/upload";
 import {
   type CourseModule,
   type CourseVideo,
@@ -199,7 +199,7 @@ export function CourseManager({
                     <p className="text-xs text-ink-500 mt-0.5 truncate">{mod.description}</p>
                   )}
                   <p className="text-xs text-ink-400 mt-1">
-                    {mod.video_count || 0} vídeo{(mod.video_count || 0) !== 1 ? "s" : ""}
+                    {mod.video_count || 0} aula{(mod.video_count || 0) !== 1 ? "s" : ""}
                   </p>
                 </div>
 
@@ -220,7 +220,7 @@ export function CourseManager({
                           setConfirm({
                             open: true,
                             title: "Remover módulo",
-                            message: `Tem certeza que deseja remover "${mod.title}"? Todos os vídeos serão removidos.`,
+                            message: `Tem certeza que deseja remover "${mod.title}"? Todas as aulas serão removidas.`,
                             onConfirm: () => {
                               startTransition(async () => {
                                 const res = await deleteModule(mod.id);
@@ -290,7 +290,7 @@ export function CourseManager({
           </button>
           <div>
             <h1 className="text-lg font-semibold text-ink-900">{activeModule?.title}</h1>
-            <p className="text-sm text-ink-500 mt-0.5">{videos.length} vídeo{videos.length !== 1 ? "s" : ""}</p>
+            <p className="text-sm text-ink-500 mt-0.5">{videos.length} aula{videos.length !== 1 ? "s" : ""}</p>
           </div>
         </div>
         {canEdit && (
@@ -299,7 +299,7 @@ export function CourseManager({
             className="flex items-center gap-2 rounded-lg bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors"
           >
             <Plus size={16} />
-            Novo vídeo
+            Nova aula
           </button>
         )}
       </div>
@@ -311,13 +311,13 @@ export function CourseManager({
       ) : videos.length === 0 ? (
         <div className="rounded-xl border border-ink-100 bg-white px-6 py-16 text-center">
           <Play size={40} className="mx-auto text-ink-200 mb-3" />
-          <p className="text-sm text-ink-500">Nenhum vídeo neste módulo</p>
+          <p className="text-sm text-ink-500">Nenhuma aula neste módulo</p>
           {canEdit && (
             <button
               onClick={() => setVideoSheet({ open: true })}
               className="mt-3 text-sm font-medium text-brand-olive hover:underline"
             >
-              Adicionar primeiro vídeo
+              Adicionar primeira aula
             </button>
           )}
         </div>
@@ -341,15 +341,16 @@ export function CourseManager({
               {/* Thumbnail / index */}
               <div className="h-12 w-20 rounded-lg bg-ink-50 overflow-hidden shrink-0 flex items-center justify-center relative">
                 {vid.thumbnail_url ? (
-                  <img src={vid.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                  <img src={vid.thumbnail_url} alt="" className="h-full w-full object-cover object-top" />
                 ) : (
                   <span className="text-sm font-semibold text-ink-300">{i + 1}</span>
                 )}
                 {/* Source type badge */}
-                <div className="absolute bottom-0.5 right-0.5">
-                  {vid.source_type === "youtube" && <Video size={12} className="text-red-500" />}
-                  {vid.source_type === "upload" && <Upload size={12} className="text-brand-olive" />}
-                  {vid.source_type === "external" && <Link2 size={12} className="text-blue-500" />}
+                <div className="absolute bottom-0.5 right-0.5 flex gap-0.5">
+                  {vid.source_type === "youtube" && vid.video_url && <Video size={12} className="text-red-500" />}
+                  {vid.source_type === "upload" && vid.storage_path && <Upload size={12} className="text-brand-olive" />}
+                  {vid.source_type === "external" && vid.video_url && <Link2 size={12} className="text-blue-500" />}
+                  {vid.pdf_path && <FileText size={12} className="text-ink-500" />}
                 </div>
               </div>
 
@@ -371,7 +372,8 @@ export function CourseManager({
                   {vid.size_bytes != null && vid.size_bytes > 0 && (
                     <span className="text-xs text-ink-400">{formatBytes(vid.size_bytes)}</span>
                   )}
-                  <span className="text-xs text-ink-400 capitalize">{vid.source_type}</span>
+                  {(vid.source_type === "upload" ? vid.storage_path : vid.video_url) && <span className="text-xs text-ink-400 capitalize">{vid.source_type}</span>}
+                  {vid.pdf_path && <span className="text-xs text-ink-400">PDF</span>}
                 </div>
               </div>
 
@@ -381,7 +383,7 @@ export function CourseManager({
                   <button
                     onClick={() => setVideoSheet({ open: true, video: vid })}
                     className="rounded-lg p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors"
-                    title="Editar vídeo"
+                    title="Editar aula"
                   >
                     <Pencil size={14} />
                   </button>
@@ -389,21 +391,21 @@ export function CourseManager({
                     onClick={() => {
                       setConfirm({
                         open: true,
-                        title: "Remover vídeo",
+                        title: "Remover aula",
                         message: `Tem certeza que deseja remover "${vid.title}"?`,
                         onConfirm: () => {
                           startTransition(async () => {
                             const res = await deleteVideo(vid.id);
                             if (res.error) { toast.error(res.error); return; }
                             setVideos((prev) => prev.filter((v) => v.id !== vid.id));
-                            toast.success("Vídeo removido");
+                            toast.success("Aula removida");
                           });
                           setConfirm((c) => ({ ...c, open: false }));
                         },
                       });
                     }}
                     className="rounded-lg p-2 text-ink-400 hover:text-danger hover:bg-danger/5 transition-colors"
-                    title="Remover vídeo"
+                    title="Remover aula"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -600,6 +602,9 @@ function VideoSheet({
   const [sourceType, setSourceType] = useState<"youtube" | "upload" | "external">(video?.source_type || "upload");
   const [storagePath, setStoragePath] = useState(video?.storage_path || "");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [pdfPath, setPdfPath] = useState(video?.pdf_path || "");
+  const [pdfName, setPdfName] = useState(video?.pdf_name || "");
+  const [pdfProgress, setPdfProgress] = useState<number | null>(null);
   const [status, setStatus] = useState(video?.status || "draft");
   const [thumbnailUrl, setThumbnailUrl] = useState(video?.thumbnail_url || "");
   const formRef = useRef<HTMLFormElement>(null);
@@ -610,6 +615,9 @@ function VideoSheet({
     setWasOpen(open);
     setSourceType(video?.source_type || "upload");
     setStoragePath(video?.storage_path || "");
+    setPdfPath(video?.pdf_path || "");
+    setPdfName(video?.pdf_name || "");
+    setPdfProgress(null);
     setStatus(video?.status || "draft");
     setThumbnailUrl(video?.thumbnail_url || "");
     setUploadProgress(null);
@@ -620,6 +628,8 @@ function VideoSheet({
     const formData = new FormData(formRef.current);
     formData.set("source_type", sourceType);
     formData.set("storage_path", storagePath);
+    formData.set("pdf_path", pdfPath);
+    formData.set("pdf_name", pdfName);
     formData.set("status", status);
     formData.set("thumbnail_url", thumbnailUrl);
 
@@ -634,12 +644,14 @@ function VideoSheet({
           source_type: sourceType,
           video_url: (formData.get("video_url") as string) || null,
           storage_path: storagePath || null,
+          pdf_path: pdfPath || null,
+          pdf_name: pdfPath ? pdfName || null : null,
           thumbnail_url: thumbnailUrl || null,
           duration_seconds: formData.get("duration_seconds") ? parseInt(formData.get("duration_seconds") as string) : null,
           size_bytes: formData.get("size_bytes") ? parseInt(formData.get("size_bytes") as string) : null,
           status: status as "draft" | "published",
         });
-        toast.success("Vídeo atualizado");
+        toast.success("Aula atualizada");
       } else {
         const res = await createVideo(moduleId, formData);
         if (res.error) { toast.error(res.error); return; }
@@ -651,6 +663,8 @@ function VideoSheet({
           source_type: sourceType,
           video_url: (formData.get("video_url") as string) || null,
           storage_path: storagePath || null,
+          pdf_path: pdfPath || null,
+          pdf_name: pdfPath ? pdfName || null : null,
           thumbnail_url: thumbnailUrl || null,
           duration_seconds: formData.get("duration_seconds") ? parseInt(formData.get("duration_seconds") as string) : null,
           size_bytes: formData.get("size_bytes") ? parseInt(formData.get("size_bytes") as string) : null,
@@ -659,7 +673,7 @@ function VideoSheet({
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
-        toast.success("Vídeo adicionado");
+        toast.success("Aula adicionada");
       }
     });
   }
@@ -687,6 +701,29 @@ function VideoSheet({
     }
   }
 
+  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.type !== "application/pdf") { toast.error("Envie um arquivo PDF"); return; }
+
+    setPdfProgress(0);
+    const res = await uploadVideoWithProgress(file, (pct) => setPdfProgress(pct));
+    setPdfProgress(null);
+    if ("path" in res) {
+      setPdfPath(res.path);
+      setPdfName(file.name);
+      toast.success("PDF enviado");
+      if (!thumbnailUrl) {
+        const thumb = await pdfFirstPageImage(file);
+        const up = thumb && (await uploadToStorage(thumb, { bucket: "assets", folder: "course-thumbnails" }));
+        if (up && "url" in up) setThumbnailUrl(up.url);
+      }
+    } else {
+      toast.error(res.error);
+    }
+  }
+
   async function handleThumbnailUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -696,7 +733,7 @@ function VideoSheet({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} onSubmit={handleSubmit} title={video ? "Editar vídeo" : "Novo vídeo"} wide>
+    <Sheet open={open} onClose={onClose} onSubmit={handleSubmit} title={video ? "Editar aula" : "Nova aula"} wide>
       <form ref={formRef} className="space-y-4">
         <div>
           <label className="block text-xs font-medium text-ink-700 mb-1">Título <span className="text-danger">*</span></label>
@@ -740,7 +777,7 @@ function VideoSheet({
         {(sourceType === "youtube" || sourceType === "external") && (
           <div>
             <label className="block text-xs font-medium text-ink-700 mb-1">
-              {sourceType === "youtube" ? "URL do YouTube" : "URL do vídeo"} <span className="text-danger">*</span>
+              {sourceType === "youtube" ? "URL do YouTube" : "URL do vídeo"}
             </label>
             <input
               name="video_url"
@@ -754,7 +791,7 @@ function VideoSheet({
         {/* Video Upload */}
         {sourceType === "upload" && (
           <div>
-            <label className="block text-xs font-medium text-ink-700 mb-1">Arquivo de vídeo <span className="text-danger">*</span></label>
+            <label className="block text-xs font-medium text-ink-700 mb-1">Arquivo de vídeo</label>
             {storagePath ? (
               <div className="flex items-center gap-3 rounded-lg border border-brand-olive/30 bg-brand-olive/5 p-3">
                 <Film size={18} className="text-brand-olive shrink-0" />
@@ -763,6 +800,9 @@ function VideoSheet({
                   Trocar
                   <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
                 </label>
+                <button type="button" onClick={() => setStoragePath("")} className="text-ink-400 hover:text-danger" aria-label="Remover vídeo">
+                  <X size={14} />
+                </button>
               </div>
             ) : uploadProgress !== null ? (
               <div className="rounded-lg border border-ink-200 p-4">
@@ -785,13 +825,49 @@ function VideoSheet({
           </div>
         )}
 
+        <p className="text-xs text-ink-500">A aula pode ter vídeo, PDF ou os dois.</p>
+
+        {/* PDF */}
+        <div>
+          <label className="block text-xs font-medium text-ink-700 mb-1">Material em PDF</label>
+          {pdfPath ? (
+            <div className="flex items-center gap-3 rounded-lg border border-brand-olive/30 bg-brand-olive/5 p-3">
+              <FileText size={18} className="text-brand-olive shrink-0" />
+              <span className="text-sm text-ink-700 truncate flex-1">{pdfName || pdfPath}</span>
+              <label className="text-xs font-medium text-brand-olive hover:underline cursor-pointer">
+                Trocar
+                <input type="file" accept="application/pdf" className="hidden" onChange={handlePdfUpload} />
+              </label>
+              <button type="button" onClick={() => { setPdfPath(""); setPdfName(""); }} className="text-ink-400 hover:text-danger" aria-label="Remover PDF">
+                <X size={14} />
+              </button>
+            </div>
+          ) : pdfProgress !== null ? (
+            <div className="rounded-lg border border-ink-200 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-ink-500">Enviando PDF...</span>
+                <span className="text-xs font-medium text-ink-700">{pdfProgress}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-ink-100 overflow-hidden">
+                <div className="h-full rounded-full bg-brand-olive transition-all duration-300" style={{ width: `${pdfProgress}%` }} />
+              </div>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-ink-200 p-6 cursor-pointer hover:border-brand-olive/50 hover:bg-ink-50/50 transition-colors">
+              <FileText size={24} className="text-ink-300" />
+              <span className="text-sm text-ink-500">Clique para enviar um PDF</span>
+              <input type="file" accept="application/pdf" className="hidden" onChange={handlePdfUpload} />
+            </label>
+          )}
+        </div>
+
         {/* Thumbnail */}
         <div>
           <label className="block text-xs font-medium text-ink-700 mb-1">Miniatura</label>
           <div className="flex items-center gap-3">
             <div className="h-14 w-24 rounded-lg border border-ink-200 bg-ink-50 overflow-hidden flex items-center justify-center">
               {thumbnailUrl ? (
-                <img src={thumbnailUrl} alt="" className="h-full w-full object-cover" />
+                <img src={thumbnailUrl} alt="" className="h-full w-full object-cover object-top" />
               ) : (
                 <ImageIcon size={18} className="text-ink-200" />
               )}
@@ -841,10 +917,10 @@ function VideoSheet({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isPending || uploadProgress !== null}
+            disabled={isPending || uploadProgress !== null || pdfProgress !== null}
             className="w-full rounded-lg bg-brand-olive px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-olive-dark transition-colors disabled:opacity-50"
           >
-            {isPending ? "Salvando..." : video ? "Salvar" : "Adicionar vídeo"}
+            {isPending ? "Salvando..." : video ? "Salvar" : "Adicionar aula"}
           </button>
         </div>
       </form>

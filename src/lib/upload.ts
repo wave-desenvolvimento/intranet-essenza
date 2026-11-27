@@ -150,3 +150,24 @@ export async function uploadVideoWithProgress(
     xhr.send(file);
   });
 }
+
+/** Gera imagem da 1a pagina do PDF para usar como miniatura. Null se falhar. */
+export async function pdfFirstPageImage(file: File): Promise<File | null> {
+  try {
+    const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+    const page = await pdf.getPage(1);
+    const base = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({ scale: 640 / base.width });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+    await page.render({ canvas, viewport }).promise;
+    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/webp", 0.85));
+    await pdf.cleanup();
+    return blob ? new File([blob], "pdf-thumb.webp", { type: "image/webp" }) : null;
+  } catch {
+    return null;
+  }
+}
