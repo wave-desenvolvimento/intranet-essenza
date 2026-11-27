@@ -11,10 +11,10 @@ import { logAudit } from "@/lib/audit";
 const userSchema = z.object({
   fullName: z.string().trim().min(1),
   email: z.union([z.literal(""), z.string().trim().toLowerCase().email()]),
-  franchiseId: z.union([z.literal(""), z.string().uuid()]),
+  franchiseId: z.union([z.literal(""), z.guid()]),
   isFranchiseAdmin: z.boolean(),
   status: z.enum(["active", "inactive"]),
-  roleIds: z.array(z.string().uuid()),
+  roleIds: z.array(z.guid()),
   externalId: z.number().nullable(),
   comissaoPercentual: z.number().min(0),
 });
@@ -119,7 +119,7 @@ export async function inviteUser(formData: FormData) {
 
 export async function updateUser(formData: FormData) {
   const p = await requirePermission("usuarios", "edit"); if (p.error) return p;
-  const userId = z.string().uuid().safeParse(formData.get("userId"));
+  const userId = z.guid().safeParse(formData.get("userId"));
   const parsed = parseUserForm(formData);
   if (!userId.success || !parsed.success) return { error: "Dados inválidos." };
   const id = userId.data;
