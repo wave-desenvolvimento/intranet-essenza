@@ -8,7 +8,7 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZon
 
 export default async function CertificatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!z.string().uuid().safeParse(id).success) notFound();
+  if (!z.guid().safeParse(id).success) notFound();
 
   const supabase = await createClient();
   const { data: certificate } = await supabase
